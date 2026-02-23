@@ -24,6 +24,14 @@ final class EdgeDetector {
         }
     }
 
+    /// Reset edge state so the next edge arrival triggers activation.
+    /// Call this when the panel hides — global monitor doesn't see mouse
+    /// movements inside our own window, so `wasAtEdge` can get stuck `true`.
+    func resetEdgeState() {
+        wasAtEdge = false
+        cancelActivation()
+    }
+
     func stopMonitoring() {
         if let monitor = mouseMoveMonitor {
             NSEvent.removeMonitor(monitor)

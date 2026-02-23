@@ -177,6 +177,7 @@ final class SidePanelController: NSWindowController {
         isShown = false
         isAnimating = true
         cancelHideTimer()
+        edgeDetector.resetEdgeState()
 
         let frame = window.frame
         let offScreenX = frame.maxX // slide right to hide
