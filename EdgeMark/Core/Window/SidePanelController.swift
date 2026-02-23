@@ -18,7 +18,7 @@ class KeyableWindow: NSWindow {
 
 final class SidePanelController: NSWindowController {
     private let panelWidth: CGFloat = 400
-    private let cornerRadius: CGFloat = 12
+    private let cornerRadius: CGFloat = 10
     private(set) var isShown = false
     private var isAnimating = false
     private var hideTimer: Timer?
@@ -56,7 +56,7 @@ final class SidePanelController: NSWindowController {
         let hostingView = NSHostingView(rootView: ContentView())
         hostingView.frame = NSRect(x: 0, y: 0, width: panelWidth, height: visibleFrame.height)
         hostingView.wantsLayer = true
-        hostingView.layer?.cornerRadius = 12
+        hostingView.layer?.cornerRadius = 10
         // Right edge panel → round left corners only
         hostingView.layer?.maskedCorners = [.layerMinXMinYCorner, .layerMinXMaxYCorner]
         hostingView.layer?.masksToBounds = true
