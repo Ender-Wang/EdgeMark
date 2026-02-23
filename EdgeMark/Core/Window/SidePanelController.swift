@@ -21,9 +21,11 @@ final class SidePanelController: NSWindowController {
     private let cornerRadius: CGFloat = 10
     private(set) var isShown = false
     private var isAnimating = false
+    private var animationGeneration = 0
     private var hideTimer: Timer?
     private var dummyWindow: NSWindow?
     private var trackingArea: NSTrackingArea?
+    private var previousApp: NSRunningApplication?
     let edgeDetector: EdgeDetector
 
     // MARK: - Init
@@ -65,6 +67,11 @@ final class SidePanelController: NSWindowController {
         edgeDetector = EdgeDetector()
 
         super.init(window: window)
+
+        // Order the window off-screen immediately so it joins all Spaces.
+        // We never orderOut — the window stays ordered (off-screen when hidden)
+        // to maintain its .canJoinAllSpaces membership across desktop switches.
+        window.orderBack(nil)
 
         setupDummyWindow()
         setupTrackingArea()
@@ -129,7 +136,7 @@ final class SidePanelController: NSWindowController {
     }
 
     override func mouseExited(with _: NSEvent) {
-        guard isShown else { return }
+        guard isShown, !isAnimating else { return }
         let delay = ShortcutSettings.shared.hideDelay
         if delay == 0 {
             hidePanel()
@@ -145,53 +152,90 @@ final class SidePanelController: NSWindowController {
     // MARK: - Show / Hide
 
     func showPanel(on screen: NSScreen? = nil) {
-        guard let window, !isShown, !isAnimating else { return }
+        guard let window, !isShown else { return }
         let targetScreen = screen ?? NSScreen.main ?? NSScreen.screens.first!
         let visibleFrame = targetScreen.visibleFrame
 
         isShown = true
-        isAnimating = true
+        let gen = animationGeneration &+ 1
+        animationGeneration = gen
 
-        // Position off-screen at the right edge
-        window.setFrame(
-            NSRect(x: visibleFrame.maxX, y: visibleFrame.minY, width: panelWidth, height: visibleFrame.height),
-            display: false,
+        let shownFrame = NSRect(
+            x: visibleFrame.maxX - panelWidth,
+            y: visibleFrame.minY,
+            width: panelWidth,
+            height: visibleFrame.height,
         )
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
 
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.2
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            window.animator().setFrame(
-                NSRect(x: visibleFrame.maxX - panelWidth, y: visibleFrame.minY, width: panelWidth, height: visibleFrame.height),
-                display: true,
+        // Save the frontmost app so we can restore focus when hiding
+        let frontmost = NSWorkspace.shared.frontmostApplication
+        if frontmost?.bundleIdentifier != Bundle.main.bundleIdentifier {
+            previousApp = frontmost
+        }
+
+        if isAnimating {
+            // Interrupt hide animation — snap to shown position
+            isAnimating = false
+            window.setFrame(shownFrame, display: true)
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        } else {
+            // Normal animated show
+            isAnimating = true
+            window.setFrame(
+                NSRect(x: visibleFrame.maxX, y: visibleFrame.minY, width: panelWidth, height: visibleFrame.height),
+                display: false,
             )
-        } completionHandler: { [weak self] in
-            self?.isAnimating = false
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.2
+                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                window.animator().setFrame(shownFrame, display: true)
+            } completionHandler: { [weak self] in
+                guard let self, animationGeneration == gen else { return }
+                isAnimating = false
+            }
         }
     }
 
     func hidePanel() {
-        guard let window, isShown, !isAnimating else { return }
+        guard let window, isShown else { return }
         isShown = false
-        isAnimating = true
+        let gen = animationGeneration &+ 1
+        animationGeneration = gen
         cancelHideTimer()
-        edgeDetector.resetEdgeState()
+        edgeDetector.pauseDetection()
 
-        let frame = window.frame
-        let offScreenX = frame.maxX // slide right to hide
+        let targetScreen = window.screen ?? NSScreen.main ?? NSScreen.screens.first!
+        let visibleFrame = targetScreen.visibleFrame
+        let hiddenFrame = NSRect(
+            x: visibleFrame.maxX,
+            y: visibleFrame.minY,
+            width: panelWidth,
+            height: visibleFrame.height,
+        )
 
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.2
-            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-            window.animator().setFrame(
-                NSRect(x: offScreenX, y: frame.minY, width: panelWidth, height: frame.height),
-                display: true,
-            )
-        } completionHandler: { [weak self] in
-            window.orderOut(nil)
-            self?.isAnimating = false
+        if isAnimating {
+            // Interrupt show animation — snap to hidden position
+            isAnimating = false
+            window.setFrame(hiddenFrame, display: false)
+            restorePreviousApp()
+            edgeDetector.resumeDetection()
+        } else {
+            isAnimating = true
+
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.2
+                context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+                window.animator().setFrame(hiddenFrame, display: true)
+            } completionHandler: { [weak self] in
+                guard let self, animationGeneration == gen else { return }
+                isAnimating = false
+                restorePreviousApp()
+                edgeDetector.resumeDetection()
+            }
         }
     }
 
@@ -204,6 +248,13 @@ final class SidePanelController: NSWindowController {
     }
 
     // MARK: - Helpers
+
+    /// Reactivate the app that was frontmost before the panel appeared,
+    /// so its mouse events go through the global monitor again.
+    private func restorePreviousApp() {
+        previousApp?.activate()
+        previousApp = nil
+    }
 
     private func isMouseInPanel() -> Bool {
         guard let window else { return false }

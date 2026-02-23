@@ -5,9 +5,11 @@ final class EdgeDetector {
     /// Called when the user dwells at the configured edge long enough. Passes the screen.
     var onEdgeActivated: ((NSScreen) -> Void)?
 
-    private var mouseMoveMonitor: Any?
+    private var globalMouseMonitor: Any?
+    private var localMouseMonitor: Any?
     private var wasAtEdge = false
     private var activationTimer: Timer?
+    private var isPaused = false
 
     /// How close to the edge (in points) the cursor must be to trigger activation.
     private let edgeThreshold: CGFloat = 2
@@ -18,24 +20,47 @@ final class EdgeDetector {
     // MARK: - Public
 
     func startMonitoring() {
-        guard mouseMoveMonitor == nil else { return }
-        mouseMoveMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
+        guard globalMouseMonitor == nil else { return }
+        // Global monitor: fires for mouse moves in OTHER apps' windows.
+        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
             self?.handleMouseMove()
+        }
+        // Local monitor: fires for mouse moves in OUR app (covers the case
+        // where EdgeMark is still the active app after the panel hides).
+        localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
+            self?.handleMouseMove()
+            return event
         }
     }
 
-    /// Reset edge state so the next edge arrival triggers activation.
-    /// Call this when the panel hides — global monitor doesn't see mouse
-    /// movements inside our own window, so `wasAtEdge` can get stuck `true`.
-    func resetEdgeState() {
-        wasAtEdge = false
+    /// Pause detection during hide animation to prevent the race condition
+    /// where a `mouseMoved` event during the animation re-sets `wasAtEdge`
+    /// while `showPanel` is blocked by `isAnimating`.
+    func pauseDetection() {
+        isPaused = true
         cancelActivation()
     }
 
+    /// Resume detection after animation completes. Sets `wasAtEdge` based on
+    /// current mouse position so the user must leave-and-return to re-trigger.
+    func resumeDetection() {
+        isPaused = false
+        let mouseLocation = NSEvent.mouseLocation
+        if let screen = screenForPoint(mouseLocation) {
+            wasAtEdge = isAtEdge(mouseLocation: mouseLocation, visibleFrame: screen.visibleFrame)
+        } else {
+            wasAtEdge = false
+        }
+    }
+
     func stopMonitoring() {
-        if let monitor = mouseMoveMonitor {
+        if let monitor = globalMouseMonitor {
             NSEvent.removeMonitor(monitor)
-            mouseMoveMonitor = nil
+            globalMouseMonitor = nil
+        }
+        if let monitor = localMouseMonitor {
+            NSEvent.removeMonitor(monitor)
+            localMouseMonitor = nil
         }
         cancelActivation()
     }
@@ -43,10 +68,10 @@ final class EdgeDetector {
     // MARK: - Detection
 
     private func handleMouseMove() {
+        guard !isPaused else { return }
         let mouseLocation = NSEvent.mouseLocation
 
-        // Find the screen the cursor is on
-        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) }) else { return }
+        guard let screen = screenForPoint(mouseLocation) else { return }
         let visibleFrame = screen.visibleFrame
 
         let atEdge = isAtEdge(mouseLocation: mouseLocation, visibleFrame: visibleFrame)
@@ -64,6 +89,16 @@ final class EdgeDetector {
         }
 
         wasAtEdge = atEdge
+    }
+
+    /// Find the screen containing the point. Uses inclusive bounds (`<=` for
+    /// maxX/maxY) so the cursor at the exact screen edge is still matched.
+    private func screenForPoint(_ point: NSPoint) -> NSScreen? {
+        NSScreen.screens.first { screen in
+            let f = screen.frame
+            return point.x >= f.minX && point.x <= f.maxX
+                && point.y >= f.minY && point.y <= f.maxY
+        }
     }
 
     private func isAtEdge(mouseLocation: NSPoint, visibleFrame: NSRect) -> Bool {
