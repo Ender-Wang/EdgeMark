@@ -27,17 +27,17 @@ Or download the latest `.dmg` from [Releases](https://github.com/Ender-Wang/Edge
 
 # Roadmap
 
-## M1: The Bone — Side Panel + Animation 🔨
+## M1: The Bone — Side Panel + Animation ✅
 
-- [ ] Borderless floating panel (400px, full height, stays on top)
-- [ ] Works on every virtual Desktop + alongside fullscreen apps
-- [ ] Butter-smooth slide-in/out animation (0.2s)
-- [ ] Edge activation (mouse to screen edge to reveal)
-- [ ] Click outside / Escape / auto-hide dismissal
-- [ ] Global shortcut: `Ctrl+Shift+Space` toggles from any app
-- [ ] Menu bar icon + menu (Toggle, Settings, Quit)
-- [ ] Multi-monitor support
-- [ ] Corner exclusion (avoid conflict with macOS hot corners)
+- [x] Borderless floating panel (400px, full height, stays on top)
+- [x] Works on every virtual Desktop + alongside fullscreen apps
+- [x] Butter-smooth slide-in/out animation (0.2s)
+- [x] Edge activation (mouse to screen edge to reveal)
+- [x] Click outside / Escape / auto-hide dismissal
+- [x] Global shortcut: `Ctrl+Shift+Space` toggles from any app
+- [x] Menu bar icon + menu (Toggle, Settings, Quit)
+- [x] Multi-monitor support
+- [x] Corner exclusion (avoid conflict with macOS hot corners)
 
 ## M2: Markdown Notes — Core Editing
 
