@@ -1,0 +1,162 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - "EdgeMark.xcodeproj/project.pbxproj"
+  workflow_dispatch:
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      version: ${{ steps.check.outputs.version }}
+      tag: ${{ steps.check.outputs.tag }}
+      build: ${{ steps.check.outputs.build }}
+      prerelease: ${{ steps.check.outputs.prerelease }}
+      commit_message: ${{ steps.check.outputs.commit_message }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check version
+        id: check
+        run: |
+          VERSION=$(grep 'MARKETING_VERSION' EdgeMark.xcodeproj/project.pbxproj | head -1 | sed 's/.*= \(.*\);/\1/' | tr -d ' ')
+          BUILD=$(grep 'CURRENT_PROJECT_VERSION' EdgeMark.xcodeproj/project.pbxproj | head -1 | sed 's/.*= \(.*\);/\1/' | tr -d ' ')
+          COMMIT_MSG=$(git log -1 --pretty=%B | tail -n +2 | tail -n +2)
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build=$BUILD" >> $GITHUB_OUTPUT
+          echo "commit_message<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMIT_MSG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          git fetch --tags
+
+          BRANCH="${GITHUB_REF#refs/heads/}"
+
+          if [ "$BRANCH" = "develop" ]; then
+            # Pre-release: auto-increment beta number
+            BETA_NUM=1
+            while git rev-parse "v${VERSION}-beta.${BETA_NUM}" >/dev/null 2>&1; do
+              BETA_NUM=$((BETA_NUM + 1))
+            done
+            TAG="v${VERSION}-beta.${BETA_NUM}"
+            PRERELEASE=true
+          else
+            # Stable release from main
+            TAG="v${VERSION}"
+            PRERELEASE=false
+          fi
+
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping"
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          else
+            echo "Creating release $TAG (build $BUILD)"
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    needs: check-version
+    if: needs.check-version.outputs.should_release == 'true'
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26.2"
+
+      - name: Install SwiftFormat
+        run: command -v swiftformat || brew install swiftformat
+
+      - name: Build
+        run: |
+          xcodebuild -project EdgeMark.xcodeproj -scheme EdgeMark -configuration Release \
+            -derivedDataPath build CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO build
+          strip build/Build/Products/Release/EdgeMark.app/Contents/MacOS/EdgeMark || true
+
+      - name: Create DMG
+        id: dmg
+        run: |
+          mkdir -p dmg_contents
+          cp -R build/Build/Products/Release/EdgeMark.app dmg_contents/
+          ln -s /Applications dmg_contents/Applications
+          DMG_NAME="EdgeMark-${{ needs.check-version.outputs.tag }}.dmg"
+          hdiutil create -volname "EdgeMark" -srcfolder dmg_contents -ov -format UDZO "$DMG_NAME"
+          shasum -a 256 "$DMG_NAME" > "$DMG_NAME.sha256"
+          echo "dmg_name=$DMG_NAME" >> $GITHUB_OUTPUT
+          echo "sha_name=$DMG_NAME.sha256" >> $GITHUB_OUTPUT
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.check-version.outputs.tag }}
+          name: ${{ needs.check-version.outputs.tag }} (build ${{ needs.check-version.outputs.build }})
+          body: ${{ needs.check-version.outputs.commit_message }}
+          prerelease: ${{ needs.check-version.outputs.prerelease == 'true' }}
+          files: |
+            ${{ steps.dmg.outputs.dmg_name }}
+            ${{ steps.dmg.outputs.sha_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-tap:
+    needs: [check-version, build]
+    if: needs.check-version.outputs.prerelease == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download SHA256 from release
+        id: sha
+        run: |
+          DMG_NAME="EdgeMark-${{ needs.check-version.outputs.tag }}.dmg"
+          gh release download "${{ needs.check-version.outputs.tag }}" --pattern "$DMG_NAME.sha256" --repo "${{ github.repository }}"
+          SHA=$(awk '{print $1}' "$DMG_NAME.sha256")
+          echo "sha256=$SHA" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Homebrew tap
+        run: |
+          VERSION="${{ needs.check-version.outputs.version }}"
+          SHA="${{ steps.sha.outputs.sha256 }}"
+
+          git clone https://x-access-token:${{ secrets.TAP_GITHUB_TOKEN }}@github.com/Ender-Wang/homebrew-tap.git tap
+          cd tap
+
+          mkdir -p Casks
+          cat > Casks/edgemark.rb <<CASK
+          cask "edgemark" do
+            version "$VERSION"
+            sha256 "$SHA"
+
+            url "https://github.com/Ender-Wang/EdgeMark/releases/download/v#{version}/EdgeMark-v#{version}.dmg"
+            name "EdgeMark"
+            desc "Native macOS side-panel Markdown notes app"
+            homepage "https://github.com/Ender-Wang/EdgeMark"
+
+            depends_on macos: ">= :sequoia"
+
+            app "EdgeMark.app"
+
+            postflight do
+              system_command "/usr/bin/xattr", args: ["-cr", "#{appdir}/EdgeMark.app"]
+            end
+          end
+          CASK
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/edgemark.rb
+          git commit -m "Update EdgeMark to v$VERSION"
+          git push
