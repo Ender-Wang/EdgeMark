@@ -173,6 +173,8 @@ final class SidePanelController: NSWindowController {
             previousApp = frontmost
         }
 
+        window.alphaValue = 1
+
         if isAnimating {
             // Interrupt hide animation — snap to shown position
             isAnimating = false
@@ -221,6 +223,7 @@ final class SidePanelController: NSWindowController {
             // Interrupt show animation — snap to hidden position
             isAnimating = false
             window.setFrame(hiddenFrame, display: false)
+            window.alphaValue = 0
             restorePreviousApp()
             edgeDetector.resumeDetection()
         } else {
@@ -232,6 +235,7 @@ final class SidePanelController: NSWindowController {
                 window.animator().setFrame(hiddenFrame, display: true)
             } completionHandler: { [weak self] in
                 guard let self, animationGeneration == gen else { return }
+                window.alphaValue = 0
                 isAnimating = false
                 restorePreviousApp()
                 edgeDetector.resumeDetection()
