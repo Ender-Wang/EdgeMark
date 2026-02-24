@@ -27,10 +27,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
         if let button = statusItem?.button {
-            button.image = NSImage(
-                systemSymbolName: "pencil.and.outline",
-                accessibilityDescription: "EdgeMark",
-            )
+            button.image = NSImage(named: "MenuBarIcon")
+            button.image?.isTemplate = true
         }
 
         let menu = NSMenu()
