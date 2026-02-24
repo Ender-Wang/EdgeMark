@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1f3a"/>
+      <stop offset="100%" style="stop-color:#0d1128"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#A855F7"/>
+      <stop offset="100%" style="stop-color:#F43F5E"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="100" height="100" rx="18" fill="url(#bg)"/>
+
+  <!-- # symbol -->
+  <g fill="url(#mark)">
+    <!-- Vertical bars -->
+    <rect x="26" y="18" width="10" height="64" rx="5"/>
+    <rect x="46" y="18" width="10" height="64" rx="5"/>
+    <!-- Horizontal bars — thickness 10 -->
+    <rect x="14" y="33" width="54" height="10" rx="5"/>
+    <rect x="14" y="57" width="54" height="10" rx="5"/>
+  </g>
+
+  <!-- Edge bar — width 12 -->
+  <rect x="76" y="14" width="12" height="72" rx="6" fill="url(#mark)"/>
+
+</svg>

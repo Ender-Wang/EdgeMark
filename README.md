@@ -1,4 +1,8 @@
-<b><font>EdgeMark</font></b>: A native macOS side-panel Markdown notes app. Always one edge away.
+<img src=".github/assets/EdgeMark.svg" alt="EdgeMark" width="128" align="left" />
+
+<b><font>EdgeMark</font></b>
+
+ A native macOS side-panel Markdown notes app. Always one edge away.
 
 <br clear="all" />
 
@@ -39,15 +43,16 @@ Or download the latest `.dmg` from [Releases](https://github.com/Ender-Wang/Edge
 - [x] Multi-monitor support
 - [x] Corner exclusion (avoid conflict with macOS hot corners)
 
-## M2: Markdown Notes — Core Editing
+## M2: Markdown Notes — Core Editing ✅
 
-- [ ] Note model + folder-based organization
-- [ ] File storage: plain `.md` files with YAML front matter in `~/Documents/EdgeMark/`
-- [ ] NSTextView Markdown editor with live syntax highlighting
-- [ ] Full Markdown support (headings, bold, italic, code, lists, task lists, blockquotes, links)
-- [ ] Slash commands (`/h1`, `/todo`, `/code`, `/quote`, `/table`)
-- [ ] Note list UI: folder list → note cards → editor
-- [ ] 1-second debounced auto-save
+- [x] Note model + folder-based organization
+- [x] File storage: plain `.md` files with YAML front matter in `~/Documents/EdgeMark/`
+- [x] Configurable notes storage directory
+- [x] NSTextView Markdown editor with live syntax highlighting
+- [x] Full Markdown support (headings, bold, italic, code, lists, task lists, blockquotes, links)
+- [x] Slash commands (`/h1`, `/todo`, `/code`, `/quote`, `/table`, and more)
+- [x] Note list UI: folder picker → note cards → editor
+- [x] 1-second debounced auto-save
 
 ## M3: Settings + Polish
 
