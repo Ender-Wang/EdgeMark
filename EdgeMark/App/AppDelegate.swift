@@ -8,7 +8,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_: Notification) {
         setupMenuBar()
         panelController = SidePanelController()
+        panelController?.noteStore.loadFromDisk()
         ShortcutManager.shared.setup(panelController: panelController!)
+    }
+
+    func applicationWillTerminate(_: Notification) {
+        panelController?.noteStore.saveDirtyNotes()
     }
 
     func applicationShouldHandleReopen(_: NSApplication, hasVisibleWindows _: Bool) -> Bool {
@@ -38,8 +43,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
+        menu.addItem(NSMenuItem(
+            title: "Change Notes Folder\u{2026}",
+            action: #selector(changeNotesFolder),
+            keyEquivalent: "",
+        ))
+
         let settingsItem = NSMenuItem(
-            title: "Settings…",
+            title: "Settings\u{2026}",
             action: #selector(openSettings),
             keyEquivalent: ",",
         )
@@ -58,6 +69,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func togglePanel() {
         panelController?.togglePanel()
+    }
+
+    @objc private func changeNotesFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.message = "Choose a folder to store your notes"
+        panel.prompt = "Select"
+
+        // Pre-select current storage directory
+        panel.directoryURL = ShortcutSettings.shared.resolvedStorageDirectory
+
+        panel.begin { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            // Save dirty notes to old location first
+            self?.panelController?.noteStore.saveDirtyNotes()
+            // Update the setting
+            ShortcutSettings.shared.storageDirectory = url
+            // Reload notes from the new location
+            self?.panelController?.noteStore.loadFromDisk()
+        }
     }
 
     @objc private func openSettings() {

@@ -27,6 +27,7 @@ final class SidePanelController: NSWindowController {
     private var trackingArea: NSTrackingArea?
     private var previousApp: NSRunningApplication?
     let edgeDetector: EdgeDetector
+    let noteStore = NoteStore()
 
     // MARK: - Init
 
@@ -55,7 +56,7 @@ final class SidePanelController: NSWindowController {
         window.isMovableByWindowBackground = false
 
         // Host SwiftUI content
-        let hostingView = NSHostingView(rootView: ContentView())
+        let hostingView = NSHostingView(rootView: ContentView().environment(noteStore))
         hostingView.frame = NSRect(x: 0, y: 0, width: panelWidth, height: visibleFrame.height)
         hostingView.wantsLayer = true
         hostingView.layer?.cornerRadius = 10
@@ -136,7 +137,7 @@ final class SidePanelController: NSWindowController {
     }
 
     override func mouseExited(with _: NSEvent) {
-        guard isShown, !isAnimating else { return }
+        guard isShown, !isAnimating, !isEditorFocused else { return }
         let delay = ShortcutSettings.shared.hideDelay
         if delay == 0 {
             hidePanel()
@@ -204,6 +205,7 @@ final class SidePanelController: NSWindowController {
 
     func hidePanel() {
         guard let window, isShown else { return }
+        noteStore.saveDirtyNotes()
         isShown = false
         let gen = animationGeneration &+ 1
         animationGeneration = gen
@@ -276,5 +278,10 @@ final class SidePanelController: NSWindowController {
     private func cancelHideTimer() {
         hideTimer?.invalidate()
         hideTimer = nil
+    }
+
+    /// Whether an NSTextView in the panel is the first responder (user is editing).
+    private var isEditorFocused: Bool {
+        window?.firstResponder is NSTextView
     }
 }

@@ -44,12 +44,33 @@ final class ShortcutSettings {
         didSet { UserDefaults.standard.set(activationDelay, forKey: activationDelayKey) }
     }
 
+    /// Custom storage directory for notes. nil = default (`~/Documents/EdgeMark/`).
+    var storageDirectory: URL? {
+        didSet {
+            if let url = storageDirectory {
+                UserDefaults.standard.set(url.path, forKey: storageDirectoryKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: storageDirectoryKey)
+            }
+        }
+    }
+
+    /// Resolved storage directory — custom if set, otherwise `~/Documents/EdgeMark/`.
+    var resolvedStorageDirectory: URL {
+        if let custom = storageDirectory {
+            return custom
+        }
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        return docs.appendingPathComponent("EdgeMark", isDirectory: true)
+    }
+
     // MARK: - Keys
 
     private let togglePanelKey = "togglePanelShortcut"
     private let autoHideKey = "autoHideOnMouseExit"
     private let hideDelayKey = "hideDelay"
     private let activationDelayKey = "activationDelay"
+    private let storageDirectoryKey = "storageDirectory"
 
     // MARK: - Init
 
@@ -57,6 +78,9 @@ final class ShortcutSettings {
         autoHideOnMouseExit = UserDefaults.standard.object(forKey: autoHideKey) as? Bool ?? true
         hideDelay = UserDefaults.standard.object(forKey: hideDelayKey) as? Double ?? 0.5
         activationDelay = UserDefaults.standard.object(forKey: activationDelayKey) as? Double ?? 0.0
+        if let path = UserDefaults.standard.string(forKey: storageDirectoryKey) {
+            storageDirectory = URL(fileURLWithPath: path, isDirectory: true)
+        }
         loadShortcuts()
     }
 

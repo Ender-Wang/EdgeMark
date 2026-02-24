@@ -1,0 +1,166 @@
+import Foundation
+
+enum FileStorage {
+    /// Storage root — reads from ShortcutSettings so the user can configure a custom directory.
+    static var rootURL: URL {
+        ShortcutSettings.shared.resolvedStorageDirectory
+    }
+
+    private static let dateFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    // MARK: - Directory Management
+
+    static func ensureRootExists() throws {
+        try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
+    }
+
+    static func ensureFolderExists(_ folderName: String) throws {
+        guard !folderName.isEmpty else { return }
+        let url = rootURL.appendingPathComponent(folderName, isDirectory: true)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+    }
+
+    static func discoverFolders() throws -> [String] {
+        let contents = try FileManager.default.contentsOfDirectory(
+            at: rootURL,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles],
+        )
+        return contents.compactMap { url in
+            let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+            return isDir ? url.lastPathComponent : nil
+        }.sorted()
+    }
+
+    // MARK: - Note I/O
+
+    static func loadAllNotes() throws -> [Note] {
+        try ensureRootExists()
+        var notes = try loadNotes(in: rootURL, folder: "")
+        for folderName in try discoverFolders() {
+            let folderURL = rootURL.appendingPathComponent(folderName, isDirectory: true)
+            notes += try loadNotes(in: folderURL, folder: folderName)
+        }
+        return notes
+    }
+
+    static func writeNote(_ note: Note) throws {
+        try ensureRootExists()
+        if !note.folder.isEmpty {
+            try ensureFolderExists(note.folder)
+        }
+        let fileURL = rootURL.appendingPathComponent(note.relativePath)
+        let text = serializeFrontMatter(note: note) + note.content
+        try text.data(using: .utf8)?.write(to: fileURL, options: .atomic)
+    }
+
+    static func deleteNote(_ note: Note) throws {
+        let fileURL = rootURL.appendingPathComponent(note.relativePath)
+        try FileManager.default.removeItem(at: fileURL)
+    }
+
+    static func moveNote(_ note: Note, toFolder: String) throws {
+        let oldURL = rootURL.appendingPathComponent(note.relativePath)
+        if !toFolder.isEmpty {
+            try ensureFolderExists(toFolder)
+        }
+        let newRelative = toFolder.isEmpty ? note.filename : "\(toFolder)/\(note.filename)"
+        let newURL = rootURL.appendingPathComponent(newRelative)
+        try FileManager.default.moveItem(at: oldURL, to: newURL)
+    }
+
+    // MARK: - Private Helpers
+
+    private static func loadNotes(in directoryURL: URL, folder: String) throws -> [Note] {
+        let contents = try FileManager.default.contentsOfDirectory(
+            at: directoryURL,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles],
+        )
+        return contents.compactMap { url -> Note? in
+            guard url.pathExtension == "md" else { return nil }
+            return readNote(at: url, folder: folder)
+        }
+    }
+
+    private static func readNote(at url: URL, folder: String) -> Note? {
+        guard let data = try? Data(contentsOf: url),
+              let text = String(data: data, encoding: .utf8)
+        else { return nil }
+
+        let (metadata, body) = parseFrontMatter(text)
+
+        let id = metadata["id"].flatMap { UUID(uuidString: $0) } ?? UUID()
+        let title = metadata["title"] ?? extractTitle(from: body)
+        let created = metadata["created"].flatMap { dateFormatter.date(from: $0) } ?? Date()
+        let modified = metadata["modified"].flatMap { dateFormatter.date(from: $0) } ?? Date()
+
+        return Note(
+            id: id,
+            title: title,
+            content: body,
+            createdAt: created,
+            modifiedAt: modified,
+            folder: folder,
+        )
+    }
+
+    // MARK: - Front Matter
+
+    static func parseFrontMatter(_ text: String) -> (metadata: [String: String], body: String) {
+        guard text.hasPrefix("---\n") || text.hasPrefix("---\r\n") else {
+            return ([:], text)
+        }
+
+        let lines = text.components(separatedBy: "\n")
+        var metadata: [String: String] = [:]
+        var endIndex = -1
+
+        for i in 1 ..< lines.count {
+            let line = lines[i].trimmingCharacters(in: .whitespaces)
+            if line == "---" {
+                endIndex = i
+                break
+            }
+            if let colonIndex = line.firstIndex(of: ":") {
+                let key = String(line[line.startIndex ..< colonIndex]).trimmingCharacters(in: .whitespaces)
+                let value = String(line[line.index(after: colonIndex)...]).trimmingCharacters(in: .whitespaces)
+                if !key.isEmpty {
+                    metadata[key] = value
+                }
+            }
+        }
+
+        guard endIndex > 0 else { return ([:], text) }
+
+        let bodyLines = Array(lines[(endIndex + 1)...])
+        var body = bodyLines.joined(separator: "\n")
+        // Strip leading newline after front matter
+        if body.hasPrefix("\n") {
+            body = String(body.dropFirst())
+        }
+        return (metadata, body)
+    }
+
+    static func serializeFrontMatter(note: Note) -> String {
+        var lines = ["---"]
+        lines.append("id: \(note.id.uuidString)")
+        lines.append("title: \(note.title)")
+        lines.append("created: \(dateFormatter.string(from: note.createdAt))")
+        lines.append("modified: \(dateFormatter.string(from: note.modifiedAt))")
+        lines.append("---")
+        lines.append("")
+        return lines.joined(separator: "\n")
+    }
+
+    private static func extractTitle(from content: String) -> String {
+        let firstLine = content.split(separator: "\n", maxSplits: 1).first.map(String.init) ?? ""
+        // Strip leading # for markdown headings
+        let stripped = firstLine.drop { $0 == "#" || $0 == " " }
+        return stripped.isEmpty ? "Untitled" : String(stripped)
+    }
+}

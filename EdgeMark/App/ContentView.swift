@@ -1,24 +1,20 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(NoteStore.self) var noteStore
+
     var body: some View {
         ZStack {
             VisualEffectView()
                 .ignoresSafeArea()
 
-            VStack(spacing: 12) {
-                Image(systemName: "pencil.and.outline")
-                    .font(.system(size: 48, weight: .light))
-                    .foregroundStyle(.secondary)
+            NoteListView()
+                .opacity(noteStore.selectedNote == nil ? 1 : 0)
+                .allowsHitTesting(noteStore.selectedNote == nil)
 
-                Text("EdgeMark")
-                    .font(.title2)
-                    .fontWeight(.medium)
-
-                Text("Your notes, one edge away")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
+            EditorScreen()
+                .opacity(noteStore.selectedNote != nil ? 1 : 0)
+                .allowsHitTesting(noteStore.selectedNote != nil)
         }
     }
 }
@@ -38,5 +34,6 @@ struct VisualEffectView: NSViewRepresentable {
 
 #Preview {
     ContentView()
+        .environment(NoteStore())
         .frame(width: 400, height: 600)
 }
