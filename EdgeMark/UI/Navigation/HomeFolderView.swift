@@ -61,9 +61,11 @@ struct HomeFolderView: View {
             ZStack {
                 folderList
                     .opacity(isSearching ? 0 : 1)
+                    .allowsHitTesting(!isSearching)
 
                 searchResultsList
                     .opacity(isSearching ? 1 : 0)
+                    .allowsHitTesting(isSearching)
             }
             .background { VisualEffectView() }
             .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -85,9 +87,9 @@ struct HomeFolderView: View {
 
     // MARK: - Header
 
-    @ViewBuilder
     private var header: some View {
-        if isSearching {
+        ZStack {
+            // Search bar
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
@@ -102,7 +104,10 @@ struct HomeFolderView: View {
                 .buttonStyle(.borderless)
                 .help("Close Search")
             }
-        } else {
+            .opacity(isSearching ? 1 : 0)
+            .allowsHitTesting(isSearching)
+
+            // Title bar
             HStack {
                 Text("EdgeMark")
                     .font(.title2.bold())
@@ -125,6 +130,8 @@ struct HomeFolderView: View {
                 .buttonStyle(.borderless)
                 .help("New Folder")
             }
+            .opacity(isSearching ? 0 : 1)
+            .allowsHitTesting(!isSearching)
         }
     }
 
