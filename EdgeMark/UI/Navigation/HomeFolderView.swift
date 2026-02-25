@@ -2,11 +2,12 @@ import SwiftUI
 
 struct HomeFolderView: View {
     @Environment(NoteStore.self) var noteStore
-    @State private var showNewFolder = false
+    @State private var isCreatingFolder = false
     @State private var newFolderName = ""
     @State private var isSearching = false
     @State private var searchQuery = ""
     @FocusState private var isSearchFieldFocused: Bool
+    @FocusState private var isFolderFieldFocused: Bool
 
     private var trimmedQuery: String {
         searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -56,6 +57,11 @@ struct HomeFolderView: View {
             .sorted { $0.modifiedAt > $1.modifiedAt }
     }
 
+    // MARK: - Icon width
+
+    /// Fixed width for leading icons so folder and note icons align.
+    private let iconWidth: CGFloat = 22
+
     var body: some View {
         VStack(spacing: 8) {
             // Section 1: Header card
@@ -81,16 +87,6 @@ struct HomeFolderView: View {
         .padding(.horizontal, 12)
         .padding(.top, 8)
         .padding(.bottom, 12)
-        .alert("New Folder", isPresented: $showNewFolder) {
-            TextField("Folder name", text: $newFolderName)
-            Button("Create") {
-                noteStore.createFolder(named: newFolderName)
-                newFolderName = ""
-            }
-            Button("Cancel", role: .cancel) {
-                newFolderName = ""
-            }
-        }
     }
 
     // MARK: - Header
@@ -136,7 +132,7 @@ struct HomeFolderView: View {
                     systemName: "folder.badge.plus",
                     help: "New Folder",
                 ) {
-                    showNewFolder = true
+                    startCreatingFolder()
                 }
 
                 HeaderIconButton(
@@ -157,26 +153,64 @@ struct HomeFolderView: View {
         ScrollView {
             VStack(spacing: 0) {
                 ForEach(noteStore.folders) { folder in
-                    folderRow(
+                    FolderRowView(
                         name: folder.name,
                         count: folder.noteCount,
-                        folder: folder,
-                    )
+                        iconWidth: iconWidth,
+                    ) {
+                        noteStore.selectedFolder = folder
+                    }
+                }
+
+                if isCreatingFolder {
+                    inlineFolderEditor
                 }
 
                 if !rootNotes.isEmpty {
-                    if !noteStore.folders.isEmpty {
+                    if !noteStore.folders.isEmpty || isCreatingFolder {
                         Divider()
                             .padding(.horizontal, 16)
                             .padding(.vertical, 4)
                     }
 
                     ForEach(rootNotes) { note in
-                        noteRow(note: note)
+                        NoteRowView(
+                            title: note.title,
+                            date: note.createdAt,
+                            iconWidth: iconWidth,
+                        ) {
+                            noteStore.selectedNote = note
+                        }
                     }
                 }
             }
             .padding(.vertical, 10)
+        }
+    }
+
+    // MARK: - Inline Folder Editor
+
+    private var inlineFolderEditor: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "folder.fill")
+                .font(.title3)
+                .foregroundStyle(.green)
+                .frame(width: iconWidth)
+
+            TextField("Folder name", text: $newFolderName)
+                .textFieldStyle(.plain)
+                .font(.body)
+                .focused($isFolderFieldFocused)
+                .onSubmit { commitNewFolder() }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 8)
+        .onExitCommand { cancelNewFolder() }
+        .onChange(of: isFolderFieldFocused) { _, focused in
+            if !focused {
+                commitOrCancelFolder()
+            }
         }
     }
 
@@ -284,60 +318,7 @@ struct HomeFolderView: View {
         return attributed
     }
 
-    // MARK: - Rows
-
-    private func folderRow(name: String, count: Int, folder: Folder) -> some View {
-        Button {
-            noteStore.selectedFolder = folder
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "folder.fill")
-                    .font(.title3)
-                    .foregroundStyle(.green)
-
-                Text(name)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-
-                Spacer()
-
-                Text("\(count)")
-                    .font(.body)
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func noteRow(note: Note) -> some View {
-        Button {
-            noteStore.selectedNote = note
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "doc.text")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-
-                Text(note.title.isEmpty ? "Untitled" : note.title)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-
-                Spacer()
-
-                Text(note.modifiedAt.homeRelativeFormat)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
+    // MARK: - Search Result Rows
 
     private func titleResultRow(note: Note) -> some View {
         Button {
@@ -347,6 +328,7 @@ struct HomeFolderView: View {
                 Image(systemName: "doc.text")
                     .font(.title3)
                     .foregroundStyle(.secondary)
+                    .frame(width: iconWidth)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(Self.highlightedTitle(note.title, query: trimmedQuery))
@@ -375,6 +357,7 @@ struct HomeFolderView: View {
                 Image(systemName: "doc.text")
                     .font(.title3)
                     .foregroundStyle(.secondary)
+                    .frame(width: iconWidth)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(note.title.isEmpty ? "Untitled" : note.title)
@@ -412,10 +395,136 @@ struct HomeFolderView: View {
         noteStore.selectedNote = note
     }
 
+    private func startCreatingFolder() {
+        newFolderName = ""
+        isCreatingFolder = true
+        isFolderFieldFocused = true
+    }
+
+    private func commitNewFolder() {
+        let trimmed = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            noteStore.createFolder(named: trimmed)
+        }
+        isCreatingFolder = false
+        newFolderName = ""
+    }
+
+    private func cancelNewFolder() {
+        isCreatingFolder = false
+        newFolderName = ""
+    }
+
+    private func commitOrCancelFolder() {
+        let trimmed = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            cancelNewFolder()
+        } else {
+            commitNewFolder()
+        }
+    }
+
     private func dismissSearch() {
         isSearchFieldFocused = false
         isSearching = false
         searchQuery = ""
+    }
+}
+
+// MARK: - Folder Row View
+
+/// Folder row with hover highlight animation.
+private struct FolderRowView: View {
+    let name: String
+    let count: Int
+    let iconWidth: CGFloat
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: "folder.fill")
+                    .font(.title3)
+                    .foregroundStyle(.green)
+                    .frame(width: iconWidth)
+
+                Text(name)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+
+                Spacer()
+
+                Text("\(count)")
+                    .font(.body)
+                    .monospacedDigit()
+                    .foregroundStyle(.tertiary)
+                    .frame(minWidth: 20, alignment: .trailing)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 10)
+            .background {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(.primary.opacity(isHovered ? 0.06 : 0))
+            }
+            .padding(.horizontal, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
+
+// MARK: - Note Row View
+
+/// Note row with hover highlight animation.
+private struct NoteRowView: View {
+    let title: String
+    let date: Date
+    let iconWidth: CGFloat
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: "doc.text")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .frame(width: iconWidth)
+
+                Text(title.isEmpty ? "Untitled" : title)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                Spacer()
+
+                Text(date.homeDisplayFormat)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 10)
+            .background {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(.primary.opacity(isHovered ? 0.06 : 0))
+            }
+            .padding(.horizontal, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
     }
 }
 
@@ -454,24 +563,10 @@ private struct HeaderIconButton: View {
 // MARK: - Date Formatting
 
 private extension Date {
-    /// Relative format for the home page: "Just now", "5m ago", "2h ago", "Yesterday", or short date.
-    var homeRelativeFormat: String {
-        let now = Date()
-        let interval = now.timeIntervalSince(self)
-
-        if interval < 60 {
-            return "Just now"
-        } else if interval < 3600 {
-            return "\(Int(interval / 60))m ago"
-        } else if interval < 86400 {
-            return "\(Int(interval / 3600))h ago"
-        } else if Calendar.current.isDateInYesterday(self) {
-            return "Yesterday"
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateStyle = .short
-            formatter.timeStyle = .none
-            return formatter.string(from: self)
-        }
+    /// Format: "18:30 Feb 25, 2026"
+    var homeDisplayFormat: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm MMM d, yyyy"
+        return formatter.string(from: self)
     }
 }
