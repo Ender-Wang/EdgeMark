@@ -3,18 +3,33 @@ import SwiftUI
 struct ContentView: View {
     @Environment(NoteStore.self) var noteStore
 
+    private var showHome: Bool {
+        noteStore.selectedFolder == nil
+    }
+
+    private var showNoteList: Bool {
+        noteStore.selectedFolder != nil && noteStore.selectedNote == nil
+    }
+
+    private var showEditor: Bool {
+        noteStore.selectedNote != nil
+    }
+
     var body: some View {
         ZStack {
-            VisualEffectView()
-                .ignoresSafeArea()
+            HomeFolderView()
+                .opacity(showHome ? 1 : 0)
+                .allowsHitTesting(showHome)
 
             NoteListView()
-                .opacity(noteStore.selectedNote == nil ? 1 : 0)
-                .allowsHitTesting(noteStore.selectedNote == nil)
+                .background { VisualEffectView().ignoresSafeArea() }
+                .opacity(showNoteList ? 1 : 0)
+                .allowsHitTesting(showNoteList)
 
             EditorScreen()
-                .opacity(noteStore.selectedNote != nil ? 1 : 0)
-                .allowsHitTesting(noteStore.selectedNote != nil)
+                .background { VisualEffectView().ignoresSafeArea() }
+                .opacity(showEditor ? 1 : 0)
+                .allowsHitTesting(showEditor)
         }
     }
 }

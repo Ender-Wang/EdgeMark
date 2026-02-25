@@ -52,6 +52,10 @@ struct MarkdownEditorView: NSViewRepresentable {
         return scrollView
     }
 
+    static func dismantleNSView(_: NSScrollView, coordinator: Coordinator) {
+        coordinator.flushPendingContent()
+    }
+
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         // Keep coordinator's parent reference current so onContentChanged stays fresh
         context.coordinator.parent = self
@@ -82,6 +86,15 @@ struct MarkdownEditorView: NSViewRepresentable {
         init(_ parent: MarkdownEditorView) {
             self.parent = parent
             currentNoteID = parent.noteID
+        }
+
+        /// Flush any pending debounced content to the NoteStore immediately.
+        /// Called when the view is dismantled (user navigates away).
+        func flushPendingContent() {
+            saveDebouncer.cancel()
+            if let textView, !textView.hasMarkedText() {
+                parent.onContentChanged(textView.string)
+            }
         }
 
         func textDidChange(_ notification: Notification) {

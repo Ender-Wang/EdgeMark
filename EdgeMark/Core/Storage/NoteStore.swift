@@ -6,15 +6,15 @@ final class NoteStore {
 
     var notes: [Note] = []
     var folders: [Folder] = []
-    var selectedFolder: Folder = .allNotes
+    var selectedFolder: Folder?
     var selectedNote: Note?
 
     /// Notes filtered by selected folder, sorted by most recently modified.
     var filteredNotes: [Note] {
-        let filtered: [Note] = if selectedFolder.name.isEmpty {
-            notes
+        let filtered: [Note] = if let folder = selectedFolder, !folder.name.isEmpty {
+            notes.filter { $0.folder == folder.name }
         } else {
-            notes.filter { $0.folder == selectedFolder.name }
+            notes
         }
         return filtered.sorted { $0.modifiedAt > $1.modifiedAt }
     }

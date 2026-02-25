@@ -3,9 +3,14 @@ import SwiftUI
 struct NoteListView: View {
     @Environment(NoteStore.self) var noteStore
 
+    private var folderLabel: String {
+        guard let folder = noteStore.selectedFolder else { return "All Notes" }
+        return folder.name.isEmpty ? "All Notes" : folder.name
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            FolderPickerView()
+            toolbar
 
             Divider()
 
@@ -32,6 +37,32 @@ struct NoteListView: View {
         }
     }
 
+    private var toolbar: some View {
+        HStack {
+            Button(action: { noteStore.selectedFolder = nil }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.left")
+                    Text("Folders")
+                }
+            }
+            .buttonStyle(.borderless)
+
+            Spacer()
+
+            Button(action: createNote) {
+                Image(systemName: "square.and.pencil")
+            }
+            .buttonStyle(.borderless)
+            .help("New Note")
+        }
+        .overlay {
+            Text(folderLabel)
+                .font(.headline)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
     private var emptyState: some View {
         VStack(spacing: 12) {
             Spacer()
@@ -47,5 +78,11 @@ struct NoteListView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func createNote() {
+        let folder = noteStore.selectedFolder?.name ?? ""
+        let note = noteStore.createNote(in: folder)
+        noteStore.selectedNote = note
     }
 }
