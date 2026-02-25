@@ -69,7 +69,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panelController?.togglePanel()
     }
 
-    @objc private func changeNotesFolder() {
+    @objc func changeNotesFolder() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
