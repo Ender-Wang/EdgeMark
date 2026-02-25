@@ -21,12 +21,16 @@ struct EditorScreen: View {
         }
     }
 
+    private var backLabel: String {
+        noteStore.selectedFolder != nil ? "Notes" : "Home"
+    }
+
     private var toolbar: some View {
         HStack {
             Button(action: goBack) {
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.left")
-                    Text("Notes")
+                    Text(backLabel)
                 }
             }
             .buttonStyle(.borderless)

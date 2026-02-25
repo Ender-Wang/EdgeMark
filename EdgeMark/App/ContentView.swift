@@ -4,7 +4,7 @@ struct ContentView: View {
     @Environment(NoteStore.self) var noteStore
 
     private var showHome: Bool {
-        noteStore.selectedFolder == nil
+        noteStore.selectedFolder == nil && noteStore.selectedNote == nil
     }
 
     private var showNoteList: Bool {

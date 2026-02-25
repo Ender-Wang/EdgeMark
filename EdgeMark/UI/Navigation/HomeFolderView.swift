@@ -49,6 +49,13 @@ struct HomeFolderView: View {
         !titleMatches.isEmpty || !contentMatches.isEmpty
     }
 
+    /// Root-level notes (no folder), sorted by most recently modified.
+    private var rootNotes: [Note] {
+        noteStore.notes
+            .filter(\.folder.isEmpty)
+            .sorted { $0.modifiedAt > $1.modifiedAt }
+    }
+
     var body: some View {
         VStack(spacing: 8) {
             // Section 1: Header card
@@ -111,30 +118,33 @@ struct HomeFolderView: View {
             .allowsHitTesting(isSearching)
 
             // Title bar
-            HStack {
+            HStack(spacing: 14) {
                 Text("EdgeMark")
                     .font(.title2.bold())
 
                 Spacer()
 
-                Button(action: {
+                HeaderIconButton(
+                    systemName: "magnifyingglass",
+                    help: "Search",
+                ) {
                     isSearching = true
                     isSearchFieldFocused = true
-                }) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.borderless)
-                .help("Search")
 
-                Button(action: { showNewFolder = true }) {
-                    Image(systemName: "plus")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
+                HeaderIconButton(
+                    systemName: "folder.badge.plus",
+                    help: "New Folder",
+                ) {
+                    showNewFolder = true
                 }
-                .buttonStyle(.borderless)
-                .help("New Folder")
+
+                HeaderIconButton(
+                    systemName: "square.and.pencil",
+                    help: "New Note",
+                ) {
+                    createRootNote()
+                }
             }
             .opacity(isSearching ? 0 : 1)
             .allowsHitTesting(!isSearching)
@@ -146,12 +156,6 @@ struct HomeFolderView: View {
     private var folderList: some View {
         ScrollView {
             VStack(spacing: 0) {
-                folderRow(
-                    name: "All Notes",
-                    count: noteStore.notes.count,
-                    folder: .allNotes,
-                )
-
                 ForEach(noteStore.folders) { folder in
                     folderRow(
                         name: folder.name,
@@ -159,7 +163,20 @@ struct HomeFolderView: View {
                         folder: folder,
                     )
                 }
+
+                if !rootNotes.isEmpty {
+                    if !noteStore.folders.isEmpty {
+                        Divider()
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 4)
+                    }
+
+                    ForEach(rootNotes) { note in
+                        noteRow(note: note)
+                    }
+                }
             }
+            .padding(.vertical, 10)
         }
     }
 
@@ -295,6 +312,33 @@ struct HomeFolderView: View {
         .buttonStyle(.plain)
     }
 
+    private func noteRow(note: Note) -> some View {
+        Button {
+            noteStore.selectedNote = note
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "doc.text")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+
+                Text(note.title.isEmpty ? "Untitled" : note.title)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                Spacer()
+
+                Text(note.modifiedAt.homeRelativeFormat)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
     private func titleResultRow(note: Note) -> some View {
         Button {
             openNote(note)
@@ -309,7 +353,7 @@ struct HomeFolderView: View {
                         .font(.body)
                         .lineLimit(1)
 
-                    Text(note.folder.isEmpty ? "All Notes" : note.folder)
+                    Text(note.folder.isEmpty ? "Root" : note.folder)
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -356,19 +400,78 @@ struct HomeFolderView: View {
     // MARK: - Actions
 
     private func openNote(_ note: Note) {
-        let folder: Folder = if note.folder.isEmpty {
-            .allNotes
-        } else {
-            Folder(name: note.folder, noteCount: 0)
+        if !note.folder.isEmpty {
+            noteStore.selectedFolder = Folder(name: note.folder, noteCount: 0)
         }
-        noteStore.selectedFolder = folder
         noteStore.selectedNote = note
         dismissSearch()
+    }
+
+    private func createRootNote() {
+        let note = noteStore.createNote()
+        noteStore.selectedNote = note
     }
 
     private func dismissSearch() {
         isSearchFieldFocused = false
         isSearching = false
         searchQuery = ""
+    }
+}
+
+// MARK: - Header Icon Button
+
+/// Toolbar icon with hover background animation.
+private struct HeaderIconButton: View {
+    let systemName: String
+    let help: String
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(isHovered ? .primary : .secondary)
+                .frame(width: 28, height: 28)
+                .background {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(.primary.opacity(isHovered ? 0.1 : 0))
+                }
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
+
+// MARK: - Date Formatting
+
+private extension Date {
+    /// Relative format for the home page: "Just now", "5m ago", "2h ago", "Yesterday", or short date.
+    var homeRelativeFormat: String {
+        let now = Date()
+        let interval = now.timeIntervalSince(self)
+
+        if interval < 60 {
+            return "Just now"
+        } else if interval < 3600 {
+            return "\(Int(interval / 60))m ago"
+        } else if interval < 86400 {
+            return "\(Int(interval / 3600))h ago"
+        } else if Calendar.current.isDateInYesterday(self) {
+            return "Yesterday"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .short
+            formatter.timeStyle = .none
+            return formatter.string(from: self)
+        }
     }
 }

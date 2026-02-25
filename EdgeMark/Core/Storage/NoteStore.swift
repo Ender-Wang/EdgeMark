@@ -11,7 +11,7 @@ final class NoteStore {
 
     /// Notes filtered by selected folder, sorted by most recently modified.
     var filteredNotes: [Note] {
-        let filtered: [Note] = if let folder = selectedFolder, !folder.name.isEmpty {
+        let filtered: [Note] = if let folder = selectedFolder {
             notes.filter { $0.folder == folder.name }
         } else {
             notes

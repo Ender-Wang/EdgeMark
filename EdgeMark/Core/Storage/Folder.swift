@@ -7,7 +7,4 @@ struct Folder: Identifiable, Hashable {
 
     let name: String
     var noteCount: Int
-
-    /// Virtual folder representing all notes (unfiltered view).
-    static let allNotes = Folder(name: "", noteCount: 0)
 }

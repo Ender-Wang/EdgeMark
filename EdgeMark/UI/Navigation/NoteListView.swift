@@ -4,8 +4,7 @@ struct NoteListView: View {
     @Environment(NoteStore.self) var noteStore
 
     private var folderLabel: String {
-        guard let folder = noteStore.selectedFolder else { return "All Notes" }
-        return folder.name.isEmpty ? "All Notes" : folder.name
+        noteStore.selectedFolder?.name ?? ""
     }
 
     var body: some View {
