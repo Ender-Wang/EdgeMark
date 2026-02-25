@@ -185,21 +185,26 @@ final class SidePanelController: NSWindowController {
         } else {
             // Normal animated show
             isAnimating = true
-            window.setFrame(
-                NSRect(x: visibleFrame.maxX, y: visibleFrame.minY, width: panelWidth, height: visibleFrame.height),
-                display: false,
+            let startFrame = NSRect(
+                x: visibleFrame.maxX, y: visibleFrame.minY,
+                width: panelWidth, height: visibleFrame.height,
             )
+            // Pre-render at start position so SwiftUI layout is done before animation
+            window.setFrame(startFrame, display: true)
             window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
 
+            // Slide in without forcing redisplay on each frame (content doesn't change, only position)
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.2
                 context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                window.animator().setFrame(shownFrame, display: true)
+                window.animator().setFrame(shownFrame, display: false)
             } completionHandler: { [weak self] in
                 guard let self, animationGeneration == gen else { return }
                 isAnimating = false
             }
+
+            // Activate after animation is submitted to Core Animation — avoids blocking the slide
+            NSApp.activate(ignoringOtherApps: true)
         }
     }
 
@@ -234,7 +239,7 @@ final class SidePanelController: NSWindowController {
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.2
                 context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-                window.animator().setFrame(hiddenFrame, display: true)
+                window.animator().setFrame(hiddenFrame, display: false)
             } completionHandler: { [weak self] in
                 guard let self, animationGeneration == gen else { return }
                 window.alphaValue = 0
