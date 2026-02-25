@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeFolderView: View {
     @Environment(NoteStore.self) var noteStore
+    @Environment(AppSettings.self) var appSettings
     @State private var isCreatingFolder = false
     @State private var newFolderName = ""
     @State private var isSearching = false
@@ -50,11 +51,15 @@ struct HomeFolderView: View {
         !titleMatches.isEmpty || !contentMatches.isEmpty
     }
 
-    /// Root-level notes (no folder), sorted by most recently modified.
+    /// Root-level notes (no folder), sorted by current sort setting.
     private var rootNotes: [Note] {
-        noteStore.notes
-            .filter(\.folder.isEmpty)
-            .sorted { $0.modifiedAt > $1.modifiedAt }
+        let filtered = noteStore.notes.filter(\.folder.isEmpty)
+        return noteStore.sortedNotes(filtered, by: appSettings.sortBy, ascending: appSettings.sortAscending)
+    }
+
+    /// Folders sorted by current sort setting.
+    private var sortedFolders: [Folder] {
+        noteStore.sortedFolders(noteStore.folders, by: appSettings.sortBy, ascending: appSettings.sortAscending)
     }
 
     // MARK: - Icon width
@@ -66,14 +71,21 @@ struct HomeFolderView: View {
         PageLayout {
             header
         } content: {
-            ZStack {
-                folderList
-                    .opacity(isSearching ? 0 : 1)
-                    .allowsHitTesting(!isSearching)
+            VStack(spacing: 0) {
+                ZStack {
+                    folderList
+                        .opacity(isSearching ? 0 : 1)
+                        .allowsHitTesting(!isSearching)
 
-                searchResultsList
-                    .opacity(isSearching ? 1 : 0)
-                    .allowsHitTesting(isSearching)
+                    searchResultsList
+                        .opacity(isSearching ? 1 : 0)
+                        .allowsHitTesting(isSearching)
+                }
+
+                Divider()
+                    .padding(.horizontal, 12)
+
+                ContentFooterBar()
             }
         }
     }
@@ -138,13 +150,24 @@ struct HomeFolderView: View {
 
     // MARK: - Folder List
 
+    private var folderDate: (Folder) -> Date? {
+        { folder in
+            switch appSettings.sortBy {
+            case .name: nil
+            case .dateModified: folder.latestModifiedAt
+            case .dateCreated: folder.earliestCreatedAt
+            }
+        }
+    }
+
     private var folderList: some View {
         ScrollView {
             VStack(spacing: 0) {
-                ForEach(noteStore.folders) { folder in
+                ForEach(sortedFolders) { folder in
                     FolderRowView(
                         name: folder.name,
                         count: folder.noteCount,
+                        date: folderDate(folder),
                         iconWidth: iconWidth,
                     ) {
                         noteStore.selectedFolder = folder
@@ -425,6 +448,7 @@ struct HomeFolderView: View {
 private struct FolderRowView: View {
     let name: String
     let count: Int
+    var date: Date?
     let iconWidth: CGFloat
     let action: () -> Void
 
@@ -443,6 +467,12 @@ private struct FolderRowView: View {
                     .foregroundStyle(.primary)
 
                 Spacer()
+
+                if let date {
+                    Text(date.homeDisplayFormat)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
 
                 Text("\(count)")
                     .font(.body)

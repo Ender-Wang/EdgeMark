@@ -35,5 +35,6 @@ struct ContentView: View {
 #Preview {
     ContentView()
         .environment(NoteStore())
+        .environment(AppSettings())
         .frame(width: 400, height: 600)
 }

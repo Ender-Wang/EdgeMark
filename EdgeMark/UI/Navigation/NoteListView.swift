@@ -2,9 +2,14 @@ import SwiftUI
 
 struct NoteListView: View {
     @Environment(NoteStore.self) var noteStore
+    @Environment(AppSettings.self) var appSettings
 
     private var folderLabel: String {
         noteStore.selectedFolder?.name ?? ""
+    }
+
+    private var sortedNotes: [Note] {
+        noteStore.sortedNotes(noteStore.filteredNotes, by: appSettings.sortBy, ascending: appSettings.sortAscending)
     }
 
     var body: some View {
@@ -31,24 +36,31 @@ struct NoteListView: View {
                     .font(.headline)
             }
         } content: {
-            ZStack {
-                emptyState
-                    .opacity(noteStore.filteredNotes.isEmpty ? 1 : 0)
+            VStack(spacing: 0) {
+                ZStack {
+                    emptyState
+                        .opacity(noteStore.filteredNotes.isEmpty ? 1 : 0)
 
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(noteStore.filteredNotes) { note in
-                            NoteRowView(
-                                note: note,
-                                iconWidth: 22,
-                            ) {
-                                noteStore.selectedNote = note
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            ForEach(sortedNotes) { note in
+                                NoteRowView(
+                                    note: note,
+                                    iconWidth: 22,
+                                ) {
+                                    noteStore.selectedNote = note
+                                }
                             }
                         }
+                        .padding(.vertical, 10)
                     }
-                    .padding(.vertical, 10)
+                    .opacity(noteStore.filteredNotes.isEmpty ? 0 : 1)
                 }
-                .opacity(noteStore.filteredNotes.isEmpty ? 0 : 1)
+
+                Divider()
+                    .padding(.horizontal, 12)
+
+                ContentFooterBar()
             }
         }
     }

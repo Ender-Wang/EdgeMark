@@ -7,4 +7,6 @@ struct Folder: Identifiable, Hashable {
 
     let name: String
     var noteCount: Int
+    var latestModifiedAt: Date?
+    var earliestCreatedAt: Date?
 }

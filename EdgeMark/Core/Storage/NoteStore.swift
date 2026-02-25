@@ -9,14 +9,52 @@ final class NoteStore {
     var selectedFolder: Folder?
     var selectedNote: Note?
 
-    /// Notes filtered by selected folder, sorted by most recently modified.
+    /// Notes filtered by selected folder (unsorted — views apply sort via `sortedNotes`).
     var filteredNotes: [Note] {
-        let filtered: [Note] = if let folder = selectedFolder {
+        if let folder = selectedFolder {
             notes.filter { $0.folder == folder.name }
         } else {
             notes
         }
-        return filtered.sorted { $0.modifiedAt > $1.modifiedAt }
+    }
+
+    // MARK: - Sorting
+
+    func sortedNotes(_ notes: [Note], by sortBy: AppSettings.SortBy, ascending: Bool) -> [Note] {
+        notes.sorted { a, b in
+            let result: Bool = switch sortBy {
+            case .name:
+                a.title.localizedCaseInsensitiveCompare(b.title) == .orderedAscending
+            case .dateModified:
+                a.modifiedAt < b.modifiedAt
+            case .dateCreated:
+                a.createdAt < b.createdAt
+            }
+            return ascending ? result : !result
+        }
+    }
+
+    func sortedFolders(_ folders: [Folder], by sortBy: AppSettings.SortBy, ascending: Bool) -> [Folder] {
+        folders.sorted { a, b in
+            let result: Bool = switch sortBy {
+            case .name:
+                a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            case .dateModified:
+                // nil dates (empty folders) sort to end
+                switch (a.latestModifiedAt, b.latestModifiedAt) {
+                case let (aDate?, bDate?): aDate < bDate
+                case (nil, _): false
+                case (_, nil): true
+                }
+            case .dateCreated:
+                switch (a.earliestCreatedAt, b.earliestCreatedAt) {
+                case let (aDate?, bDate?): aDate < bDate
+                case (nil, _): false
+                case (_, nil): true
+                }
+            }
+            return ascending ? result : !result
+        }
     }
 
     // MARK: - Dirty Tracking
@@ -133,7 +171,13 @@ final class NoteStore {
         let allNames = folderNames.union(diskFolders).sorted()
 
         folders = allNames.map { name in
-            Folder(name: name, noteCount: notes.count(where: { $0.folder == name }))
+            let folderNotes = notes.filter { $0.folder == name }
+            return Folder(
+                name: name,
+                noteCount: folderNotes.count,
+                latestModifiedAt: folderNotes.map(\.modifiedAt).max(),
+                earliestCreatedAt: folderNotes.map(\.createdAt).min(),
+            )
         }
     }
 

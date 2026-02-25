@@ -28,6 +28,7 @@ final class SidePanelController: NSWindowController {
     private var previousApp: NSRunningApplication?
     let edgeDetector: EdgeDetector
     let noteStore = NoteStore()
+    let appSettings = AppSettings()
 
     // MARK: - Init
 
@@ -56,7 +57,7 @@ final class SidePanelController: NSWindowController {
         window.isMovableByWindowBackground = false
 
         // Host SwiftUI content
-        let hostingView = NSHostingView(rootView: ContentView().environment(noteStore))
+        let hostingView = NSHostingView(rootView: ContentView().environment(noteStore).environment(appSettings))
         hostingView.frame = NSRect(x: 0, y: 0, width: panelWidth, height: visibleFrame.height)
         hostingView.wantsLayer = true
         hostingView.layer?.cornerRadius = 10
