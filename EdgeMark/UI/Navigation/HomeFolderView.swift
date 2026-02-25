@@ -6,6 +6,7 @@ struct HomeFolderView: View {
     @State private var newFolderName = ""
     @State private var isSearching = false
     @State private var searchQuery = ""
+    @FocusState private var isSearchFieldFocused: Bool
 
     private var trimmedQuery: String {
         searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -96,6 +97,7 @@ struct HomeFolderView: View {
 
                 TextField("Search notes", text: $searchQuery)
                     .textFieldStyle(.plain)
+                    .focused($isSearchFieldFocused)
 
                 Button(action: dismissSearch) {
                     Image(systemName: "xmark.circle.fill")
@@ -114,7 +116,10 @@ struct HomeFolderView: View {
 
                 Spacer()
 
-                Button(action: { isSearching = true }) {
+                Button(action: {
+                    isSearching = true
+                    isSearchFieldFocused = true
+                }) {
                     Image(systemName: "magnifyingglass")
                         .font(.title3)
                         .foregroundStyle(.secondary)
@@ -361,6 +366,7 @@ struct HomeFolderView: View {
     }
 
     private func dismissSearch() {
+        isSearchFieldFocused = false
         isSearching = false
         searchQuery = ""
     }
