@@ -91,6 +91,11 @@ final class SidePanelController: NSWindowController {
         // Escape key dismissal
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53, self?.isShown == true {
+                // If a SwiftUI TextField is focused (field editor is first responder),
+                // let the event propagate so SwiftUI can handle it (e.g. dismiss search).
+                if let fr = self?.window?.firstResponder as? NSTextView, fr.isFieldEditor {
+                    return event
+                }
                 self?.hidePanel()
             }
             return event

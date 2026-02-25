@@ -106,6 +106,7 @@ struct HomeFolderView: View {
                 .buttonStyle(.borderless)
                 .help("Close Search")
             }
+            .onExitCommand { dismissSearch() }
             .opacity(isSearching ? 1 : 0)
             .allowsHitTesting(isSearching)
 
