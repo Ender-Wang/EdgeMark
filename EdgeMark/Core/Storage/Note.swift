@@ -8,6 +8,9 @@ struct Note: Identifiable {
     var modifiedAt: Date
     var folder: String
 
+    /// When the note was moved to Trash (nil = active). Persisted in YAML front matter.
+    var trashedAt: Date?
+
     /// The filename currently on disk (nil for brand-new notes not yet saved).
     /// Used to detect renames when the title changes.
     var savedFilename: String?
@@ -40,6 +43,7 @@ struct Note: Identifiable {
         createdAt: Date = Date(),
         modifiedAt: Date = Date(),
         folder: String = "",
+        trashedAt: Date? = nil,
         savedFilename: String? = nil,
     ) {
         self.id = id
@@ -48,6 +52,7 @@ struct Note: Identifiable {
         self.createdAt = createdAt
         self.modifiedAt = modifiedAt
         self.folder = folder
+        self.trashedAt = trashedAt
         self.savedFilename = savedFilename
     }
 
@@ -59,6 +64,7 @@ struct Note: Identifiable {
             && lhs.createdAt == rhs.createdAt
             && lhs.modifiedAt == rhs.modifiedAt
             && lhs.folder == rhs.folder
+            && lhs.trashedAt == rhs.trashedAt
     }
 }
 

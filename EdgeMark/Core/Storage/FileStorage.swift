@@ -24,6 +24,19 @@ enum FileStorage {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
     }
 
+    static func renameFolder(_ oldName: String, to newName: String) throws {
+        guard !oldName.isEmpty, !newName.isEmpty else { return }
+        let oldURL = rootURL.appendingPathComponent(oldName, isDirectory: true)
+        let newURL = rootURL.appendingPathComponent(newName, isDirectory: true)
+        try FileManager.default.moveItem(at: oldURL, to: newURL)
+    }
+
+    static func deleteFolder(_ name: String) throws {
+        guard !name.isEmpty else { return }
+        let url = rootURL.appendingPathComponent(name, isDirectory: true)
+        try FileManager.default.removeItem(at: url)
+    }
+
     static func discoverFolders() throws -> [String] {
         let contents = try FileManager.default.contentsOfDirectory(
             at: rootURL,
@@ -102,6 +115,21 @@ enum FileStorage {
         try FileManager.default.removeItem(at: rootURL.appendingPathComponent(relativePath))
     }
 
+    /// Returns the full file URL for a note (for Finder reveal).
+    static func urlForNote(_ note: Note) -> URL {
+        let actualFilename = note.savedFilename ?? note.filename
+        let relativePath = note.folder.isEmpty ? actualFilename : "\(note.folder)/\(actualFilename)"
+        return rootURL.appendingPathComponent(relativePath)
+    }
+
+    /// Returns the full directory URL for a folder (for Finder reveal).
+    static func urlForFolder(_ name: String) -> URL {
+        if name.isEmpty {
+            return rootURL
+        }
+        return rootURL.appendingPathComponent(name, isDirectory: true)
+    }
+
     static func moveNote(_ note: Note, toFolder: String) throws {
         let actualFilename = note.savedFilename ?? note.filename
         let oldRelative = note.folder.isEmpty ? actualFilename : "\(note.folder)/\(actualFilename)"
@@ -141,6 +169,7 @@ enum FileStorage {
         let title = metadata["title"] ?? extractTitle(from: body)
         let created = metadata["created"].flatMap { dateFormatter.date(from: $0) } ?? Date()
         let modified = metadata["modified"].flatMap { dateFormatter.date(from: $0) } ?? Date()
+        let trashed = metadata["trashed"].flatMap { dateFormatter.date(from: $0) }
 
         return Note(
             id: id,
@@ -149,6 +178,7 @@ enum FileStorage {
             createdAt: created,
             modifiedAt: modified,
             folder: folder,
+            trashedAt: trashed,
             savedFilename: url.lastPathComponent,
         )
     }
@@ -196,6 +226,9 @@ enum FileStorage {
         lines.append("title: \(note.title)")
         lines.append("created: \(dateFormatter.string(from: note.createdAt))")
         lines.append("modified: \(dateFormatter.string(from: note.modifiedAt))")
+        if let trashedAt = note.trashedAt {
+            lines.append("trashed: \(dateFormatter.string(from: trashedAt))")
+        }
         lines.append("---")
         lines.append("")
         return lines.joined(separator: "\n")

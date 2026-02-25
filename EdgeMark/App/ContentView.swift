@@ -4,15 +4,15 @@ struct ContentView: View {
     @Environment(NoteStore.self) var noteStore
 
     private var showHome: Bool {
-        noteStore.selectedFolder == nil && noteStore.selectedNote == nil
+        !noteStore.showTrash && noteStore.selectedFolder == nil && noteStore.selectedNote == nil
     }
 
     private var showNoteList: Bool {
-        noteStore.selectedFolder != nil && noteStore.selectedNote == nil
+        !noteStore.showTrash && noteStore.selectedFolder != nil && noteStore.selectedNote == nil
     }
 
     private var showEditor: Bool {
-        noteStore.selectedNote != nil
+        !noteStore.showTrash && noteStore.selectedNote != nil
     }
 
     var body: some View {
@@ -28,6 +28,10 @@ struct ContentView: View {
             EditorScreen()
                 .opacity(showEditor ? 1 : 0)
                 .allowsHitTesting(showEditor)
+
+            TrashView()
+                .opacity(noteStore.showTrash ? 1 : 0)
+                .allowsHitTesting(noteStore.showTrash)
         }
     }
 }

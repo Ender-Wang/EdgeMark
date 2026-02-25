@@ -1,3 +1,4 @@
+import Cocoa
 import SwiftUI
 
 struct HomeFolderView: View {
@@ -9,6 +10,20 @@ struct HomeFolderView: View {
     @State private var searchQuery = ""
     @FocusState private var isSearchFieldFocused: Bool
     @FocusState private var isFolderFieldFocused: Bool
+
+    // Note rename
+    @State private var renamingNoteID: UUID?
+    @State private var renamingNoteText = ""
+    @FocusState private var isNoteRenameFocused: Bool
+
+    // Folder rename
+    @State private var renamingFolderName: String?
+    @State private var renamingFolderText = ""
+    @FocusState private var isFolderRenameFocused: Bool
+
+    // Folder delete confirmation
+    @State private var deletingFolderName: String?
+    @State private var showDeleteFolderConfirm = false
 
     private var trimmedQuery: String {
         searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -164,14 +179,7 @@ struct HomeFolderView: View {
         ScrollView {
             VStack(spacing: 0) {
                 ForEach(sortedFolders) { folder in
-                    FolderRowView(
-                        name: folder.name,
-                        count: folder.noteCount,
-                        date: folderDate(folder),
-                        iconWidth: iconWidth,
-                    ) {
-                        noteStore.selectedFolder = folder
-                    }
+                    folderRowWithContextMenu(folder: folder)
                 }
 
                 if isCreatingFolder {
@@ -186,16 +194,28 @@ struct HomeFolderView: View {
                     }
 
                     ForEach(rootNotes) { note in
-                        NoteRowView(
-                            note: note,
-                            iconWidth: iconWidth,
-                        ) {
-                            noteStore.selectedNote = note
-                        }
+                        noteRowWithContextMenu(note: note)
                     }
                 }
             }
             .padding(.vertical, 10)
+        }
+        .alert(
+            "Delete Folder?",
+            isPresented: $showDeleteFolderConfirm,
+            presenting: deletingFolderName,
+        ) { folderName in
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                noteStore.trashFolder(folderName)
+            }
+        } message: { folderName in
+            let count = noteStore.notes.count(where: { $0.folder == folderName })
+            if count > 0 {
+                Text("\"\(folderName)\" and its \(count) note\(count == 1 ? "" : "s") will be moved to Trash.")
+            } else {
+                Text("\"\(folderName)\" will be deleted.")
+            }
         }
     }
 
@@ -222,6 +242,147 @@ struct HomeFolderView: View {
             if !focused {
                 commitOrCancelFolder()
             }
+        }
+    }
+
+    // MARK: - Folder Row with Context Menu
+
+    @ViewBuilder
+    private func folderRowWithContextMenu(folder: Folder) -> some View {
+        if renamingFolderName == folder.name {
+            inlineFolderRenameEditor(folderName: folder.name)
+        } else {
+            FolderRowView(
+                name: folder.name,
+                count: folder.noteCount,
+                date: folderDate(folder),
+                iconWidth: iconWidth,
+            ) {
+                noteStore.selectedFolder = folder
+            }
+            .contextMenu {
+                Button("Rename") {
+                    startRenamingFolder(folder.name)
+                }
+
+                Button("Show in Finder") {
+                    NSWorkspace.shared.activateFileViewerSelecting([
+                        FileStorage.urlForFolder(folder.name),
+                    ])
+                }
+
+                Divider()
+
+                Button("Delete", role: .destructive) {
+                    deletingFolderName = folder.name
+                    showDeleteFolderConfirm = true
+                }
+            }
+        }
+    }
+
+    // MARK: - Note Row with Context Menu
+
+    @ViewBuilder
+    private func noteRowWithContextMenu(note: Note) -> some View {
+        if renamingNoteID == note.id {
+            inlineNoteRenameEditor(note: note)
+        } else {
+            NoteRowView(
+                note: note,
+                iconWidth: iconWidth,
+            ) {
+                noteStore.selectedNote = note
+            }
+            .contextMenu {
+                Button("Rename") {
+                    startRenamingNote(note)
+                }
+
+                moveToMenu(for: note)
+
+                Divider()
+
+                Button("Show in Finder") {
+                    NSWorkspace.shared.activateFileViewerSelecting([
+                        FileStorage.urlForNote(note),
+                    ])
+                }
+
+                Divider()
+
+                Button("Delete", role: .destructive) {
+                    noteStore.trashNote(note)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func moveToMenu(for note: Note) -> some View {
+        let otherFolders = noteStore.folders.filter { $0.name != note.folder }
+        let canMoveToRoot = !note.folder.isEmpty
+        if canMoveToRoot || !otherFolders.isEmpty {
+            Menu("Move to") {
+                if canMoveToRoot {
+                    Button("Root") {
+                        noteStore.moveNote(note, to: "")
+                    }
+                }
+                ForEach(otherFolders) { folder in
+                    Button(folder.name) {
+                        noteStore.moveNote(note, to: folder.name)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Inline Note Rename Editor
+
+    private func inlineNoteRenameEditor(note: Note) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "doc.text")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+                .frame(width: iconWidth)
+
+            TextField("Note title", text: $renamingNoteText)
+                .textFieldStyle(.plain)
+                .font(.body)
+                .focused($isNoteRenameFocused)
+                .onSubmit { commitNoteRename(note) }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 8)
+        .onExitCommand { cancelNoteRename() }
+        .onChange(of: isNoteRenameFocused) { _, focused in
+            if !focused { commitOrCancelNoteRename(note) }
+        }
+    }
+
+    // MARK: - Inline Folder Rename Editor
+
+    private func inlineFolderRenameEditor(folderName: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "folder.fill")
+                .font(.title3)
+                .foregroundStyle(.green)
+                .frame(width: iconWidth)
+
+            TextField("Folder name", text: $renamingFolderText)
+                .textFieldStyle(.plain)
+                .font(.body)
+                .focused($isFolderRenameFocused)
+                .onSubmit { commitFolderRename(folderName) }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 8)
+        .onExitCommand { cancelFolderRename() }
+        .onChange(of: isFolderRenameFocused) { _, focused in
+            if !focused { commitOrCancelFolderRename(folderName) }
         }
     }
 
@@ -440,12 +601,78 @@ struct HomeFolderView: View {
         isSearching = false
         searchQuery = ""
     }
+
+    // MARK: - Note Rename Actions
+
+    private func startRenamingNote(_ note: Note) {
+        renamingNoteID = note.id
+        renamingNoteText = note.title
+        DispatchQueue.main.async {
+            isNoteRenameFocused = true
+        }
+    }
+
+    private func commitNoteRename(_ note: Note) {
+        let trimmed = renamingNoteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty, trimmed != note.title {
+            noteStore.renameNote(note, to: trimmed)
+        }
+        renamingNoteID = nil
+        renamingNoteText = ""
+    }
+
+    private func cancelNoteRename() {
+        renamingNoteID = nil
+        renamingNoteText = ""
+    }
+
+    private func commitOrCancelNoteRename(_ note: Note) {
+        let trimmed = renamingNoteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            cancelNoteRename()
+        } else {
+            commitNoteRename(note)
+        }
+    }
+
+    // MARK: - Folder Rename Actions
+
+    private func startRenamingFolder(_ name: String) {
+        renamingFolderName = name
+        renamingFolderText = name
+        DispatchQueue.main.async {
+            isFolderRenameFocused = true
+        }
+    }
+
+    private func commitFolderRename(_ oldName: String) {
+        let trimmed = renamingFolderText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty, trimmed != oldName {
+            noteStore.renameFolder(oldName, to: trimmed)
+        }
+        renamingFolderName = nil
+        renamingFolderText = ""
+    }
+
+    private func cancelFolderRename() {
+        renamingFolderName = nil
+        renamingFolderText = ""
+    }
+
+    private func commitOrCancelFolderRename(_ oldName: String) {
+        let trimmed = renamingFolderText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            cancelFolderRename()
+        } else {
+            commitFolderRename(oldName)
+        }
+    }
 }
 
 // MARK: - Folder Row View
 
 /// Folder row with hover highlight animation.
-private struct FolderRowView: View {
+struct FolderRowView: View {
     let name: String
     let count: Int
     var date: Date?
