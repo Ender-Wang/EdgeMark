@@ -63,15 +63,9 @@ struct HomeFolderView: View {
     private let iconWidth: CGFloat = 22
 
     var body: some View {
-        VStack(spacing: 8) {
-            // Section 1: Header card
+        PageLayout {
             header
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background { VisualEffectView() }
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-
-            // Section 2: Folder list or search results
+        } content: {
             ZStack {
                 folderList
                     .opacity(isSearching ? 0 : 1)
@@ -81,12 +75,7 @@ struct HomeFolderView: View {
                     .opacity(isSearching ? 1 : 0)
                     .allowsHitTesting(isSearching)
             }
-            .background { VisualEffectView() }
-            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 8)
-        .padding(.bottom, 12)
     }
 
     // MARK: - Header
@@ -175,8 +164,7 @@ struct HomeFolderView: View {
 
                     ForEach(rootNotes) { note in
                         NoteRowView(
-                            title: note.title,
-                            date: note.createdAt,
+                            note: note,
                             iconWidth: iconWidth,
                         ) {
                             noteStore.selectedNote = note
@@ -482,14 +470,25 @@ private struct FolderRowView: View {
 
 // MARK: - Note Row View
 
-/// Note row with hover highlight animation.
-private struct NoteRowView: View {
-    let title: String
-    let date: Date
+/// Note row with hover highlight animation and preview line.
+struct NoteRowView: View {
+    let note: Note
     let iconWidth: CGFloat
     let action: () -> Void
 
     @State private var isHovered = false
+
+    private var previewText: String {
+        let lines = note.content.split(separator: "\n", omittingEmptySubsequences: true)
+        let bodyLines = lines.dropFirst()
+        let raw = bodyLines.prefix(3).joined(separator: " ")
+        return raw
+            .replacingOccurrences(of: "#{1,6}\\s", with: "", options: .regularExpression)
+            .replacingOccurrences(of: "\\*{1,2}([^*]+)\\*{1,2}", with: "$1", options: .regularExpression)
+            .replacingOccurrences(of: "`([^`]+)`", with: "$1", options: .regularExpression)
+            .prefix(120)
+            .description
+    }
 
     var body: some View {
         Button(action: action) {
@@ -499,16 +498,27 @@ private struct NoteRowView: View {
                     .foregroundStyle(.secondary)
                     .frame(width: iconWidth)
 
-                Text(title.isEmpty ? "Untitled" : title)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text(note.title.isEmpty ? "Untitled" : note.title)
+                            .font(.body)
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
 
-                Spacer()
+                        Spacer()
 
-                Text(date.homeDisplayFormat)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                        Text(note.createdAt.homeDisplayFormat)
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+
+                    if !previewText.isEmpty {
+                        Text(previewText)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 10)
@@ -525,48 +535,5 @@ private struct NoteRowView: View {
                 isHovered = hovering
             }
         }
-    }
-}
-
-// MARK: - Header Icon Button
-
-/// Toolbar icon with hover background animation.
-private struct HeaderIconButton: View {
-    let systemName: String
-    let help: String
-    let action: () -> Void
-
-    @State private var isHovered = false
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(isHovered ? .primary : .secondary)
-                .frame(width: 28, height: 28)
-                .background {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(.primary.opacity(isHovered ? 0.1 : 0))
-                }
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help(help)
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isHovered = hovering
-            }
-        }
-    }
-}
-
-// MARK: - Date Formatting
-
-private extension Date {
-    /// Format: "18:30 Feb 25, 2026"
-    var homeDisplayFormat: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm MMM d, yyyy"
-        return formatter.string(from: self)
     }
 }

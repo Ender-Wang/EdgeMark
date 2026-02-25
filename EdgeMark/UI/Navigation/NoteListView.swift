@@ -8,58 +8,49 @@ struct NoteListView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            toolbar
+        PageLayout {
+            HStack {
+                HeaderIconButton(
+                    systemName: "chevron.left",
+                    help: "Home",
+                ) {
+                    noteStore.selectedFolder = nil
+                }
 
-            Divider()
+                Spacer()
 
+                HeaderIconButton(
+                    systemName: "square.and.pencil",
+                    help: "New Note",
+                ) {
+                    createNote()
+                }
+            }
+            .overlay {
+                Text(folderLabel)
+                    .font(.headline)
+            }
+        } content: {
             ZStack {
                 emptyState
                     .opacity(noteStore.filteredNotes.isEmpty ? 1 : 0)
 
                 ScrollView {
-                    LazyVStack(spacing: 4) {
+                    VStack(spacing: 0) {
                         ForEach(noteStore.filteredNotes) { note in
-                            NoteCardView(note: note)
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    noteStore.selectedNote = note
-                                }
+                            NoteRowView(
+                                note: note,
+                                iconWidth: 22,
+                            ) {
+                                noteStore.selectedNote = note
+                            }
                         }
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.top, 4)
-                    .padding(.bottom, 8)
+                    .padding(.vertical, 10)
                 }
                 .opacity(noteStore.filteredNotes.isEmpty ? 0 : 1)
             }
         }
-    }
-
-    private var toolbar: some View {
-        HStack {
-            Button(action: { noteStore.selectedFolder = nil }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "chevron.left")
-                    Text("Folders")
-                }
-            }
-            .buttonStyle(.borderless)
-
-            Spacer()
-
-            Button(action: createNote) {
-                Image(systemName: "square.and.pencil")
-            }
-            .buttonStyle(.borderless)
-            .help("New Note")
-        }
-        .overlay {
-            Text(folderLabel)
-                .font(.headline)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
     }
 
     private var emptyState: some View {

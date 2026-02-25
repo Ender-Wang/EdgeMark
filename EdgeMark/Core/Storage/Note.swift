@@ -22,6 +22,17 @@ struct Note: Identifiable {
         folder.isEmpty ? filename : "\(folder)/\(filename)"
     }
 
+    /// User-facing display path without the UUID prefix: "folder/title.md" or "title.md".
+    var displayPath: String {
+        let displayName = "\(FileStorage.sanitizeForFilename(title)).md"
+        return folder.isEmpty ? displayName : "\(folder)/\(displayName)"
+    }
+
+    /// Directory portion only: "/FolderName/" or "/" for root notes.
+    var displayDirectory: String {
+        folder.isEmpty ? "/" : "/\(folder)/"
+    }
+
     init(
         id: UUID = UUID(),
         title: String = "",
