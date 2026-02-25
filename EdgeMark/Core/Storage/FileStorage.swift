@@ -36,6 +36,31 @@ enum FileStorage {
         }.sorted()
     }
 
+    // MARK: - Filename Helpers
+
+    static func sanitizeForFilename(_ title: String) -> String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "Untitled" }
+
+        let illegal = CharacterSet(charactersIn: "/\\:*?\"<>|\0")
+        let cleaned = trimmed.unicodeScalars
+            .map { illegal.contains($0) ? "-" : String($0) }
+            .joined()
+
+        let hyphenated = cleaned.replacingOccurrences(of: " ", with: "-")
+        let collapsed = hyphenated.replacingOccurrences(of: "-{2,}", with: "-", options: .regularExpression)
+        var result = collapsed.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+
+        // Truncate to stay within APFS 255-byte filename limit (UUID=36 + _=1 + .md=3 = 40 overhead)
+        let maxBytes = 200
+        while result.utf8.count > maxBytes {
+            result = String(result.dropLast())
+        }
+        result = result.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+
+        return result.isEmpty ? "Untitled" : result
+    }
+
     // MARK: - Note I/O
 
     static func loadAllNotes() throws -> [Note] {
@@ -48,27 +73,45 @@ enum FileStorage {
         return notes
     }
 
-    static func writeNote(_ note: Note) throws {
+    /// Writes the note to disk. If the title changed since last save, removes the old file.
+    /// Returns the new filename so the caller can update `savedFilename`.
+    @discardableResult
+    static func writeNote(_ note: Note) throws -> String {
         try ensureRootExists()
         if !note.folder.isEmpty {
             try ensureFolderExists(note.folder)
         }
+
+        let newFilename = note.filename
         let fileURL = rootURL.appendingPathComponent(note.relativePath)
         let text = serializeFrontMatter(note: note) + note.content
         try text.data(using: .utf8)?.write(to: fileURL, options: .atomic)
+
+        // Remove old file if title changed (write-first ensures no data loss)
+        if let oldFilename = note.savedFilename, oldFilename != newFilename {
+            let oldRelative = note.folder.isEmpty ? oldFilename : "\(note.folder)/\(oldFilename)"
+            try? FileManager.default.removeItem(at: rootURL.appendingPathComponent(oldRelative))
+        }
+
+        return newFilename
     }
 
     static func deleteNote(_ note: Note) throws {
-        let fileURL = rootURL.appendingPathComponent(note.relativePath)
-        try FileManager.default.removeItem(at: fileURL)
+        let actualFilename = note.savedFilename ?? note.filename
+        let relativePath = note.folder.isEmpty ? actualFilename : "\(note.folder)/\(actualFilename)"
+        try FileManager.default.removeItem(at: rootURL.appendingPathComponent(relativePath))
     }
 
     static func moveNote(_ note: Note, toFolder: String) throws {
-        let oldURL = rootURL.appendingPathComponent(note.relativePath)
+        let actualFilename = note.savedFilename ?? note.filename
+        let oldRelative = note.folder.isEmpty ? actualFilename : "\(note.folder)/\(actualFilename)"
+        let oldURL = rootURL.appendingPathComponent(oldRelative)
+
         if !toFolder.isEmpty {
             try ensureFolderExists(toFolder)
         }
-        let newRelative = toFolder.isEmpty ? note.filename : "\(toFolder)/\(note.filename)"
+        let newFilename = note.filename
+        let newRelative = toFolder.isEmpty ? newFilename : "\(toFolder)/\(newFilename)"
         let newURL = rootURL.appendingPathComponent(newRelative)
         try FileManager.default.moveItem(at: oldURL, to: newURL)
     }
@@ -106,6 +149,7 @@ enum FileStorage {
             createdAt: created,
             modifiedAt: modified,
             folder: folder,
+            savedFilename: url.lastPathComponent,
         )
     }
 

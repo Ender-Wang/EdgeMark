@@ -53,6 +53,9 @@ struct MarkdownEditorView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSScrollView, context: Context) {
+        // Keep coordinator's parent reference current so onContentChanged stays fresh
+        context.coordinator.parent = self
+
         // Only update content when the note ID changes (user switched notes)
         guard context.coordinator.currentNoteID != noteID else { return }
         context.coordinator.currentNoteID = noteID
@@ -69,7 +72,7 @@ struct MarkdownEditorView: NSViewRepresentable {
     // MARK: - Coordinator
 
     final class Coordinator: NSObject, NSTextViewDelegate {
-        let parent: MarkdownEditorView
+        var parent: MarkdownEditorView
         weak var textView: NSTextView?
         var highlighter: MarkdownHighlighter?
         var slashHandler: SlashCommandHandler?

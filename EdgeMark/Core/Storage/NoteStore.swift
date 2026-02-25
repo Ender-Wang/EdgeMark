@@ -38,7 +38,7 @@ final class NoteStore {
 
     func createNote(in folder: String = "") -> Note {
         let now = Date()
-        let note = Note(
+        var note = Note(
             id: UUID(),
             title: "Untitled",
             content: "# Untitled\n\n",
@@ -46,12 +46,13 @@ final class NoteStore {
             modifiedAt: now,
             folder: folder,
         )
-        notes.append(note)
         do {
-            try FileStorage.writeNote(note)
+            let savedName = try FileStorage.writeNote(note)
+            note.savedFilename = savedName
         } catch {
             print("EdgeMark: failed to write new note — \(error)")
         }
+        notes.append(note)
         refreshFolders()
         return note
     }
@@ -85,6 +86,7 @@ final class NoteStore {
         do {
             try FileStorage.moveNote(note, toFolder: folder)
             notes[index].folder = folder
+            notes[index].savedFilename = notes[index].filename
             refreshFolders()
         } catch {
             print("EdgeMark: failed to move note — \(error)")
@@ -108,9 +110,13 @@ final class NoteStore {
 
     func saveDirtyNotes() {
         for noteID in dirtyNoteIDs {
-            guard let note = notes.first(where: { $0.id == noteID }) else { continue }
+            guard let index = notes.firstIndex(where: { $0.id == noteID }) else { continue }
             do {
-                try FileStorage.writeNote(note)
+                let newFilename = try FileStorage.writeNote(notes[index])
+                notes[index].savedFilename = newFilename
+                if selectedNote?.id == noteID {
+                    selectedNote?.savedFilename = newFilename
+                }
             } catch {
                 print("EdgeMark: failed to save note \(noteID) — \(error)")
             }
