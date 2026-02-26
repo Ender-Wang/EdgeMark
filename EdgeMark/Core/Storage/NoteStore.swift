@@ -11,6 +11,22 @@ final class NoteStore {
     var selectedNote: Note?
     var showTrash = false
 
+    /// Pending note move that has a name conflict — UI shows confirmation dialog.
+    struct PendingNoteMoveConflict {
+        let noteID: UUID
+        let targetFolder: String
+    }
+
+    var pendingNoteMoveConflict: PendingNoteMoveConflict?
+
+    /// Pending folder move that has a name conflict — UI shows confirmation dialog.
+    struct PendingFolderMoveConflict {
+        let folderName: String
+        let targetParent: String
+    }
+
+    var pendingFolderMoveConflict: PendingFolderMoveConflict?
+
     /// Notes filtered by selected folder (unsorted — views apply sort via `sortedNotes`).
     var filteredNotes: [Note] {
         if let folder = selectedFolder {
@@ -77,14 +93,32 @@ final class NoteStore {
         }
     }
 
+    // MARK: - Duplicate Detection
+
+    /// Whether a note title already exists in the given folder (case-insensitive filename match).
+    func noteTitleExists(_ title: String, in folder: String, excluding noteID: UUID? = nil) -> Bool {
+        let sanitized = FileStorage.sanitizeForFilename(title)
+        return notes.contains { note in
+            note.id != noteID
+                && note.folder == folder
+                && FileStorage.sanitizeForFilename(note.title).caseInsensitiveCompare(sanitized) == .orderedSame
+        }
+    }
+
     // MARK: - Note CRUD
 
     func createNote(in folder: String = "") -> Note {
+        var title = "Untitled"
+        var counter = 2
+        while noteTitleExists(title, in: folder) {
+            title = "Untitled \(counter)"
+            counter += 1
+        }
         let now = Date()
         var note = Note(
             id: UUID(),
-            title: "Untitled",
-            content: "# Untitled\n\n",
+            title: title,
+            content: "# \(title)\n\n",
             createdAt: now,
             modifiedAt: now,
             folder: folder,
@@ -117,6 +151,7 @@ final class NoteStore {
         guard let index = notes.firstIndex(where: { $0.id == note.id }) else { return }
         let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        guard !noteTitleExists(trimmed, in: note.folder, excluding: note.id) else { return }
 
         notes[index].title = trimmed
         notes[index].modifiedAt = Date()
@@ -149,6 +184,57 @@ final class NoteStore {
 
     func moveNote(_ note: Note, to folder: String) {
         guard let index = notes.firstIndex(where: { $0.id == note.id }) else { return }
+        if noteTitleExists(notes[index].title, in: folder, excluding: note.id) {
+            pendingNoteMoveConflict = PendingNoteMoveConflict(noteID: note.id, targetFolder: folder)
+            return
+        }
+        performMoveNote(at: index, to: folder)
+    }
+
+    func resolveNoteMoveConflict(keepBoth: Bool) {
+        guard let conflict = pendingNoteMoveConflict,
+              let index = notes.firstIndex(where: { $0.id == conflict.noteID })
+        else {
+            pendingNoteMoveConflict = nil
+            return
+        }
+        let title = notes[index].title
+        let folder = conflict.targetFolder
+
+        if keepBoth {
+            var counter = 2
+            var newTitle = "\(title) \(counter)"
+            while noteTitleExists(newTitle, in: folder, excluding: conflict.noteID) {
+                counter += 1
+                newTitle = "\(title) \(counter)"
+            }
+            notes[index].title = newTitle
+            notes[index].modifiedAt = Date()
+            var lines = notes[index].content.components(separatedBy: "\n")
+            if let headingIdx = lines.firstIndex(where: { $0.hasPrefix("#") }) {
+                let prefix = String(lines[headingIdx].prefix(while: { $0 == "#" }))
+                lines[headingIdx] = "\(prefix) \(newTitle)"
+                notes[index].content = lines.joined(separator: "\n")
+            }
+        } else {
+            if let existing = notes.first(where: {
+                $0.id != conflict.noteID
+                    && $0.folder == folder
+                    && FileStorage.sanitizeForFilename($0.title)
+                    .caseInsensitiveCompare(FileStorage.sanitizeForFilename(title)) == .orderedSame
+            }) {
+                trashNote(existing)
+            }
+        }
+
+        if let idx = notes.firstIndex(where: { $0.id == conflict.noteID }) {
+            performMoveNote(at: idx, to: folder)
+        }
+        pendingNoteMoveConflict = nil
+    }
+
+    private func performMoveNote(at index: Int, to folder: String) {
+        let note = notes[index]
         do {
             try FileStorage.moveNote(note, toFolder: folder)
             notes[index].folder = folder
@@ -310,12 +396,69 @@ final class NoteStore {
         let displayName = (name as NSString).lastPathComponent
         let newFullPath = newParent.isEmpty ? displayName : "\(newParent)/\(displayName)"
         guard newFullPath != name else { return }
-        // Prevent moving into own descendant
         guard !newParent.hasPrefix(name + "/"), newParent != name else { return }
+
+        // Check if a folder with the same name exists at the destination
+        let siblings = newParent.isEmpty
+            ? folders.filter(\.isTopLevel)
+            : childFolders(of: newParent)
+        let conflicts = siblings.contains {
+            $0.name != name && $0.displayName.caseInsensitiveCompare(displayName) == .orderedSame
+        }
+        if conflicts {
+            pendingFolderMoveConflict = PendingFolderMoveConflict(folderName: name, targetParent: newParent)
+            return
+        }
+        performMoveFolder(name, toParent: newParent)
+    }
+
+    func resolveFolderMoveConflict(keepBoth: Bool) {
+        guard let conflict = pendingFolderMoveConflict else {
+            pendingFolderMoveConflict = nil
+            return
+        }
+        let name = conflict.folderName
+        let newParent = conflict.targetParent
+        let displayName = (name as NSString).lastPathComponent
+        let targetFullPath = newParent.isEmpty ? displayName : "\(newParent)/\(displayName)"
+
+        if keepBoth {
+            // Rename this folder with a number suffix before moving
+            var counter = 2
+            var newDisplayName = "\(displayName) \(counter)"
+            let siblings = newParent.isEmpty
+                ? folders.filter(\.isTopLevel)
+                : childFolders(of: newParent)
+            while siblings.contains(where: {
+                $0.displayName.caseInsensitiveCompare(newDisplayName) == .orderedSame
+            }) {
+                counter += 1
+                newDisplayName = "\(displayName) \(counter)"
+            }
+            // Rename locally first, then move
+            renameFolder(name, to: newDisplayName)
+            let renamedPath = (name as NSString).deletingLastPathComponent
+            let renamedParent = renamedPath == "." ? "" : renamedPath
+            let renamedFullPath = renamedParent.isEmpty ? newDisplayName : "\(renamedParent)/\(newDisplayName)"
+            performMoveFolder(renamedFullPath, toParent: newParent)
+        } else {
+            // Replace: trash the existing folder at destination
+            if let existingFolder = folders.first(where: {
+                $0.name == targetFullPath
+            }) {
+                trashFolder(existingFolder.name)
+            }
+            performMoveFolder(name, toParent: newParent)
+        }
+        pendingFolderMoveConflict = nil
+    }
+
+    private func performMoveFolder(_ name: String, toParent newParent: String) {
+        let displayName = (name as NSString).lastPathComponent
+        let newFullPath = newParent.isEmpty ? displayName : "\(newParent)/\(displayName)"
 
         do {
             try FileStorage.moveFolder(name, toParent: newParent)
-            // Update all notes in this folder and subfolders
             let oldPrefix = name + "/"
             for i in notes.indices {
                 if notes[i].folder == name {

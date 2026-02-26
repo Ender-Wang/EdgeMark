@@ -104,6 +104,41 @@ struct HomeFolderView: View {
                 ContentFooterBar()
             }
         }
+        .alert(
+            "Name Conflict",
+            isPresented: Binding(
+                get: { noteStore.pendingNoteMoveConflict != nil },
+                set: { if !$0 { noteStore.pendingNoteMoveConflict = nil } },
+            ),
+        ) {
+            Button("Keep Both") { noteStore.resolveNoteMoveConflict(keepBoth: true) }
+            Button("Replace") { noteStore.resolveNoteMoveConflict(keepBoth: false) }
+            Button("Cancel", role: .cancel) { noteStore.pendingNoteMoveConflict = nil }
+        } message: {
+            if let conflict = noteStore.pendingNoteMoveConflict,
+               let note = noteStore.notes.first(where: { $0.id == conflict.noteID })
+            {
+                let dest = conflict.targetFolder.isEmpty ? "/" : "/\(conflict.targetFolder)/"
+                Text("A note named \"\(note.title)\" already exists in \"\(dest)\".")
+            }
+        }
+        .alert(
+            "Name Conflict",
+            isPresented: Binding(
+                get: { noteStore.pendingFolderMoveConflict != nil },
+                set: { if !$0 { noteStore.pendingFolderMoveConflict = nil } },
+            ),
+        ) {
+            Button("Keep Both") { noteStore.resolveFolderMoveConflict(keepBoth: true) }
+            Button("Replace", role: .destructive) { noteStore.resolveFolderMoveConflict(keepBoth: false) }
+            Button("Cancel", role: .cancel) { noteStore.pendingFolderMoveConflict = nil }
+        } message: {
+            if let conflict = noteStore.pendingFolderMoveConflict {
+                let displayName = (conflict.folderName as NSString).lastPathComponent
+                let dest = conflict.targetParent.isEmpty ? "/" : "/\(conflict.targetParent)/"
+                Text("A folder named \"\(displayName)\" already exists in \"\(dest)\".")
+            }
+        }
     }
 
     // MARK: - Header
@@ -229,6 +264,13 @@ struct HomeFolderView: View {
         return noteStore.folders.contains {
             $0.isTopLevel && $0.displayName.caseInsensitiveCompare(trimmed) == .orderedSame
         }
+    }
+
+    private var noteRenameConflicts: Bool {
+        let trimmed = renamingNoteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let noteID = renamingNoteID else { return false }
+        let folder = noteStore.notes.first(where: { $0.id == noteID })?.folder ?? ""
+        return noteStore.noteTitleExists(trimmed, in: folder, excluding: noteID)
     }
 
     private var folderRenameConflicts: Bool {
@@ -430,6 +472,15 @@ struct HomeFolderView: View {
                 .font(.body)
                 .focused($isNoteRenameFocused)
                 .onSubmit { commitNoteRename(note) }
+                .overlay(alignment: .trailing) {
+                    Text("Name taken")
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.background.opacity(0.9), in: RoundedRectangle(cornerRadius: 4))
+                        .opacity(noteRenameConflicts ? 1 : 0)
+                }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 10)
@@ -701,6 +752,7 @@ struct HomeFolderView: View {
     }
 
     private func commitNoteRename(_ note: Note) {
+        guard !noteRenameConflicts else { return }
         let trimmed = renamingNoteText.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty, trimmed != note.title {
             noteStore.renameNote(note, to: trimmed)
@@ -716,7 +768,7 @@ struct HomeFolderView: View {
 
     private func commitOrCancelNoteRename(_ note: Note) {
         let trimmed = renamingNoteText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
+        if trimmed.isEmpty || noteRenameConflicts {
             cancelNoteRename()
         } else {
             commitNoteRename(note)

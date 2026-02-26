@@ -78,8 +78,8 @@ enum FileStorage {
         let collapsed = hyphenated.replacingOccurrences(of: "-{2,}", with: "-", options: .regularExpression)
         var result = collapsed.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
 
-        // Truncate to stay within APFS 255-byte filename limit (UUID=36 + _=1 + .md=3 = 40 overhead)
-        let maxBytes = 200
+        // Truncate to stay within APFS 255-byte filename limit (.md = 3 bytes + margin)
+        let maxBytes = 248
         while result.utf8.count > maxBytes {
             result = String(result.dropLast())
         }
@@ -97,7 +97,7 @@ enum FileStorage {
             let folderURL = rootURL.appendingPathComponent(folderName, isDirectory: true)
             notes += try loadNotes(in: folderURL, folder: folderName)
         }
-        return notes
+        return try resolveDuplicateFilenames(notes)
     }
 
     /// Writes the note to disk. If the title changed since last save, removes the old file.
@@ -111,6 +111,20 @@ enum FileStorage {
 
         let newFilename = note.filename
         let fileURL = rootURL.appendingPathComponent(note.relativePath)
+
+        // Safety: if target file exists and isn't our own file, skip to avoid overwriting
+        if let savedFilename = note.savedFilename,
+           savedFilename != newFilename,
+           FileManager.default.fileExists(atPath: fileURL.path)
+        {
+            print("EdgeMark: filename conflict for \(newFilename), keeping \(savedFilename)")
+            let currentRelative = note.folder.isEmpty ? savedFilename : "\(note.folder)/\(savedFilename)"
+            let currentURL = rootURL.appendingPathComponent(currentRelative)
+            let text = serializeFrontMatter(note: note) + note.content
+            try text.data(using: .utf8)?.write(to: currentURL, options: .atomic)
+            return savedFilename
+        }
+
         let text = serializeFrontMatter(note: note) + note.content
         try text.data(using: .utf8)?.write(to: fileURL, options: .atomic)
 
@@ -191,6 +205,27 @@ enum FileStorage {
 
         let (metadata, body) = parseFrontMatter(text)
 
+        if metadata.isEmpty {
+            // External file — no YAML front matter. Inject it using file system dates.
+            let resourceValues = try? url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
+            let created = resourceValues?.creationDate ?? Date()
+            let modified = resourceValues?.contentModificationDate ?? Date()
+            let title = url.deletingPathExtension().lastPathComponent
+
+            let note = Note(
+                id: UUID(),
+                title: title,
+                content: body,
+                createdAt: created,
+                modifiedAt: modified,
+                folder: folder,
+                savedFilename: url.lastPathComponent,
+            )
+            let newText = serializeFrontMatter(note: note) + body
+            try? newText.data(using: .utf8)?.write(to: url, options: .atomic)
+            return note
+        }
+
         let id = metadata["id"].flatMap { UUID(uuidString: $0) } ?? UUID()
         let title = metadata["title"] ?? extractTitle(from: body)
         let created = metadata["created"].flatMap { dateFormatter.date(from: $0) } ?? Date()
@@ -258,6 +293,53 @@ enum FileStorage {
         lines.append("---")
         lines.append("")
         return lines.joined(separator: "\n")
+    }
+
+    /// Resolve duplicate filenames after loading. Oldest note (by createdAt) keeps its name;
+    /// newer duplicates get a number suffix ("Title 2", "Title 3", etc.).
+    private static func resolveDuplicateFilenames(_ notes: [Note]) throws -> [Note] {
+        var groups: [String: [Int]] = [:]
+        for (i, note) in notes.enumerated() {
+            let key = "\(note.folder)/\(note.filename.lowercased())"
+            groups[key, default: []].append(i)
+        }
+
+        var result = notes
+        for (_, indices) in groups where indices.count > 1 {
+            let sorted = indices.sorted { result[$0].createdAt < result[$1].createdAt }
+            for duplicateIndex in sorted.dropFirst() {
+                var note = result[duplicateIndex]
+                let baseTitle = note.title
+                var counter = 2
+                var newTitle = "\(baseTitle) \(counter)"
+                while result.contains(where: {
+                    $0.folder == note.folder
+                        && sanitizeForFilename($0.title).caseInsensitiveCompare(sanitizeForFilename(newTitle)) == .orderedSame
+                }) {
+                    counter += 1
+                    newTitle = "\(baseTitle) \(counter)"
+                }
+
+                let oldURL = rootURL.appendingPathComponent(note.relativePath)
+                note.title = newTitle
+                // Update # heading in content
+                var lines = note.content.components(separatedBy: "\n")
+                if let headingIdx = lines.firstIndex(where: { $0.hasPrefix("#") }) {
+                    let prefix = String(lines[headingIdx].prefix(while: { $0 == "#" }))
+                    lines[headingIdx] = "\(prefix) \(newTitle)"
+                    note.content = lines.joined(separator: "\n")
+                }
+                let newURL = rootURL.appendingPathComponent(note.relativePath)
+                let text = serializeFrontMatter(note: note) + note.content
+                try text.data(using: .utf8)?.write(to: newURL, options: .atomic)
+                if oldURL != newURL {
+                    try? FileManager.default.removeItem(at: oldURL)
+                }
+                note.savedFilename = note.filename
+                result[duplicateIndex] = note
+            }
+        }
+        return result
     }
 
     private static func extractTitle(from content: String) -> String {

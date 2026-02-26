@@ -15,20 +15,19 @@ struct Note: Identifiable {
     /// Used to detect renames when the title changes.
     var savedFilename: String?
 
-    /// Filename derived from id + sanitized title: "UUID_Title.md"
+    /// Filename derived from sanitized title: "Title.md"
     var filename: String {
-        "\(id.uuidString)_\(FileStorage.sanitizeForFilename(title)).md"
+        "\(FileStorage.sanitizeForFilename(title)).md"
     }
 
-    /// Relative path from storage root: "folder/uuid_title.md" or just "uuid_title.md".
+    /// Relative path from storage root: "folder/Title.md" or just "Title.md".
     var relativePath: String {
         folder.isEmpty ? filename : "\(folder)/\(filename)"
     }
 
-    /// User-facing display path without the UUID prefix: "folder/title.md" or "title.md".
+    /// User-facing display path: "folder/title.md" or "title.md".
     var displayPath: String {
-        let displayName = "\(FileStorage.sanitizeForFilename(title)).md"
-        return folder.isEmpty ? displayName : "\(folder)/\(displayName)"
+        relativePath
     }
 
     /// Directory portion only: "/FolderName/" or "/" for root notes.
