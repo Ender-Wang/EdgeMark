@@ -354,7 +354,7 @@ struct NoteListView: View {
         HStack(spacing: 10) {
             Image(systemName: "folder.fill")
                 .font(.title3)
-                .foregroundStyle(.green)
+                .foregroundStyle(Color.accentColor)
                 .frame(width: iconWidth)
 
             TextField("Folder name", text: $newFolderName)
@@ -389,7 +389,7 @@ struct NoteListView: View {
         HStack(spacing: 10) {
             Image(systemName: "folder.fill")
                 .font(.title3)
-                .foregroundStyle(.green)
+                .foregroundStyle(Color.accentColor)
                 .frame(width: iconWidth)
 
             TextField("Folder name", text: $renamingFolderText)

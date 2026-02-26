@@ -244,7 +244,7 @@ struct HomeFolderView: View {
         HStack(spacing: 10) {
             Image(systemName: "folder.fill")
                 .font(.title3)
-                .foregroundStyle(.green)
+                .foregroundStyle(Color.accentColor)
                 .frame(width: iconWidth)
 
             TextField("Folder name", text: $newFolderName)
@@ -446,7 +446,7 @@ struct HomeFolderView: View {
         HStack(spacing: 10) {
             Image(systemName: "folder.fill")
                 .font(.title3)
-                .foregroundStyle(.green)
+                .foregroundStyle(Color.accentColor)
                 .frame(width: iconWidth)
 
             TextField("Folder name", text: $renamingFolderText)
@@ -773,10 +773,22 @@ struct FolderRowView: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 10) {
-                Image(systemName: "folder.fill")
-                    .font(.title3)
-                    .foregroundStyle(.green)
-                    .frame(width: iconWidth)
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: "folder.fill")
+                        .font(.title3)
+                        .foregroundStyle(Color.accentColor)
+
+                    if count > 0 {
+                        Text("\(count)")
+                            .font(.system(size: 9, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.background)
+                            .padding(.horizontal, 3)
+                            .padding(.vertical, 0.5)
+                            .background(.primary.opacity(0.8), in: Capsule())
+                            .offset(x: 4, y: -3)
+                    }
+                }
+                .frame(width: iconWidth)
 
                 Text(name)
                     .font(.body)
@@ -791,12 +803,6 @@ struct FolderRowView: View {
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
-
-                Text("\(count)")
-                    .font(.body)
-                    .monospacedDigit()
-                    .foregroundStyle(.tertiary)
-                    .frame(minWidth: 20, alignment: .trailing)
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 10)
