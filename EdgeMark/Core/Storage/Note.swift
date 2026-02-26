@@ -72,3 +72,18 @@ extension Note: Hashable {
         hasher.combine(id)
     }
 }
+
+extension Note {
+    /// Plain-text preview from the note body, stripping the title heading and markdown syntax.
+    var previewText: String {
+        let lines = content.split(separator: "\n", omittingEmptySubsequences: true)
+        let bodyLines = lines.dropFirst()
+        let raw = bodyLines.prefix(3).joined(separator: " ")
+        return raw
+            .replacingOccurrences(of: "#{1,6}\\s", with: "", options: .regularExpression)
+            .replacingOccurrences(of: "\\*{1,2}([^*]+)\\*{1,2}", with: "$1", options: .regularExpression)
+            .replacingOccurrences(of: "`([^`]+)`", with: "$1", options: .regularExpression)
+            .prefix(120)
+            .description
+    }
+}

@@ -104,41 +104,7 @@ struct HomeFolderView: View {
                 ContentFooterBar()
             }
         }
-        .alert(
-            "Name Conflict",
-            isPresented: Binding(
-                get: { noteStore.pendingNoteMoveConflict != nil },
-                set: { if !$0 { noteStore.pendingNoteMoveConflict = nil } },
-            ),
-        ) {
-            Button("Keep Both") { noteStore.resolveNoteMoveConflict(keepBoth: true) }
-            Button("Replace") { noteStore.resolveNoteMoveConflict(keepBoth: false) }
-            Button("Cancel", role: .cancel) { noteStore.pendingNoteMoveConflict = nil }
-        } message: {
-            if let conflict = noteStore.pendingNoteMoveConflict,
-               let note = noteStore.notes.first(where: { $0.id == conflict.noteID })
-            {
-                let dest = conflict.targetFolder.isEmpty ? "/" : "/\(conflict.targetFolder)/"
-                Text("A note named \"\(note.title)\" already exists in \"\(dest)\".")
-            }
-        }
-        .alert(
-            "Name Conflict",
-            isPresented: Binding(
-                get: { noteStore.pendingFolderMoveConflict != nil },
-                set: { if !$0 { noteStore.pendingFolderMoveConflict = nil } },
-            ),
-        ) {
-            Button("Keep Both") { noteStore.resolveFolderMoveConflict(keepBoth: true) }
-            Button("Replace", role: .destructive) { noteStore.resolveFolderMoveConflict(keepBoth: false) }
-            Button("Cancel", role: .cancel) { noteStore.pendingFolderMoveConflict = nil }
-        } message: {
-            if let conflict = noteStore.pendingFolderMoveConflict {
-                let displayName = (conflict.folderName as NSString).lastPathComponent
-                let dest = conflict.targetParent.isEmpty ? "/" : "/\(conflict.targetParent)/"
-                Text("A folder named \"\(displayName)\" already exists in \"\(dest)\".")
-            }
-        }
+        .moveConflictAlerts(noteStore: noteStore)
     }
 
     // MARK: - Header
@@ -200,16 +166,6 @@ struct HomeFolderView: View {
     }
 
     // MARK: - Folder List
-
-    private var folderDate: (Folder) -> Date? {
-        { folder in
-            switch appSettings.sortBy {
-            case .name: nil
-            case .dateModified: folder.latestModifiedAt
-            case .dateCreated: folder.earliestCreatedAt
-            }
-        }
-    }
 
     private var folderList: some View {
         ScrollView {
@@ -283,36 +239,18 @@ struct HomeFolderView: View {
     }
 
     private var inlineFolderEditor: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "folder.fill")
-                .font(.title3)
-                .foregroundStyle(Color.accentColor)
-                .frame(width: iconWidth)
-
-            TextField("Folder name", text: $newFolderName)
-                .textFieldStyle(.plain)
-                .font(.body)
-                .focused($isFolderFieldFocused)
-                .onSubmit { commitNewFolder() }
-                .overlay(alignment: .trailing) {
-                    Text("Name taken")
-                        .font(.caption2)
-                        .foregroundStyle(.red)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.background.opacity(0.9), in: RoundedRectangle(cornerRadius: 4))
-                        .opacity(newFolderNameConflicts ? 1 : 0)
-                }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 10)
-        .padding(.horizontal, 8)
-        .onExitCommand { cancelNewFolder() }
-        .onChange(of: isFolderFieldFocused) { _, focused in
-            if !focused {
-                commitOrCancelFolder()
-            }
-        }
+        InlineRenameEditor(
+            icon: "folder.fill",
+            iconColor: .accentColor,
+            placeholder: "Folder name",
+            text: $newFolderName,
+            isFocused: $isFolderFieldFocused,
+            isConflicting: newFolderNameConflicts,
+            iconWidth: iconWidth,
+            onCommit: { commitNewFolder() },
+            onCancel: { cancelNewFolder() },
+            onFocusLost: { commitOrCancelFolder() },
+        )
     }
 
     // MARK: - Folder Row with Context Menu
@@ -325,30 +263,21 @@ struct HomeFolderView: View {
             FolderRowView(
                 name: folder.name,
                 count: folder.noteCount,
-                date: folderDate(folder),
+                date: appSettings.folderDate(for: folder),
                 iconWidth: iconWidth,
             ) {
                 noteStore.selectedFolder = folder
             }
             .contextMenu {
-                Button("Rename") {
-                    startRenamingFolder(folder.name)
-                }
-
-                folderMoveToMenu(for: folder)
-
-                Button("Show in Finder") {
-                    NSWorkspace.shared.activateFileViewerSelecting([
-                        FileStorage.urlForFolder(folder.name),
-                    ])
-                }
-
-                Divider()
-
-                Button("Delete", role: .destructive) {
-                    deletingFolderName = folder.name
-                    showDeleteFolderConfirm = true
-                }
+                NoteListMenus.folderContextMenuItems(
+                    folder: folder,
+                    noteStore: noteStore,
+                    onRename: { startRenamingFolder(folder.name) },
+                    onDelete: {
+                        deletingFolderName = folder.name
+                        showDeleteFolderConfirm = true
+                    },
+                )
             }
         }
     }
@@ -367,195 +296,46 @@ struct HomeFolderView: View {
                 noteStore.selectedNote = note
             }
             .contextMenu {
-                Button("Rename") {
-                    startRenamingNote(note)
-                }
-
-                moveToMenu(for: note)
-
-                Divider()
-
-                Button("Show in Finder") {
-                    NSWorkspace.shared.activateFileViewerSelecting([
-                        FileStorage.urlForNote(note),
-                    ])
-                }
-
-                Divider()
-
-                Button("Delete", role: .destructive) {
-                    noteStore.trashNote(note)
-                }
+                NoteListMenus.noteContextMenuItems(
+                    note: note,
+                    noteStore: noteStore,
+                    onRename: { startRenamingNote(note) },
+                )
             }
         }
-    }
-
-    @ViewBuilder
-    private func moveToMenu(for note: Note) -> some View {
-        let topLevel = noteStore.folders.filter(\.isTopLevel)
-        let canMoveToRoot = !note.folder.isEmpty
-        if canMoveToRoot || !topLevel.isEmpty {
-            Menu("Move to") {
-                if canMoveToRoot {
-                    Button("Root") {
-                        noteStore.moveNote(note, to: "")
-                    }
-                }
-                ForEach(topLevel) { folder in
-                    if folder.name != note.folder {
-                        folderTreeMenuItem(folder: folder, note: note)
-                    }
-                }
-            }
-        }
-    }
-
-    private func folderTreeMenuItem(folder: Folder, note: Note) -> AnyView {
-        let children = noteStore.childFolders(of: folder.name)
-            .filter { $0.name != note.folder }
-        if children.isEmpty {
-            return AnyView(
-                Button(folder.displayName) {
-                    noteStore.moveNote(note, to: folder.name)
-                },
-            )
-        } else {
-            return AnyView(
-                Menu(folder.displayName) {
-                    Button("Move here") {
-                        noteStore.moveNote(note, to: folder.name)
-                    }
-                    Divider()
-                    ForEach(children) { child in
-                        folderTreeMenuItem(folder: child, note: note)
-                    }
-                },
-            )
-        }
-    }
-
-    @ViewBuilder
-    private func folderMoveToMenu(for folder: Folder) -> some View {
-        let topLevel = noteStore.folders.filter(\.isTopLevel)
-            .filter { $0.name != folder.name && !$0.name.hasPrefix(folder.name + "/") }
-        let canMoveToRoot = !folder.isTopLevel
-        if canMoveToRoot || !topLevel.isEmpty {
-            Menu("Move to") {
-                if canMoveToRoot {
-                    Button("Root") {
-                        noteStore.moveFolder(folder.name, toParent: "")
-                    }
-                }
-                ForEach(topLevel) { target in
-                    folderMoveTreeItem(target: target, movingFolder: folder)
-                }
-            }
-        }
-    }
-
-    private func folderMoveTreeItem(target: Folder, movingFolder: Folder) -> AnyView {
-        let isCurrentParent = target.name == movingFolder.parentPath
-        let children = noteStore.childFolders(of: target.name)
-            .filter { $0.name != movingFolder.name && !$0.name.hasPrefix(movingFolder.name + "/") }
-
-        if isCurrentParent {
-            if children.isEmpty {
-                return AnyView(EmptyView())
-            }
-            return AnyView(
-                Menu(target.displayName) {
-                    ForEach(children) { child in
-                        folderMoveTreeItem(target: child, movingFolder: movingFolder)
-                    }
-                },
-            )
-        }
-
-        if children.isEmpty {
-            return AnyView(
-                Button(target.displayName) {
-                    noteStore.moveFolder(movingFolder.name, toParent: target.name)
-                },
-            )
-        }
-
-        return AnyView(
-            Menu(target.displayName) {
-                Button("Move here") {
-                    noteStore.moveFolder(movingFolder.name, toParent: target.name)
-                }
-                Divider()
-                ForEach(children) { child in
-                    folderMoveTreeItem(target: child, movingFolder: movingFolder)
-                }
-            },
-        )
     }
 
     // MARK: - Inline Note Rename Editor
 
     private func inlineNoteRenameEditor(note: Note) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "doc.text")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-                .frame(width: iconWidth)
-
-            TextField("Note title", text: $renamingNoteText)
-                .textFieldStyle(.plain)
-                .font(.body)
-                .focused($isNoteRenameFocused)
-                .onSubmit { commitNoteRename(note) }
-                .overlay(alignment: .trailing) {
-                    Text("Name taken")
-                        .font(.caption2)
-                        .foregroundStyle(.red)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.background.opacity(0.9), in: RoundedRectangle(cornerRadius: 4))
-                        .opacity(noteRenameConflicts ? 1 : 0)
-                }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 10)
-        .padding(.horizontal, 8)
-        .onExitCommand { cancelNoteRename() }
-        .onChange(of: isNoteRenameFocused) { _, focused in
-            if !focused { commitOrCancelNoteRename(note) }
-        }
+        InlineRenameEditor(
+            icon: "doc.text",
+            placeholder: "Note title",
+            text: $renamingNoteText,
+            isFocused: $isNoteRenameFocused,
+            isConflicting: noteRenameConflicts,
+            iconWidth: iconWidth,
+            onCommit: { commitNoteRename(note) },
+            onCancel: { cancelNoteRename() },
+            onFocusLost: { commitOrCancelNoteRename(note) },
+        )
     }
 
     // MARK: - Inline Folder Rename Editor
 
     private func inlineFolderRenameEditor(folderName: String) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "folder.fill")
-                .font(.title3)
-                .foregroundStyle(Color.accentColor)
-                .frame(width: iconWidth)
-
-            TextField("Folder name", text: $renamingFolderText)
-                .textFieldStyle(.plain)
-                .font(.body)
-                .focused($isFolderRenameFocused)
-                .onSubmit { commitFolderRename(folderName) }
-                .overlay(alignment: .trailing) {
-                    Text("Name taken")
-                        .font(.caption2)
-                        .foregroundStyle(.red)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.background.opacity(0.9), in: RoundedRectangle(cornerRadius: 4))
-                        .opacity(folderRenameConflicts ? 1 : 0)
-                }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 10)
-        .padding(.horizontal, 8)
-        .onExitCommand { cancelFolderRename() }
-        .onChange(of: isFolderRenameFocused) { _, focused in
-            if !focused { commitOrCancelFolderRename(folderName) }
-        }
+        InlineRenameEditor(
+            icon: "folder.fill",
+            iconColor: .accentColor,
+            placeholder: "Folder name",
+            text: $renamingFolderText,
+            isFocused: $isFolderRenameFocused,
+            isConflicting: folderRenameConflicts,
+            iconWidth: iconWidth,
+            onCommit: { commitFolderRename(folderName) },
+            onCancel: { cancelFolderRename() },
+            onFocusLost: { commitOrCancelFolderRename(folderName) },
+        )
     }
 
     // MARK: - Search Results
@@ -918,18 +698,6 @@ struct NoteRowView: View {
 
     @State private var isHovered = false
 
-    private var previewText: String {
-        let lines = note.content.split(separator: "\n", omittingEmptySubsequences: true)
-        let bodyLines = lines.dropFirst()
-        let raw = bodyLines.prefix(3).joined(separator: " ")
-        return raw
-            .replacingOccurrences(of: "#{1,6}\\s", with: "", options: .regularExpression)
-            .replacingOccurrences(of: "\\*{1,2}([^*]+)\\*{1,2}", with: "$1", options: .regularExpression)
-            .replacingOccurrences(of: "`([^`]+)`", with: "$1", options: .regularExpression)
-            .prefix(120)
-            .description
-    }
-
     var body: some View {
         Button(action: action) {
             HStack(spacing: 10) {
@@ -952,8 +720,8 @@ struct NoteRowView: View {
                             .foregroundStyle(.tertiary)
                     }
 
-                    if !previewText.isEmpty {
-                        Text(previewText)
+                    if !note.previewText.isEmpty {
+                        Text(note.previewText)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)

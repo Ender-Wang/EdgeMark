@@ -109,20 +109,11 @@ struct TrashView: View {
     // MARK: - Empty State
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
-            Spacer()
-            Image(systemName: "trash")
-                .font(.system(size: 36))
-                .foregroundStyle(.tertiary)
-            Text("Trash is Empty")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-            Text("Deleted notes appear here for 60 days")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
+        EmptyStateView(
+            icon: "trash",
+            title: "Trash is Empty",
+            subtitle: "Deleted notes appear here for 60 days",
+        )
     }
 }
 

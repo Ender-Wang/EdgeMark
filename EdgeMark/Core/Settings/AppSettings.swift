@@ -26,4 +26,13 @@ final class AppSettings {
         }
         sortAscending = UserDefaults.standard.bool(forKey: "sortAscending")
     }
+
+    /// Folder date to display based on the current sort setting.
+    func folderDate(for folder: Folder) -> Date? {
+        switch sortBy {
+        case .name: nil
+        case .dateModified: folder.latestModifiedAt
+        case .dateCreated: folder.earliestCreatedAt
+        }
+    }
 }
