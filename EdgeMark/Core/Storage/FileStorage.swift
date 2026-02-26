@@ -38,15 +38,29 @@ enum FileStorage {
     }
 
     static func discoverFolders() throws -> [String] {
-        let contents = try FileManager.default.contentsOfDirectory(
+        let fm = FileManager.default
+        try ensureRootExists()
+        guard let enumerator = fm.enumerator(
             at: rootURL,
             includingPropertiesForKeys: [.isDirectoryKey],
             options: [.skipsHiddenFiles],
-        )
-        return contents.compactMap { url in
+        ) else { return [] }
+
+        var folders: [String] = []
+        let rootPath = rootURL.path
+        for case let url as URL in enumerator {
             let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
-            return isDir ? url.lastPathComponent : nil
-        }.sorted()
+            if isDir {
+                let fullPath = url.path
+                if fullPath.count > rootPath.count, fullPath.hasPrefix(rootPath) {
+                    let relative = String(fullPath.dropFirst(rootPath.count + 1))
+                    if !relative.isEmpty {
+                        folders.append(relative)
+                    }
+                }
+            }
+        }
+        return folders.sorted()
     }
 
     // MARK: - Filename Helpers
@@ -128,6 +142,18 @@ enum FileStorage {
             return rootURL
         }
         return rootURL.appendingPathComponent(name, isDirectory: true)
+    }
+
+    static func moveFolder(_ name: String, toParent newParent: String) throws {
+        guard !name.isEmpty else { return }
+        let displayName = (name as NSString).lastPathComponent
+        let oldURL = rootURL.appendingPathComponent(name, isDirectory: true)
+        let newFolderPath = newParent.isEmpty ? displayName : "\(newParent)/\(displayName)"
+        let newURL = rootURL.appendingPathComponent(newFolderPath, isDirectory: true)
+        if !newParent.isEmpty {
+            try ensureFolderExists(newParent)
+        }
+        try FileManager.default.moveItem(at: oldURL, to: newURL)
     }
 
     static func moveNote(_ note: Note, toFolder: String) throws {

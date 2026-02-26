@@ -185,15 +185,16 @@ final class NoteStore {
 
     func trashFolder(_ name: String) {
         guard !name.isEmpty else { return }
+        let prefix = name + "/"
 
-        // Trash all active notes in this folder
-        let folderNotes = notes.filter { $0.folder == name }
+        // Trash all notes in this folder AND descendant folders
+        let folderNotes = notes.filter { $0.folder == name || $0.folder.hasPrefix(prefix) }
         for note in folderNotes {
             trashNote(note)
         }
 
-        // Navigate away if this folder was selected
-        if selectedFolder?.name == name {
+        // Navigate away if inside this folder or any descendant
+        if selectedFolder?.name == name || (selectedFolder?.name.hasPrefix(prefix) ?? false) {
             selectedFolder = nil
         }
         refreshFolders()
@@ -256,11 +257,12 @@ final class NoteStore {
 
     // MARK: - Folder CRUD
 
-    func createFolder(named name: String) {
+    func createFolder(named name: String, in parent: String = "") {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        let fullPath = parent.isEmpty ? trimmed : "\(parent)/\(trimmed)"
         do {
-            try FileStorage.ensureFolderExists(trimmed)
+            try FileStorage.ensureFolderExists(fullPath)
             refreshFolders()
         } catch {
             print("EdgeMark: failed to create folder — \(error)")
@@ -270,24 +272,77 @@ final class NoteStore {
     func renameFolder(_ oldName: String, to newName: String) {
         let trimmedNew = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !oldName.isEmpty, !trimmedNew.isEmpty, oldName != trimmedNew else { return }
-        guard !folders.contains(where: { $0.name == trimmedNew }) else { return }
+        // Build new full path: replace last component only
+        let parent = (oldName as NSString).deletingLastPathComponent
+        let parentPath = parent == "." ? "" : parent
+        let newFullPath = parentPath.isEmpty ? trimmedNew : "\(parentPath)/\(trimmedNew)"
+        guard !folders.contains(where: { $0.name == newFullPath }) else { return }
 
         do {
-            try FileStorage.renameFolder(oldName, to: trimmedNew)
-            // Update all notes (active and trashed) that were in the old folder
-            for i in notes.indices where notes[i].folder == oldName {
-                notes[i].folder = trimmedNew
+            try FileStorage.renameFolder(oldName, to: newFullPath)
+            // Update notes in this folder AND all subfolders
+            let oldPrefix = oldName + "/"
+            for i in notes.indices {
+                if notes[i].folder == oldName {
+                    notes[i].folder = newFullPath
+                } else if notes[i].folder.hasPrefix(oldPrefix) {
+                    notes[i].folder = newFullPath + String(notes[i].folder.dropFirst(oldName.count))
+                }
             }
-            for i in trashedNotes.indices where trashedNotes[i].folder == oldName {
-                trashedNotes[i].folder = trimmedNew
+            for i in trashedNotes.indices {
+                if trashedNotes[i].folder == oldName {
+                    trashedNotes[i].folder = newFullPath
+                } else if trashedNotes[i].folder.hasPrefix(oldPrefix) {
+                    trashedNotes[i].folder = newFullPath + String(trashedNotes[i].folder.dropFirst(oldName.count))
+                }
             }
             if selectedFolder?.name == oldName {
-                selectedFolder = Folder(name: trimmedNew, noteCount: selectedFolder?.noteCount ?? 0)
+                selectedFolder = Folder(name: newFullPath, noteCount: selectedFolder?.noteCount ?? 0)
             }
             refreshFolders()
         } catch {
             print("EdgeMark: failed to rename folder — \(error)")
         }
+    }
+
+    func moveFolder(_ name: String, toParent newParent: String) {
+        guard !name.isEmpty else { return }
+        let displayName = (name as NSString).lastPathComponent
+        let newFullPath = newParent.isEmpty ? displayName : "\(newParent)/\(displayName)"
+        guard newFullPath != name else { return }
+        // Prevent moving into own descendant
+        guard !newParent.hasPrefix(name + "/"), newParent != name else { return }
+
+        do {
+            try FileStorage.moveFolder(name, toParent: newParent)
+            // Update all notes in this folder and subfolders
+            let oldPrefix = name + "/"
+            for i in notes.indices {
+                if notes[i].folder == name {
+                    notes[i].folder = newFullPath
+                } else if notes[i].folder.hasPrefix(oldPrefix) {
+                    notes[i].folder = newFullPath + "/" + String(notes[i].folder.dropFirst(oldPrefix.count))
+                }
+            }
+            for i in trashedNotes.indices {
+                if trashedNotes[i].folder == name {
+                    trashedNotes[i].folder = newFullPath
+                } else if trashedNotes[i].folder.hasPrefix(oldPrefix) {
+                    trashedNotes[i].folder = newFullPath + "/" + String(trashedNotes[i].folder.dropFirst(oldPrefix.count))
+                }
+            }
+            if selectedFolder?.name == name {
+                selectedFolder = Folder(name: newFullPath, noteCount: selectedFolder?.noteCount ?? 0)
+            }
+            refreshFolders()
+        } catch {
+            print("EdgeMark: failed to move folder — \(error)")
+        }
+    }
+
+    /// Folders that are direct children of the given parent path.
+    func childFolders(of parent: String) -> [Folder] {
+        folders.filter { $0.parentPath == parent }
     }
 
     // MARK: - Save
@@ -321,12 +376,14 @@ final class NoteStore {
         let allNames = folderNames.union(Set(visibleDiskFolders)).sorted()
 
         folders = allNames.map { name in
-            let folderNotes = notes.filter { $0.folder == name }
+            let prefix = name + "/"
+            // Count notes in this folder AND all subfolders (recursive)
+            let descendantNotes = notes.filter { $0.folder == name || $0.folder.hasPrefix(prefix) }
             return Folder(
                 name: name,
-                noteCount: folderNotes.count,
-                latestModifiedAt: folderNotes.map(\.modifiedAt).max(),
-                earliestCreatedAt: folderNotes.map(\.createdAt).min(),
+                noteCount: descendantNotes.count,
+                latestModifiedAt: descendantNotes.map(\.modifiedAt).max(),
+                earliestCreatedAt: descendantNotes.map(\.createdAt).min(),
             )
         }
     }

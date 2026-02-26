@@ -15,14 +15,46 @@ struct NoteListView: View {
     @State private var renamingNoteText = ""
     @FocusState private var isNoteRenameFocused: Bool
 
+    // Folder rename
+    @State private var renamingFolderName: String?
+    @State private var renamingFolderText = ""
+    @FocusState private var isFolderRenameFocused: Bool
+
+    // Folder delete confirmation
+    @State private var deletingFolderName: String?
+    @State private var showDeleteFolderConfirm = false
+
     private let iconWidth: CGFloat = 22
 
     private var folderLabel: String {
-        noteStore.selectedFolder?.name ?? ""
+        noteStore.selectedFolder?.displayName ?? ""
     }
 
     private var sortedNotes: [Note] {
         noteStore.sortedNotes(noteStore.filteredNotes, by: appSettings.sortBy, ascending: appSettings.sortAscending)
+    }
+
+    private var childFolders: [Folder] {
+        guard let parent = noteStore.selectedFolder?.name else { return [] }
+        return noteStore.sortedFolders(
+            noteStore.childFolders(of: parent),
+            by: appSettings.sortBy,
+            ascending: appSettings.sortAscending,
+        )
+    }
+
+    private var folderDate: (Folder) -> Date? {
+        { folder in
+            switch appSettings.sortBy {
+            case .name: nil
+            case .dateModified: folder.latestModifiedAt
+            case .dateCreated: folder.earliestCreatedAt
+            }
+        }
+    }
+
+    private var isEmpty: Bool {
+        noteStore.filteredNotes.isEmpty && childFolders.isEmpty && !isCreatingFolder
     }
 
     var body: some View {
@@ -30,9 +62,9 @@ struct NoteListView: View {
             HStack {
                 HeaderIconButton(
                     systemName: "chevron.left",
-                    help: "Home",
+                    help: "Back",
                 ) {
-                    noteStore.selectedFolder = nil
+                    navigateBack()
                 }
 
                 Spacer()
@@ -59,12 +91,22 @@ struct NoteListView: View {
             VStack(spacing: 0) {
                 ZStack {
                     emptyState
-                        .opacity(noteStore.filteredNotes.isEmpty && !isCreatingFolder ? 1 : 0)
+                        .opacity(isEmpty ? 1 : 0)
 
                     ScrollView {
                         VStack(spacing: 0) {
+                            ForEach(childFolders) { folder in
+                                folderRowWithContextMenu(folder: folder)
+                            }
+
                             if isCreatingFolder {
                                 inlineFolderEditor
+                            }
+
+                            if !childFolders.isEmpty, !sortedNotes.isEmpty {
+                                Divider()
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 4)
                             }
 
                             ForEach(sortedNotes) { note in
@@ -73,13 +115,69 @@ struct NoteListView: View {
                         }
                         .padding(.vertical, 10)
                     }
-                    .opacity(noteStore.filteredNotes.isEmpty && !isCreatingFolder ? 0 : 1)
+                    .opacity(isEmpty ? 0 : 1)
                 }
 
                 Divider()
                     .padding(.horizontal, 12)
 
                 ContentFooterBar()
+            }
+        }
+        .alert(
+            "Delete Folder?",
+            isPresented: $showDeleteFolderConfirm,
+            presenting: deletingFolderName,
+        ) { folderName in
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                noteStore.trashFolder(folderName)
+            }
+        } message: { folderName in
+            let prefix = folderName + "/"
+            let count = noteStore.notes.count(where: { $0.folder == folderName || $0.folder.hasPrefix(prefix) })
+            if count > 0 {
+                Text("\"\((folderName as NSString).lastPathComponent)\" and its \(count) note\(count == 1 ? "" : "s") will be moved to Trash.")
+            } else {
+                Text("\"\((folderName as NSString).lastPathComponent)\" will be deleted.")
+            }
+        }
+    }
+
+    // MARK: - Folder Row with Context Menu
+
+    @ViewBuilder
+    private func folderRowWithContextMenu(folder: Folder) -> some View {
+        if renamingFolderName == folder.name {
+            inlineFolderRenameEditor(folderName: folder.name)
+        } else {
+            FolderRowView(
+                name: folder.displayName,
+                count: folder.noteCount,
+                date: folderDate(folder),
+                iconWidth: iconWidth,
+            ) {
+                noteStore.selectedFolder = folder
+            }
+            .contextMenu {
+                Button("Rename") {
+                    startRenamingFolder(folder.name)
+                }
+
+                folderMoveToMenu(for: folder)
+
+                Button("Show in Finder") {
+                    NSWorkspace.shared.activateFileViewerSelecting([
+                        FileStorage.urlForFolder(folder.name),
+                    ])
+                }
+
+                Divider()
+
+                Button("Delete", role: .destructive) {
+                    deletingFolderName = folder.name
+                    showDeleteFolderConfirm = true
+                }
             }
         }
     }
@@ -121,20 +219,70 @@ struct NoteListView: View {
         }
     }
 
+    // MARK: - Move to Menus
+
     @ViewBuilder
     private func moveToMenu(for note: Note) -> some View {
-        let otherFolders = noteStore.folders.filter { $0.name != note.folder }
+        let topLevel = noteStore.folders.filter(\.isTopLevel)
         let canMoveToRoot = !note.folder.isEmpty
-        if canMoveToRoot || !otherFolders.isEmpty {
+        if canMoveToRoot || !topLevel.isEmpty {
             Menu("Move to") {
                 if canMoveToRoot {
                     Button("Root") {
                         noteStore.moveNote(note, to: "")
                     }
                 }
-                ForEach(otherFolders) { folder in
-                    Button(folder.name) {
+                ForEach(topLevel) { folder in
+                    if folder.name != note.folder {
+                        folderTreeMenuItem(folder: folder, note: note)
+                    }
+                }
+            }
+        }
+    }
+
+    private func folderTreeMenuItem(folder: Folder, note: Note) -> AnyView {
+        let children = noteStore.childFolders(of: folder.name)
+            .filter { $0.name != note.folder }
+        if children.isEmpty {
+            return AnyView(
+                Button(folder.displayName) {
+                    noteStore.moveNote(note, to: folder.name)
+                },
+            )
+        } else {
+            return AnyView(
+                Menu(folder.displayName) {
+                    Button("Move here") {
                         noteStore.moveNote(note, to: folder.name)
+                    }
+                    Divider()
+                    ForEach(children) { child in
+                        folderTreeMenuItem(folder: child, note: note)
+                    }
+                },
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func folderMoveToMenu(for folder: Folder) -> some View {
+        let validTargets = noteStore.folders.filter { target in
+            target.name != folder.name
+                && !target.name.hasPrefix(folder.name + "/")
+                && target.name != folder.parentPath
+        }
+        let canMoveToRoot = !folder.isTopLevel
+        if canMoveToRoot || !validTargets.isEmpty {
+            Menu("Move to") {
+                if canMoveToRoot {
+                    Button("Root") {
+                        noteStore.moveFolder(folder.name, toParent: "")
+                    }
+                }
+                ForEach(validTargets) { target in
+                    Button(target.name) {
+                        noteStore.moveFolder(folder.name, toParent: target.name)
                     }
                 }
             }
@@ -191,6 +339,30 @@ struct NoteListView: View {
         }
     }
 
+    // MARK: - Inline Folder Rename Editor
+
+    private func inlineFolderRenameEditor(folderName: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "folder.fill")
+                .font(.title3)
+                .foregroundStyle(.green)
+                .frame(width: iconWidth)
+
+            TextField("Folder name", text: $renamingFolderText)
+                .textFieldStyle(.plain)
+                .font(.body)
+                .focused($isFolderRenameFocused)
+                .onSubmit { commitFolderRename(folderName) }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 8)
+        .onExitCommand { cancelFolderRename() }
+        .onChange(of: isFolderRenameFocused) { _, focused in
+            if !focused { commitOrCancelFolderRename(folderName) }
+        }
+    }
+
     // MARK: - Empty State
 
     private var emptyState: some View {
@@ -208,6 +380,17 @@ struct NoteListView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Navigation
+
+    private func navigateBack() {
+        if let parent = noteStore.selectedFolder?.parentPath, !parent.isEmpty {
+            noteStore.selectedFolder = noteStore.folders.first { $0.name == parent }
+                ?? Folder(name: parent, noteCount: 0)
+        } else {
+            noteStore.selectedFolder = nil
+        }
     }
 
     // MARK: - Note Actions
@@ -262,7 +445,8 @@ struct NoteListView: View {
     private func commitNewFolder() {
         let trimmed = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty {
-            noteStore.createFolder(named: trimmed)
+            let parent = noteStore.selectedFolder?.name ?? ""
+            noteStore.createFolder(named: trimmed, in: parent)
         }
         isCreatingFolder = false
         newFolderName = ""
@@ -279,6 +463,40 @@ struct NoteListView: View {
             cancelNewFolder()
         } else {
             commitNewFolder()
+        }
+    }
+
+    // MARK: - Folder Rename Actions
+
+    private func startRenamingFolder(_ name: String) {
+        renamingFolderName = name
+        renamingFolderText = (name as NSString).lastPathComponent
+        DispatchQueue.main.async {
+            isFolderRenameFocused = true
+        }
+    }
+
+    private func commitFolderRename(_ oldName: String) {
+        let trimmed = renamingFolderText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let oldDisplayName = (oldName as NSString).lastPathComponent
+        if !trimmed.isEmpty, trimmed != oldDisplayName {
+            noteStore.renameFolder(oldName, to: trimmed)
+        }
+        renamingFolderName = nil
+        renamingFolderText = ""
+    }
+
+    private func cancelFolderRename() {
+        renamingFolderName = nil
+        renamingFolderText = ""
+    }
+
+    private func commitOrCancelFolderRename(_ oldName: String) {
+        let trimmed = renamingFolderText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            cancelFolderRename()
+        } else {
+            commitFolderRename(oldName)
         }
     }
 }

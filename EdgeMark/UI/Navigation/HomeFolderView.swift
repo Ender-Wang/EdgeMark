@@ -72,9 +72,10 @@ struct HomeFolderView: View {
         return noteStore.sortedNotes(filtered, by: appSettings.sortBy, ascending: appSettings.sortAscending)
     }
 
-    /// Folders sorted by current sort setting.
+    /// Top-level folders sorted by current sort setting.
     private var sortedFolders: [Folder] {
-        noteStore.sortedFolders(noteStore.folders, by: appSettings.sortBy, ascending: appSettings.sortAscending)
+        let topLevel = noteStore.folders.filter(\.isTopLevel)
+        return noteStore.sortedFolders(topLevel, by: appSettings.sortBy, ascending: appSettings.sortAscending)
     }
 
     // MARK: - Icon width
@@ -187,7 +188,7 @@ struct HomeFolderView: View {
                 }
 
                 if !rootNotes.isEmpty {
-                    if !noteStore.folders.isEmpty || isCreatingFolder {
+                    if !sortedFolders.isEmpty || isCreatingFolder {
                         Divider()
                             .padding(.horizontal, 16)
                             .padding(.vertical, 4)
@@ -210,7 +211,8 @@ struct HomeFolderView: View {
                 noteStore.trashFolder(folderName)
             }
         } message: { folderName in
-            let count = noteStore.notes.count(where: { $0.folder == folderName })
+            let prefix = folderName + "/"
+            let count = noteStore.notes.count(where: { $0.folder == folderName || $0.folder.hasPrefix(prefix) })
             if count > 0 {
                 Text("\"\(folderName)\" and its \(count) note\(count == 1 ? "" : "s") will be moved to Trash.")
             } else {
@@ -264,6 +266,8 @@ struct HomeFolderView: View {
                 Button("Rename") {
                     startRenamingFolder(folder.name)
                 }
+
+                folderMoveToMenu(for: folder)
 
                 Button("Show in Finder") {
                     NSWorkspace.shared.activateFileViewerSelecting([
@@ -320,18 +324,66 @@ struct HomeFolderView: View {
 
     @ViewBuilder
     private func moveToMenu(for note: Note) -> some View {
-        let otherFolders = noteStore.folders.filter { $0.name != note.folder }
+        let topLevel = noteStore.folders.filter(\.isTopLevel)
         let canMoveToRoot = !note.folder.isEmpty
-        if canMoveToRoot || !otherFolders.isEmpty {
+        if canMoveToRoot || !topLevel.isEmpty {
             Menu("Move to") {
                 if canMoveToRoot {
                     Button("Root") {
                         noteStore.moveNote(note, to: "")
                     }
                 }
-                ForEach(otherFolders) { folder in
-                    Button(folder.name) {
+                ForEach(topLevel) { folder in
+                    if folder.name != note.folder {
+                        folderTreeMenuItem(folder: folder, note: note)
+                    }
+                }
+            }
+        }
+    }
+
+    private func folderTreeMenuItem(folder: Folder, note: Note) -> AnyView {
+        let children = noteStore.childFolders(of: folder.name)
+            .filter { $0.name != note.folder }
+        if children.isEmpty {
+            return AnyView(
+                Button(folder.displayName) {
+                    noteStore.moveNote(note, to: folder.name)
+                },
+            )
+        } else {
+            return AnyView(
+                Menu(folder.displayName) {
+                    Button("Move here") {
                         noteStore.moveNote(note, to: folder.name)
+                    }
+                    Divider()
+                    ForEach(children) { child in
+                        folderTreeMenuItem(folder: child, note: note)
+                    }
+                },
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func folderMoveToMenu(for folder: Folder) -> some View {
+        let validTargets = noteStore.folders.filter { target in
+            target.name != folder.name
+                && !target.name.hasPrefix(folder.name + "/")
+                && target.name != folder.parentPath
+        }
+        let canMoveToRoot = !folder.isTopLevel
+        if canMoveToRoot || !validTargets.isEmpty {
+            Menu("Move to") {
+                if canMoveToRoot {
+                    Button("Root") {
+                        noteStore.moveFolder(folder.name, toParent: "")
+                    }
+                }
+                ForEach(validTargets) { target in
+                    Button(target.name) {
+                        noteStore.moveFolder(folder.name, toParent: target.name)
                     }
                 }
             }
