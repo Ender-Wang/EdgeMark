@@ -18,7 +18,7 @@ struct ContentFooterBar: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.vertical, 6)
     }
 
     // MARK: - Sort Menu
