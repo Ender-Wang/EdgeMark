@@ -30,6 +30,11 @@ struct NoteListView: View {
         noteStore.selectedFolder?.displayName ?? ""
     }
 
+    private var folderPath: String {
+        guard let name = noteStore.selectedFolder?.name else { return "/" }
+        return "/\(name)/"
+    }
+
     private var sortedNotes: [Note] {
         noteStore.sortedNotes(noteStore.filteredNotes, by: appSettings.sortBy, ascending: appSettings.sortAscending)
     }
@@ -84,13 +89,21 @@ struct NoteListView: View {
                 }
             }
             .overlay {
-                Text(folderLabel)
-                    .font(.headline)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .padding(.leading, 40)
-                    .padding(.trailing, 75)
-                    .help(folderLabel)
+                HStack(spacing: 4) {
+                    Text(folderLabel)
+                        .font(.headline)
+                        .lineLimit(1)
+                        .layoutPriority(1)
+
+                    Text(folderPath)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                .padding(.leading, 40)
+                .padding(.trailing, 75)
+                .help(folderPath)
             }
         } content: {
             VStack(spacing: 0) {

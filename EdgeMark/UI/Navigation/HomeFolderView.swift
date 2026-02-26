@@ -783,7 +783,6 @@ struct FolderRowView: View {
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
-                    .help(name)
 
                 Spacer()
 
