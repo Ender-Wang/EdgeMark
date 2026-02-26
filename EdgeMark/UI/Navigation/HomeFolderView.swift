@@ -223,6 +223,23 @@ struct HomeFolderView: View {
 
     // MARK: - Inline Folder Editor
 
+    private var newFolderNameConflicts: Bool {
+        let trimmed = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        return noteStore.folders.contains {
+            $0.isTopLevel && $0.displayName.caseInsensitiveCompare(trimmed) == .orderedSame
+        }
+    }
+
+    private var folderRenameConflicts: Bool {
+        let trimmed = renamingFolderText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let oldName = renamingFolderName else { return false }
+        return noteStore.folders.contains {
+            $0.name != oldName && $0.isTopLevel
+                && $0.displayName.caseInsensitiveCompare(trimmed) == .orderedSame
+        }
+    }
+
     private var inlineFolderEditor: some View {
         HStack(spacing: 10) {
             Image(systemName: "folder.fill")
@@ -235,6 +252,15 @@ struct HomeFolderView: View {
                 .font(.body)
                 .focused($isFolderFieldFocused)
                 .onSubmit { commitNewFolder() }
+                .overlay(alignment: .trailing) {
+                    Text("Name taken")
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.background.opacity(0.9), in: RoundedRectangle(cornerRadius: 4))
+                        .opacity(newFolderNameConflicts ? 1 : 0)
+                }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 10)
@@ -428,6 +454,15 @@ struct HomeFolderView: View {
                 .font(.body)
                 .focused($isFolderRenameFocused)
                 .onSubmit { commitFolderRename(folderName) }
+                .overlay(alignment: .trailing) {
+                    Text("Name taken")
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.background.opacity(0.9), in: RoundedRectangle(cornerRadius: 4))
+                        .opacity(folderRenameConflicts ? 1 : 0)
+                }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 10)
@@ -626,6 +661,7 @@ struct HomeFolderView: View {
     }
 
     private func commitNewFolder() {
+        guard !newFolderNameConflicts else { return }
         let trimmed = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty {
             noteStore.createFolder(named: trimmed)
@@ -641,7 +677,7 @@ struct HomeFolderView: View {
 
     private func commitOrCancelFolder() {
         let trimmed = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
+        if trimmed.isEmpty || newFolderNameConflicts {
             cancelNewFolder()
         } else {
             commitNewFolder()
@@ -698,6 +734,7 @@ struct HomeFolderView: View {
     }
 
     private func commitFolderRename(_ oldName: String) {
+        guard !folderRenameConflicts else { return }
         let trimmed = renamingFolderText.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty, trimmed != oldName {
             noteStore.renameFolder(oldName, to: trimmed)
@@ -713,7 +750,7 @@ struct HomeFolderView: View {
 
     private func commitOrCancelFolderRename(_ oldName: String) {
         let trimmed = renamingFolderText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
+        if trimmed.isEmpty || folderRenameConflicts {
             cancelFolderRename()
         } else {
             commitFolderRename(oldName)
@@ -744,6 +781,9 @@ struct FolderRowView: View {
                 Text(name)
                     .font(.body)
                     .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .help(name)
 
                 Spacer()
 
