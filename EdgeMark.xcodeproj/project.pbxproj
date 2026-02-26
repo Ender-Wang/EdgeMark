@@ -6,27 +6,8 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXContainerItemProxy section */
-		F83FB9132F4B45D6007775F9 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = F83FB8FD2F4B45D5007775F9 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = F83FB9042F4B45D5007775F9;
-			remoteInfo = EdgeMark;
-		};
-		F83FB91D2F4B45D6007775F9 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = F83FB8FD2F4B45D5007775F9 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = F83FB9042F4B45D5007775F9;
-			remoteInfo = EdgeMark;
-		};
-/* End PBXContainerItemProxy section */
-
 /* Begin PBXFileReference section */
 		F83FB9052F4B45D5007775F9 /* EdgeMark.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EdgeMark.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		F83FB9122F4B45D6007775F9 /* EdgeMarkTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EdgeMarkTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		F83FB91C2F4B45D6007775F9 /* EdgeMarkUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EdgeMarkUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -35,34 +16,10 @@
 			path = EdgeMark;
 			sourceTree = "<group>";
 		};
-		F83FB9152F4B45D6007775F9 /* EdgeMarkTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = EdgeMarkTests;
-			sourceTree = "<group>";
-		};
-		F83FB91F2F4B45D6007775F9 /* EdgeMarkUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = EdgeMarkUITests;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		F83FB9022F4B45D5007775F9 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F83FB90F2F4B45D6007775F9 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F83FB9192F4B45D6007775F9 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -76,8 +33,6 @@
 			isa = PBXGroup;
 			children = (
 				F83FB9072F4B45D5007775F9 /* EdgeMark */,
-				F83FB9152F4B45D6007775F9 /* EdgeMarkTests */,
-				F83FB91F2F4B45D6007775F9 /* EdgeMarkUITests */,
 				F83FB9062F4B45D5007775F9 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -86,8 +41,6 @@
 			isa = PBXGroup;
 			children = (
 				F83FB9052F4B45D5007775F9 /* EdgeMark.app */,
-				F83FB9122F4B45D6007775F9 /* EdgeMarkTests.xctest */,
-				F83FB91C2F4B45D6007775F9 /* EdgeMarkUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -118,52 +71,6 @@
 			productReference = F83FB9052F4B45D5007775F9 /* EdgeMark.app */;
 			productType = "com.apple.product-type.application";
 		};
-		F83FB9112F4B45D6007775F9 /* EdgeMarkTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = F83FB9292F4B45D6007775F9 /* Build configuration list for PBXNativeTarget "EdgeMarkTests" */;
-			buildPhases = (
-				F83FB90E2F4B45D6007775F9 /* Sources */,
-				F83FB90F2F4B45D6007775F9 /* Frameworks */,
-				F83FB9102F4B45D6007775F9 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				F83FB9142F4B45D6007775F9 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				F83FB9152F4B45D6007775F9 /* EdgeMarkTests */,
-			);
-			name = EdgeMarkTests;
-			packageProductDependencies = (
-			);
-			productName = EdgeMarkTests;
-			productReference = F83FB9122F4B45D6007775F9 /* EdgeMarkTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
-		F83FB91B2F4B45D6007775F9 /* EdgeMarkUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = F83FB92C2F4B45D6007775F9 /* Build configuration list for PBXNativeTarget "EdgeMarkUITests" */;
-			buildPhases = (
-				F83FB9182F4B45D6007775F9 /* Sources */,
-				F83FB9192F4B45D6007775F9 /* Frameworks */,
-				F83FB91A2F4B45D6007775F9 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				F83FB91E2F4B45D6007775F9 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				F83FB91F2F4B45D6007775F9 /* EdgeMarkUITests */,
-			);
-			name = EdgeMarkUITests;
-			packageProductDependencies = (
-			);
-			productName = EdgeMarkUITests;
-			productReference = F83FB91C2F4B45D6007775F9 /* EdgeMarkUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -176,14 +83,6 @@
 				TargetAttributes = {
 					F83FB9042F4B45D5007775F9 = {
 						CreatedOnToolsVersion = 26.2;
-					};
-					F83FB9112F4B45D6007775F9 = {
-						CreatedOnToolsVersion = 26.2;
-						TestTargetID = F83FB9042F4B45D5007775F9;
-					};
-					F83FB91B2F4B45D6007775F9 = {
-						CreatedOnToolsVersion = 26.2;
-						TestTargetID = F83FB9042F4B45D5007775F9;
 					};
 				};
 			};
@@ -202,28 +101,12 @@
 			projectRoot = "";
 			targets = (
 				F83FB9042F4B45D5007775F9 /* EdgeMark */,
-				F83FB9112F4B45D6007775F9 /* EdgeMarkTests */,
-				F83FB91B2F4B45D6007775F9 /* EdgeMarkUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		F83FB9032F4B45D5007775F9 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F83FB9102F4B45D6007775F9 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F83FB91A2F4B45D6007775F9 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -261,34 +144,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		F83FB90E2F4B45D6007775F9 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F83FB9182F4B45D6007775F9 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		F83FB9142F4B45D6007775F9 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = F83FB9042F4B45D5007775F9 /* EdgeMark */;
-			targetProxy = F83FB9132F4B45D6007775F9 /* PBXContainerItemProxy */;
-		};
-		F83FB91E2F4B45D6007775F9 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = F83FB9042F4B45D5007775F9 /* EdgeMark */;
-			targetProxy = F83FB91D2F4B45D6007775F9 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		F83FB9242F4B45D6007775F9 /* Debug */ = {
@@ -475,82 +331,6 @@
 			};
 			name = Release;
 		};
-		F83FB92A2F4B45D6007775F9 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.7;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "io.github.ender-wang.EdgeMarkTests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EdgeMark.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/EdgeMark";
-			};
-			name = Debug;
-		};
-		F83FB92B2F4B45D6007775F9 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.7;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "io.github.ender-wang.EdgeMarkTests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EdgeMark.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/EdgeMark";
-			};
-			name = Release;
-		};
-		F83FB92D2F4B45D6007775F9 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "io.github.ender-wang.EdgeMarkUITests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = EdgeMark;
-			};
-			name = Debug;
-		};
-		F83FB92E2F4B45D6007775F9 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "io.github.ender-wang.EdgeMarkUITests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = EdgeMark;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -568,24 +348,6 @@
 			buildConfigurations = (
 				F83FB9272F4B45D6007775F9 /* Debug */,
 				F83FB9282F4B45D6007775F9 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		F83FB9292F4B45D6007775F9 /* Build configuration list for PBXNativeTarget "EdgeMarkTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				F83FB92A2F4B45D6007775F9 /* Debug */,
-				F83FB92B2F4B45D6007775F9 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		F83FB92C2F4B45D6007775F9 /* Build configuration list for PBXNativeTarget "EdgeMarkUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				F83FB92D2F4B45D6007775F9 /* Debug */,
-				F83FB92E2F4B45D6007775F9 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
