@@ -436,26 +436,60 @@ struct HomeFolderView: View {
 
     @ViewBuilder
     private func folderMoveToMenu(for folder: Folder) -> some View {
-        let validTargets = noteStore.folders.filter { target in
-            target.name != folder.name
-                && !target.name.hasPrefix(folder.name + "/")
-                && target.name != folder.parentPath
-        }
+        let topLevel = noteStore.folders.filter(\.isTopLevel)
+            .filter { $0.name != folder.name && !$0.name.hasPrefix(folder.name + "/") }
         let canMoveToRoot = !folder.isTopLevel
-        if canMoveToRoot || !validTargets.isEmpty {
+        if canMoveToRoot || !topLevel.isEmpty {
             Menu("Move to") {
                 if canMoveToRoot {
                     Button("Root") {
                         noteStore.moveFolder(folder.name, toParent: "")
                     }
                 }
-                ForEach(validTargets) { target in
-                    Button(target.name) {
-                        noteStore.moveFolder(folder.name, toParent: target.name)
-                    }
+                ForEach(topLevel) { target in
+                    folderMoveTreeItem(target: target, movingFolder: folder)
                 }
             }
         }
+    }
+
+    private func folderMoveTreeItem(target: Folder, movingFolder: Folder) -> AnyView {
+        let isCurrentParent = target.name == movingFolder.parentPath
+        let children = noteStore.childFolders(of: target.name)
+            .filter { $0.name != movingFolder.name && !$0.name.hasPrefix(movingFolder.name + "/") }
+
+        if isCurrentParent {
+            if children.isEmpty {
+                return AnyView(EmptyView())
+            }
+            return AnyView(
+                Menu(target.displayName) {
+                    ForEach(children) { child in
+                        folderMoveTreeItem(target: child, movingFolder: movingFolder)
+                    }
+                },
+            )
+        }
+
+        if children.isEmpty {
+            return AnyView(
+                Button(target.displayName) {
+                    noteStore.moveFolder(movingFolder.name, toParent: target.name)
+                },
+            )
+        }
+
+        return AnyView(
+            Menu(target.displayName) {
+                Button("Move here") {
+                    noteStore.moveFolder(movingFolder.name, toParent: target.name)
+                }
+                Divider()
+                ForEach(children) { child in
+                    folderMoveTreeItem(target: child, movingFolder: movingFolder)
+                }
+            },
+        )
     }
 
     // MARK: - Inline Note Rename Editor
