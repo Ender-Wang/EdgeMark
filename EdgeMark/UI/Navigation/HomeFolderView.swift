@@ -131,7 +131,7 @@ struct HomeFolderView: View {
             .allowsHitTesting(isSearching)
 
             // Title bar
-            HStack(spacing: 14) {
+            HStack {
                 Text("EdgeMark")
                     .font(.title2.bold())
 
