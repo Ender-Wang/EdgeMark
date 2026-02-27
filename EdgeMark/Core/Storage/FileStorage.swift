@@ -109,7 +109,8 @@ enum FileStorage {
         return try resolveDuplicateFilenames(notes)
     }
 
-    /// Writes the note to disk. If the title changed since last save, removes the old file.
+    /// Writes the note to disk. If the title changed since last save, renames the old file
+    /// to preserve macOS file metadata (creation date, Finder tags, extended attributes).
     /// Returns the new filename so the caller can update `savedFilename`.
     @discardableResult
     static func writeNote(_ note: Note) throws -> String {
@@ -119,12 +120,12 @@ enum FileStorage {
         }
 
         let newFilename = note.filename
-        let fileURL = rootURL.appendingPathComponent(note.relativePath)
+        let newURL = rootURL.appendingPathComponent(note.relativePath)
 
         // Safety: if target file exists and isn't our own file, skip to avoid overwriting
         if let savedFilename = note.savedFilename,
            savedFilename != newFilename,
-           FileManager.default.fileExists(atPath: fileURL.path)
+           FileManager.default.fileExists(atPath: newURL.path)
         {
             print("EdgeMark: filename conflict for \(newFilename), keeping \(savedFilename)")
             let currentRelative = note.folder.isEmpty ? savedFilename : "\(note.folder)/\(savedFilename)"
@@ -134,14 +135,18 @@ enum FileStorage {
             return savedFilename
         }
 
-        let text = serializeFrontMatter(note: note) + note.content
-        try text.data(using: .utf8)?.write(to: fileURL, options: .atomic)
-
-        // Remove old file if title changed (write-first ensures no data loss)
+        // Rename old file first if title changed (preserves macOS metadata)
         if let oldFilename = note.savedFilename, oldFilename != newFilename {
             let oldRelative = note.folder.isEmpty ? oldFilename : "\(note.folder)/\(oldFilename)"
-            try? FileManager.default.removeItem(at: rootURL.appendingPathComponent(oldRelative))
+            let oldURL = rootURL.appendingPathComponent(oldRelative)
+            if FileManager.default.fileExists(atPath: oldURL.path) {
+                try FileManager.default.moveItem(at: oldURL, to: newURL)
+            }
         }
+
+        // Write content to the (possibly renamed) file
+        let text = serializeFrontMatter(note: note) + note.content
+        try text.data(using: .utf8)?.write(to: newURL, options: .atomic)
 
         return newFilename
     }
