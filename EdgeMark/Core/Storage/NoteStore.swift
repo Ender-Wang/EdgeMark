@@ -6,6 +6,7 @@ final class NoteStore {
 
     var notes: [Note] = []
     var trashedNotes: [Note] = []
+    var trashedFolders: [TrashedFolder] = []
     var folders: [Folder] = []
     var selectedFolder: Folder?
     var selectedNote: Note?
@@ -83,9 +84,9 @@ final class NoteStore {
 
     func loadFromDisk() {
         do {
-            let all = try FileStorage.loadAllNotes()
-            notes = all.filter { $0.trashedAt == nil }
-            trashedNotes = all.filter { $0.trashedAt != nil }
+            notes = try FileStorage.loadAllNotes()
+            trashedNotes = try FileStorage.loadTrashedNotes()
+            trashedFolders = try FileStorage.loadTrashedFolders()
             autoPurgeExpiredTrash()
             refreshFolders()
         } catch {
@@ -252,12 +253,13 @@ final class NoteStore {
         notes[index].trashedAt = Date()
         dirtyNoteIDs.remove(note.id)
 
-        // Write trashed field to YAML immediately
+        // Move file to .trash/<UUID>_<Title>.md
         do {
-            let newFilename = try FileStorage.writeNote(notes[index])
-            notes[index].savedFilename = newFilename
+            try FileStorage.trashNote(notes[index])
+            let trashFilename = "\(notes[index].id.uuidString)_\(FileStorage.sanitizeForFilename(notes[index].title)).md"
+            notes[index].savedFilename = trashFilename
         } catch {
-            print("EdgeMark: failed to write trashed note — \(error)")
+            print("EdgeMark: failed to trash note — \(error)")
         }
 
         let trashedNote = notes.remove(at: index)
@@ -272,17 +274,44 @@ final class NoteStore {
     func trashFolder(_ name: String) {
         guard !name.isEmpty else { return }
         let prefix = name + "/"
+        let now = Date()
+        let folderID = UUID()
 
-        // Trash all notes in this folder AND descendant folders
+        // Collect notes in this folder and subfolders
         let folderNotes = notes.filter { $0.folder == name || $0.folder.hasPrefix(prefix) }
-        for note in folderNotes {
-            trashNote(note)
+
+        // Move entire folder directory to .trash/
+        do {
+            try FileStorage.trashFolder(name, id: folderID, trashedAt: now)
+        } catch {
+            print("EdgeMark: failed to trash folder — \(error)")
+            return
         }
+
+        // Remove notes from active array
+        notes.removeAll { $0.folder == name || $0.folder.hasPrefix(prefix) }
+
+        let displayName = (name as NSString).lastPathComponent
+        let savedDirname = "\(folderID.uuidString)_\(displayName)"
+        trashedFolders.append(TrashedFolder(
+            id: folderID,
+            displayName: displayName,
+            originalPath: name,
+            trashedAt: now,
+            notes: folderNotes,
+            savedDirname: savedDirname,
+        ))
 
         // Navigate away if inside this folder or any descendant
         if selectedFolder?.name == name || (selectedFolder?.name.hasPrefix(prefix) ?? false) {
             selectedFolder = nil
         }
+
+        // Deselect note if it was in the trashed folder
+        if let sel = selectedNote, sel.folder == name || sel.folder.hasPrefix(prefix) {
+            selectedNote = nil
+        }
+
         refreshFolders()
     }
 
@@ -290,21 +319,12 @@ final class NoteStore {
         guard let index = trashedNotes.firstIndex(where: { $0.id == note.id }) else { return }
         trashedNotes[index].trashedAt = nil
 
-        // Ensure the folder exists on disk (may have been deleted)
-        if !trashedNotes[index].folder.isEmpty {
-            do {
-                try FileStorage.ensureFolderExists(trashedNotes[index].folder)
-            } catch {
-                print("EdgeMark: failed to ensure folder exists — \(error)")
-            }
-        }
-
-        // Write updated YAML (removes trashed field)
+        // Move file from .trash/ back to original folder
         do {
-            let newFilename = try FileStorage.writeNote(trashedNotes[index])
+            let newFilename = try FileStorage.restoreNote(trashedNotes[index])
             trashedNotes[index].savedFilename = newFilename
         } catch {
-            print("EdgeMark: failed to write restored note — \(error)")
+            print("EdgeMark: failed to restore note — \(error)")
         }
 
         let restoredNote = trashedNotes.remove(at: index)
@@ -312,32 +332,79 @@ final class NoteStore {
         refreshFolders()
     }
 
+    func restoreFolder(_ folder: TrashedFolder) {
+        do {
+            try FileStorage.restoreFolder(folder)
+        } catch {
+            print("EdgeMark: failed to restore folder — \(error)")
+            return
+        }
+
+        // Reload notes from the restored folder
+        let restoredNotes = folder.notes
+        notes.append(contentsOf: restoredNotes)
+        trashedFolders.removeAll { $0.id == folder.id }
+        refreshFolders()
+    }
+
     func permanentlyDeleteNote(_ note: Note) {
         trashedNotes.removeAll { $0.id == note.id }
         do {
-            try FileStorage.deleteNote(note)
+            try FileStorage.deleteTrashedNote(note)
         } catch {
             print("EdgeMark: failed to permanently delete note — \(error)")
+        }
+    }
+
+    func permanentlyDeleteFolder(_ folder: TrashedFolder) {
+        trashedFolders.removeAll { $0.id == folder.id }
+        do {
+            try FileStorage.deleteTrashedFolder(folder)
+        } catch {
+            print("EdgeMark: failed to permanently delete folder — \(error)")
         }
     }
 
     func emptyTrash() {
         for note in trashedNotes {
             do {
-                try FileStorage.deleteNote(note)
+                try FileStorage.deleteTrashedNote(note)
             } catch {
                 print("EdgeMark: failed to delete trashed note \(note.id) — \(error)")
             }
         }
         trashedNotes.removeAll()
+
+        for folder in trashedFolders {
+            do {
+                try FileStorage.deleteTrashedFolder(folder)
+            } catch {
+                print("EdgeMark: failed to delete trashed folder \(folder.displayName) — \(error)")
+            }
+        }
+        trashedFolders.removeAll()
     }
 
-    /// Permanently delete notes that have been in trash for more than 60 days.
+    /// Total number of items in trash (notes + folders).
+    var trashItemCount: Int {
+        trashedNotes.count + trashedFolders.count
+    }
+
+    /// Whether trash is empty (no notes and no folders).
+    var isTrashEmpty: Bool {
+        trashedNotes.isEmpty && trashedFolders.isEmpty
+    }
+
+    /// Permanently delete notes/folders that have been in trash for more than 60 days.
     private func autoPurgeExpiredTrash() {
         let cutoff = Calendar.current.date(byAdding: .day, value: -60, to: Date()) ?? Date()
-        let expired = trashedNotes.filter { ($0.trashedAt ?? Date()) < cutoff }
-        for note in expired {
+        let expiredNotes = trashedNotes.filter { ($0.trashedAt ?? Date()) < cutoff }
+        for note in expiredNotes {
             permanentlyDeleteNote(note)
+        }
+        let expiredFolders = trashedFolders.filter { $0.trashedAt < cutoff }
+        for folder in expiredFolders {
+            permanentlyDeleteFolder(folder)
         }
     }
 
@@ -373,13 +440,6 @@ final class NoteStore {
                     notes[i].folder = newFullPath
                 } else if notes[i].folder.hasPrefix(oldPrefix) {
                     notes[i].folder = newFullPath + String(notes[i].folder.dropFirst(oldName.count))
-                }
-            }
-            for i in trashedNotes.indices {
-                if trashedNotes[i].folder == oldName {
-                    trashedNotes[i].folder = newFullPath
-                } else if trashedNotes[i].folder.hasPrefix(oldPrefix) {
-                    trashedNotes[i].folder = newFullPath + String(trashedNotes[i].folder.dropFirst(oldName.count))
                 }
             }
             if selectedFolder?.name == oldName {
@@ -467,13 +527,6 @@ final class NoteStore {
                     notes[i].folder = newFullPath + "/" + String(notes[i].folder.dropFirst(oldPrefix.count))
                 }
             }
-            for i in trashedNotes.indices {
-                if trashedNotes[i].folder == name {
-                    trashedNotes[i].folder = newFullPath
-                } else if trashedNotes[i].folder.hasPrefix(oldPrefix) {
-                    trashedNotes[i].folder = newFullPath + "/" + String(trashedNotes[i].folder.dropFirst(oldPrefix.count))
-                }
-            }
             if selectedFolder?.name == name {
                 selectedFolder = Folder(name: newFullPath, noteCount: selectedFolder?.noteCount ?? 0)
             }
@@ -510,13 +563,8 @@ final class NoteStore {
 
     private func refreshFolders() {
         let folderNames = Set(notes.map(\.folder)).filter { !$0.isEmpty }
-        let trashedFolderNames = Set(trashedNotes.map(\.folder)).filter { !$0.isEmpty }
         let diskFolders = (try? FileStorage.discoverFolders()) ?? []
-        // Show disk folders that have active notes OR are truly empty (not just trashed)
-        let visibleDiskFolders = diskFolders.filter { name in
-            folderNames.contains(name) || !trashedFolderNames.contains(name)
-        }
-        let allNames = folderNames.union(Set(visibleDiskFolders)).sorted()
+        let allNames = folderNames.union(Set(diskFolders)).sorted()
 
         folders = allNames.map { name in
             let prefix = name + "/"

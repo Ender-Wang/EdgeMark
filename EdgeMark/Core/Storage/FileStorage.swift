@@ -14,8 +14,17 @@ enum FileStorage {
 
     // MARK: - Directory Management
 
+    /// Hidden `.trash/` directory at the storage root.
+    static var trashURL: URL {
+        rootURL.appendingPathComponent(".trash", isDirectory: true)
+    }
+
     static func ensureRootExists() throws {
         try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
+    }
+
+    static func ensureTrashExists() throws {
+        try FileManager.default.createDirectory(at: trashURL, withIntermediateDirectories: true)
     }
 
     static func ensureFolderExists(_ folderName: String) throws {
@@ -184,6 +193,203 @@ enum FileStorage {
         try FileManager.default.moveItem(at: oldURL, to: newURL)
     }
 
+    // MARK: - Trash I/O (Individual Notes)
+
+    /// Move a note from its current location to `.trash/<UUID>_<Title>.md`.
+    /// Updates YAML to include `folder:` (return address) and `trashed:`.
+    static func trashNote(_ note: Note) throws {
+        try ensureTrashExists()
+        let trashFilename = "\(note.id.uuidString)_\(sanitizeForFilename(note.title)).md"
+        let destURL = trashURL.appendingPathComponent(trashFilename)
+
+        // Write the trashed note (with folder + trashed fields) to .trash/
+        let text = serializeFrontMatter(note: note) + note.content
+        try text.data(using: .utf8)?.write(to: destURL, options: .atomic)
+
+        // Remove original file
+        let actualFilename = note.savedFilename ?? note.filename
+        let oldRelative = note.folder.isEmpty ? actualFilename : "\(note.folder)/\(actualFilename)"
+        try? FileManager.default.removeItem(at: rootURL.appendingPathComponent(oldRelative))
+    }
+
+    /// Restore a note from `.trash/` back to its original folder.
+    /// Returns the new `savedFilename`.
+    static func restoreNote(_ note: Note) throws -> String {
+        // Recreate original folder if needed
+        if !note.folder.isEmpty {
+            try ensureFolderExists(note.folder)
+        }
+
+        // Build a restored copy (no trashed/folder fields in YAML)
+        var restored = note
+        restored.trashedAt = nil
+
+        let newFilename = restored.filename
+        let destRelative = restored.folder.isEmpty ? newFilename : "\(restored.folder)/\(newFilename)"
+        let destURL = rootURL.appendingPathComponent(destRelative)
+
+        let text = serializeFrontMatter(note: restored) + restored.content
+        try text.data(using: .utf8)?.write(to: destURL, options: .atomic)
+
+        // Remove from .trash/
+        if let savedFilename = note.savedFilename {
+            try? FileManager.default.removeItem(at: trashURL.appendingPathComponent(savedFilename))
+        }
+
+        return newFilename
+    }
+
+    /// Delete a trashed note from `.trash/`.
+    static func deleteTrashedNote(_ note: Note) throws {
+        if let savedFilename = note.savedFilename {
+            try FileManager.default.removeItem(at: trashURL.appendingPathComponent(savedFilename))
+        }
+    }
+
+    /// Load individually trashed notes from `.trash/` (top-level `.md` files only).
+    static func loadTrashedNotes() throws -> [Note] {
+        try ensureTrashExists()
+        let contents = try FileManager.default.contentsOfDirectory(
+            at: trashURL,
+            includingPropertiesForKeys: nil,
+            options: [],
+        )
+        return contents.compactMap { url -> Note? in
+            guard url.pathExtension == "md", !url.hasDirectoryPath else { return nil }
+            return readNote(at: url, folder: "")
+        }
+    }
+
+    // MARK: - Trash I/O (Folders)
+
+    /// Move a folder to `.trash/<UUID>_<DisplayName>/` and create `.folder.md` metadata.
+    static func trashFolder(_ name: String, id: UUID, trashedAt: Date) throws {
+        guard !name.isEmpty else { return }
+        try ensureTrashExists()
+        let displayName = (name as NSString).lastPathComponent
+        let trashDirname = "\(id.uuidString)_\(displayName)"
+        let sourceURL = rootURL.appendingPathComponent(name, isDirectory: true)
+        let destURL = trashURL.appendingPathComponent(trashDirname, isDirectory: true)
+
+        try FileManager.default.moveItem(at: sourceURL, to: destURL)
+
+        // Write .folder.md metadata
+        let folderMeta = """
+        ---
+        trashedAt: \(dateFormatter.string(from: trashedAt))
+        originalPath: \(name)
+        ---
+        """
+        let metaURL = destURL.appendingPathComponent(".folder.md")
+        try folderMeta.data(using: .utf8)?.write(to: metaURL, options: .atomic)
+    }
+
+    /// Restore a trashed folder back to its original path.
+    static func restoreFolder(_ folder: TrashedFolder) throws {
+        let sourceURL = trashURL.appendingPathComponent(folder.savedDirname, isDirectory: true)
+
+        // Remove .folder.md before moving back
+        let metaURL = sourceURL.appendingPathComponent(".folder.md")
+        try? FileManager.default.removeItem(at: metaURL)
+
+        // Ensure parent directory exists
+        let parentPath = (folder.originalPath as NSString).deletingLastPathComponent
+        if parentPath != ".", !parentPath.isEmpty {
+            try ensureFolderExists(parentPath)
+        }
+
+        let destURL = rootURL.appendingPathComponent(folder.originalPath, isDirectory: true)
+        try FileManager.default.moveItem(at: sourceURL, to: destURL)
+    }
+
+    /// Permanently delete a trashed folder from `.trash/`.
+    static func deleteTrashedFolder(_ folder: TrashedFolder) throws {
+        let url = trashURL.appendingPathComponent(folder.savedDirname, isDirectory: true)
+        try FileManager.default.removeItem(at: url)
+    }
+
+    /// Load trashed folders from `.trash/` (directories with `.folder.md` metadata).
+    static func loadTrashedFolders() throws -> [TrashedFolder] {
+        try ensureTrashExists()
+        let contents = try FileManager.default.contentsOfDirectory(
+            at: trashURL,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [],
+        )
+
+        var folders: [TrashedFolder] = []
+        for url in contents {
+            let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+            guard isDir else { continue }
+
+            let metaURL = url.appendingPathComponent(".folder.md")
+            guard let data = try? Data(contentsOf: metaURL),
+                  let text = String(data: data, encoding: .utf8)
+            else { continue }
+
+            let (metadata, _) = parseFrontMatter(text)
+            guard let trashedStr = metadata["trashedAt"],
+                  let trashedAt = dateFormatter.date(from: trashedStr),
+                  let originalPath = metadata["originalPath"]
+            else { continue }
+
+            let dirname = url.lastPathComponent
+            // Parse UUID from dirname prefix (UUID_DisplayName)
+            let id: UUID = if let underscoreIdx = dirname.firstIndex(of: "_"),
+                              let parsed = UUID(uuidString: String(dirname[dirname.startIndex ..< underscoreIdx]))
+            {
+                parsed
+            } else {
+                UUID()
+            }
+
+            let displayName = (originalPath as NSString).lastPathComponent
+
+            // Load all notes inside this trashed folder (recursive)
+            let notes = loadNotesRecursively(in: url, baseFolder: originalPath)
+
+            folders.append(TrashedFolder(
+                id: id,
+                displayName: displayName,
+                originalPath: originalPath,
+                trashedAt: trashedAt,
+                notes: notes,
+                savedDirname: dirname,
+            ))
+        }
+        return folders
+    }
+
+    /// Recursively load notes from a directory tree (used for trashed folders).
+    private static func loadNotesRecursively(in directoryURL: URL, baseFolder: String) -> [Note] {
+        let fm = FileManager.default
+        guard let enumerator = fm.enumerator(
+            at: directoryURL,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles],
+        ) else { return [] }
+
+        var notes: [Note] = []
+        let basePath = directoryURL.path
+        for case let url as URL in enumerator {
+            let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+            if !isDir, url.pathExtension == "md" {
+                // Compute the folder relative to the trashed folder root
+                let parentDir = url.deletingLastPathComponent().path
+                let relativePart = if parentDir.count > basePath.count {
+                    String(parentDir.dropFirst(basePath.count + 1))
+                } else {
+                    ""
+                }
+                let folder = relativePart.isEmpty ? baseFolder : "\(baseFolder)/\(relativePart)"
+                if let note = readNote(at: url, folder: folder) {
+                    notes.append(note)
+                }
+            }
+        }
+        return notes
+    }
+
     // MARK: - Private Helpers
 
     private static func loadNotes(in directoryURL: URL, folder: String) throws -> [Note] {
@@ -231,6 +437,8 @@ enum FileStorage {
         let created = metadata["created"].flatMap { dateFormatter.date(from: $0) } ?? Date()
         let modified = metadata["modified"].flatMap { dateFormatter.date(from: $0) } ?? Date()
         let trashed = metadata["trashed"].flatMap { dateFormatter.date(from: $0) }
+        // For trashed notes in .trash/, folder is stored in YAML; otherwise use the directory path.
+        let resolvedFolder = metadata["folder"] ?? folder
 
         return Note(
             id: id,
@@ -238,7 +446,7 @@ enum FileStorage {
             content: body,
             createdAt: created,
             modifiedAt: modified,
-            folder: folder,
+            folder: resolvedFolder,
             trashedAt: trashed,
             savedFilename: url.lastPathComponent,
         )
@@ -289,6 +497,10 @@ enum FileStorage {
         lines.append("modified: \(dateFormatter.string(from: note.modifiedAt))")
         if let trashedAt = note.trashedAt {
             lines.append("trashed: \(dateFormatter.string(from: trashedAt))")
+            // Persist original folder as return address while in .trash/
+            if !note.folder.isEmpty {
+                lines.append("folder: \(note.folder)")
+            }
         }
         lines.append("---")
         lines.append("")
