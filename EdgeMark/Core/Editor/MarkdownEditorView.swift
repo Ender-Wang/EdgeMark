@@ -1,5 +1,5 @@
-import AppKit
 import SwiftUI
+import WebKit
 
 struct MarkdownEditorView: NSViewRepresentable {
     let noteID: UUID
@@ -10,128 +10,216 @@ struct MarkdownEditorView: NSViewRepresentable {
         Coordinator(self)
     }
 
-    func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollableTextView()
-        let textView = scrollView.documentView as! NSTextView
+    func makeNSView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.userContentController.add(context.coordinator, name: "editor")
 
-        // Configure for plain Markdown editing
-        textView.isRichText = false
-        textView.font = .monospacedSystemFont(ofSize: 14, weight: .regular)
-        textView.textColor = .labelColor
-        textView.backgroundColor = .clear
-        textView.drawsBackground = false
-        textView.allowsUndo = true
-        textView.usesFindBar = true
-        textView.isIncrementalSearchingEnabled = true
+        let webView = WKWebView(frame: .zero, configuration: config)
 
-        // Disable auto-substitution to preserve Markdown fidelity
-        textView.isAutomaticQuoteSubstitutionEnabled = false
-        textView.isAutomaticDashSubstitutionEnabled = false
-        textView.isAutomaticTextReplacementEnabled = false
-        textView.isAutomaticSpellingCorrectionEnabled = false
-        textView.isAutomaticTextCompletionEnabled = false
+        // Full transparency stack — all three are needed for WKWebView
+        webView.setValue(false, forKey: "drawsBackground")
+        webView.underPageBackgroundColor = .clear
+        webView.wantsLayer = true
+        webView.layer?.backgroundColor = .clear
+        webView.layer?.isOpaque = false
 
-        // Comfortable insets for 400px panel
-        textView.textContainerInset = NSSize(width: 12, height: 12)
-        textView.textContainer?.lineFragmentPadding = 0
-        textView.textContainer?.widthTracksTextView = true
-
-        // Set initial content
-        textView.string = initialContent
-
-        // Attach coordinator
-        textView.delegate = context.coordinator
-        context.coordinator.textView = textView
+        webView.navigationDelegate = context.coordinator
+        context.coordinator.webView = webView
         context.coordinator.currentNoteID = noteID
-        context.coordinator.highlighter = MarkdownHighlighter(textView: textView)
-        context.coordinator.slashHandler = SlashCommandHandler(textView: textView)
 
-        // Initial highlight
-        context.coordinator.highlighter?.highlightAll()
+        // Load editor.html from app bundle
+        if let htmlURL = Bundle.main.url(forResource: "editor", withExtension: "html") {
+            #if DEBUG
+                print("[Editor] Loading editor.html from: \(htmlURL.path)")
+            #endif
+            webView.loadFileURL(htmlURL, allowingReadAccessTo: htmlURL.deletingLastPathComponent())
+        } else {
+            #if DEBUG
+                print("[Editor] ERROR: editor.html not found in bundle!")
+            #endif
+        }
 
-        return scrollView
+        // Sync theme with macOS appearance
+        context.coordinator.syncTheme()
+
+        return webView
     }
 
-    static func dismantleNSView(_: NSScrollView, coordinator: Coordinator) {
+    static func dismantleNSView(_: WKWebView, coordinator: Coordinator) {
         coordinator.flushPendingContent()
+        // Remove message handler to break retain cycle
+        coordinator.webView?.configuration.userContentController.removeScriptMessageHandler(forName: "editor")
     }
 
-    func updateNSView(_ nsView: NSScrollView, context: Context) {
-        // Keep coordinator's parent reference current so onContentChanged stays fresh
+    func updateNSView(_: WKWebView, context: Context) {
         context.coordinator.parent = self
 
         // Only update content when the note ID changes (user switched notes)
         guard context.coordinator.currentNoteID != noteID else { return }
         context.coordinator.currentNoteID = noteID
-
-        let textView = nsView.documentView as! NSTextView
         context.coordinator.slashHandler?.dismiss()
-        textView.string = initialContent
-        context.coordinator.highlighter?.highlightAll()
 
-        // Scroll to top for new note
-        textView.scrollToBeginningOfDocument(nil)
+        // Set content once the editor is ready
+        if context.coordinator.isEditorReady {
+            context.coordinator.setContent(initialContent)
+        } else {
+            context.coordinator.pendingContent = initialContent
+        }
     }
 
     // MARK: - Coordinator
 
-    final class Coordinator: NSObject, NSTextViewDelegate {
+    final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         var parent: MarkdownEditorView
-        weak var textView: NSTextView?
-        var highlighter: MarkdownHighlighter?
+        weak var webView: WKWebView?
         var slashHandler: SlashCommandHandler?
         var currentNoteID: UUID?
+        var isEditorReady = false
+        var pendingContent: String?
         private let saveDebouncer = Debouncer(delay: 1.0)
+        /// Most recently known content, used for flush on dismantle.
+        private var latestContent: String?
 
         init(_ parent: MarkdownEditorView) {
             self.parent = parent
             currentNoteID = parent.noteID
+            latestContent = parent.initialContent
         }
 
-        /// Flush any pending debounced content to the NoteStore immediately.
-        /// Called when the view is dismantled (user navigates away).
+        // MARK: - Flush
+
         func flushPendingContent() {
             saveDebouncer.cancel()
-            if let textView, !textView.hasMarkedText() {
-                parent.onContentChanged(textView.string)
+            if let content = latestContent {
+                parent.onContentChanged(content)
             }
         }
 
-        func textDidChange(_ notification: Notification) {
-            guard let textView = notification.object as? NSTextView else { return }
+        // MARK: - JS → Swift Messages
 
-            // Re-highlight around the edit
-            let editedRange = textView.selectedRange()
-            highlighter?.highlightVisible(around: editedRange)
+        nonisolated func userContentController(
+            _: WKUserContentController,
+            didReceive message: WKScriptMessage,
+        ) {
+            MainActor.assumeIsolated {
+                handleMessage(message)
+            }
+        }
 
-            // Check for slash command trigger
-            slashHandler?.textDidChange()
+        private func handleMessage(_ message: WKScriptMessage) {
+            guard let body = message.body as? [String: Any],
+                  let action = body["action"] as? String
+            else { return }
 
-            // Debounced save — skip if IME composition is active
-            if !textView.hasMarkedText() {
-                let content = textView.string
+            #if DEBUG
+                let start = CFAbsoluteTimeGetCurrent()
+            #endif
+
+            switch action {
+            case "ready":
+                isEditorReady = true
+                let content = pendingContent ?? parent.initialContent
+                pendingContent = nil
+                #if DEBUG
+                    print("[Editor] JS ready. Setting content (\(content.count) chars) for note \(currentNoteID?.uuidString.prefix(8) ?? "nil")")
+                #endif
+                setContent(content)
+                syncTheme()
+
+                // Initialize slash handler with WKWebView bridge
+                slashHandler = SlashCommandHandler(webView: webView)
+
+            case "contentChanged":
+                guard let content = body["content"] as? String else { return }
+                latestContent = content
+
+                // Check for slash command trigger
+                slashHandler?.contentDidChange(content: content)
+
+                // Debounced save
                 saveDebouncer.call { [weak self] in
                     self?.parent.onContentChanged(content)
                 }
+
+            case "cursorPosition":
+                guard let x = body["x"] as? Double,
+                      let y = body["y"] as? Double,
+                      let pos = body["pos"] as? Int
+                else { return }
+                slashHandler?.cursorPositionChanged(x: x, y: y, pos: pos)
+
+            case "slashTrigger":
+                // Editor detected "/" typed — show slash command popup
+                guard let x = body["x"] as? Double,
+                      let y = body["y"] as? Double,
+                      let pos = body["pos"] as? Int
+                else { return }
+                slashHandler?.handleSlashTrigger(x: x, y: y, pos: pos)
+
+            default:
+                break
+            }
+
+            #if DEBUG
+                let elapsed = (CFAbsoluteTimeGetCurrent() - start) * 1000
+                if elapsed > 5 {
+                    print("[Perf] handleMessage(\(action)) took \(String(format: "%.1f", elapsed))ms")
+                }
+            #endif
+        }
+
+        // MARK: - Swift → JS
+
+        func setContent(_ content: String) {
+            guard let webView, isEditorReady else {
+                #if DEBUG
+                    print("[Editor] setContent deferred (ready=\(isEditorReady), webView=\(webView != nil))")
+                #endif
+                pendingContent = content
+                return
+            }
+            let json = jsonEncode(content)
+            #if DEBUG
+                print("[Editor] evaluateJavaScript setContent(\(content.count) chars)")
+            #endif
+            webView.evaluateJavaScript("window.editorAPI.setContent(\(json))") { _, error in
+                #if DEBUG
+                    if let error {
+                        print("[Editor] setContent JS error: \(error)")
+                    }
+                #endif
             }
         }
 
-        /// Forward key events to slash command popup when active
-        func textView(_: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
-            if let handler = slashHandler, handler.isActive {
-                // Arrow keys, Return, Escape
-                if commandSelector == #selector(NSResponder.moveDown(_:)) {
-                    return handler.handleArrowDown()
-                } else if commandSelector == #selector(NSResponder.moveUp(_:)) {
-                    return handler.handleArrowUp()
-                } else if commandSelector == #selector(NSResponder.insertNewline(_:)) {
-                    return handler.handleReturn()
-                } else if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
-                    handler.dismiss()
-                    return true
-                }
-            }
-            return false
+        func insertText(_ text: String) {
+            guard let webView, isEditorReady else { return }
+            let json = jsonEncode(text)
+            webView.evaluateJavaScript("window.editorAPI.insertText(\(json))")
+        }
+
+        func focus() {
+            guard let webView, isEditorReady else { return }
+            webView.evaluateJavaScript("window.editorAPI.focus()")
+        }
+
+        func syncTheme() {
+            guard let webView, isEditorReady else { return }
+            let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            let theme = isDark ? "dark" : "light"
+            webView.evaluateJavaScript("window.editorAPI.setTheme('\(theme)')")
+        }
+
+        // MARK: - Navigation Delegate
+
+        func webView(_: WKWebView, didFinish _: WKNavigation!) {
+            // The "ready" message from JS will handle initialization
+        }
+
+        // MARK: - Helpers
+
+        private func jsonEncode(_ string: String) -> String {
+            let data = try! JSONEncoder().encode(string)
+            return String(data: data, encoding: .utf8)!
         }
     }
 }

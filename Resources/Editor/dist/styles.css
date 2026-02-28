@@ -1,0 +1,229 @@
+/* EdgeMark CodeMirror 6 Editor Styles
+ *
+ * Matches the native app's font sizes and colors.
+ * Dark/light via [data-theme] on <html>.
+ */
+
+/* ---- Reset ---- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+}
+
+#editor {
+  height: 100%;
+}
+
+/* ---- Light theme (default) ---- */
+:root {
+  --bg: transparent;
+  --fg: #1d1d1f;
+  --fg-secondary: #86868b;
+  --fg-tertiary: #aeaeb2;
+  --caret-color: #007aff;
+  --selection-bg: rgba(0, 122, 255, 0.2);
+  --code-bg: rgba(142, 142, 147, 0.12);
+  --code-color: #d35400;
+  --link-color: #007aff;
+  --blockquote-border: rgba(142, 142, 147, 0.3);
+  --hr-color: rgba(142, 142, 147, 0.3);
+}
+
+/* ---- Dark theme ---- */
+[data-theme="dark"] {
+  --bg: transparent;
+  --fg: #f5f5f7;
+  --fg-secondary: #98989d;
+  --fg-tertiary: #636366;
+  --caret-color: #f5f5f7;
+  --selection-bg: rgba(10, 132, 255, 0.3);
+  --code-bg: rgba(142, 142, 147, 0.15);
+  --code-color: #ff9f0a;
+  --link-color: #0a84ff;
+  --blockquote-border: rgba(142, 142, 147, 0.4);
+  --hr-color: rgba(142, 142, 147, 0.4);
+}
+
+body {
+  background: transparent;
+  color: var(--fg);
+}
+
+/* ---- CodeMirror base overrides ---- */
+.cm-editor {
+  height: 100%;
+  background: transparent;
+  color: var(--fg);
+}
+
+.cm-scroller {
+  background: transparent;
+}
+
+.cm-content {
+  caret-color: var(--caret-color);
+  line-height: 1.6;
+}
+
+.cm-line {
+  padding: 1px 0;
+}
+
+/* Kill any leftover default syntax highlighting that conflicts with WYSIWYG */
+.cm-editor .tok-heading,
+.cm-editor .tok-strong,
+.cm-editor .tok-emphasis,
+.cm-editor .tok-strikethrough,
+.cm-editor .tok-link,
+.cm-editor .tok-url,
+.cm-editor .tok-meta,
+.cm-editor .tok-processingInstruction,
+.cm-editor .tok-monospace,
+.cm-editor .tok-quote {
+  text-decoration: none !important;
+  color: inherit !important;
+  font-weight: inherit !important;
+  font-style: inherit !important;
+}
+
+/* ---- Headings ---- */
+.cm-heading-1 {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.3;
+  padding: 4px 0 2px;
+}
+
+.cm-heading-2 {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.35;
+  padding: 3px 0 1px;
+}
+
+.cm-heading-3 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 2px 0 1px;
+}
+
+.cm-heading-4 {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.cm-heading-5 {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.cm-heading-6 {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--fg-secondary);
+}
+
+/* ---- Inline formatting ---- */
+.cm-strong {
+  font-weight: 700;
+}
+
+.cm-emphasis {
+  font-style: italic;
+}
+
+.cm-strikethrough {
+  text-decoration: line-through;
+  color: var(--fg-secondary);
+}
+
+.cm-inline-code {
+  font-family: "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.9em;
+  background: var(--code-bg);
+  border-radius: 3px;
+  padding: 1px 4px;
+  color: var(--code-color);
+}
+
+/* ---- Links ---- */
+.cm-link-text {
+  color: var(--link-color);
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 122, 255, 0.4);
+  text-underline-offset: 2px;
+}
+
+[data-theme="dark"] .cm-link-text {
+  text-decoration-color: rgba(10, 132, 255, 0.4);
+}
+
+.cm-link-url {
+  color: var(--fg-tertiary);
+  font-size: 0.9em;
+}
+
+/* ---- Blockquote ---- */
+.cm-blockquote {
+  border-left: 3px solid var(--blockquote-border);
+  padding-left: 12px;
+  color: var(--fg-secondary);
+}
+
+/* ---- Code block ---- */
+.cm-code-line {
+  background: var(--code-bg);
+}
+
+.cm-fenced-code {
+  font-family: "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.9em;
+}
+
+/* ---- Horizontal rule ---- */
+.cm-hr {
+  text-align: center;
+  border-bottom: 1px solid var(--hr-color);
+  min-height: 1px;
+}
+
+/* ---- Task checkbox ---- */
+.cm-task-checkbox {
+  cursor: pointer;
+  margin-right: 4px;
+  vertical-align: middle;
+  accent-color: var(--caret-color);
+}
+
+/* ---- Placeholder ---- */
+.cm-placeholder {
+  color: var(--fg-tertiary);
+  font-style: italic;
+}
+
+/* ---- Scrollbar styling (macOS-like) ---- */
+.cm-scroller::-webkit-scrollbar {
+  width: 8px;
+}
+
+.cm-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cm-scroller::-webkit-scrollbar-thumb {
+  background: var(--fg-tertiary);
+  border-radius: 4px;
+}
+
+.cm-scroller::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-secondary);
+}
