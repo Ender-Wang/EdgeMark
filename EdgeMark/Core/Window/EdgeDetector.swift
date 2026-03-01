@@ -102,16 +102,25 @@ final class EdgeDetector {
     }
 
     private func isAtEdge(mouseLocation: NSPoint, visibleFrame: NSRect) -> Bool {
-        // Right edge detection
-        let atRightEdge = mouseLocation.x >= visibleFrame.maxX - edgeThreshold
+        let settings = ShortcutSettings.shared
+        guard settings.edgeActivationEnabled else { return false }
 
-        guard atRightEdge else { return false }
+        let atEdge: Bool = switch settings.edgeSide {
+        case .right:
+            mouseLocation.x >= visibleFrame.maxX - edgeThreshold
+        case .left:
+            mouseLocation.x <= visibleFrame.minX + edgeThreshold
+        }
+
+        guard atEdge else { return false }
 
         // Corner exclusion: skip if cursor is within cornerExclusion of screen corners
-        let distFromBottom = mouseLocation.y - visibleFrame.minY
-        let distFromTop = visibleFrame.maxY - mouseLocation.y
-        if distFromBottom < cornerExclusion || distFromTop < cornerExclusion {
-            return false
+        if settings.excludeCorners {
+            let distFromBottom = mouseLocation.y - visibleFrame.minY
+            let distFromTop = visibleFrame.maxY - mouseLocation.y
+            if distFromBottom < cornerExclusion || distFromTop < cornerExclusion {
+                return false
+            }
         }
 
         return true

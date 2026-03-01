@@ -1,5 +1,7 @@
 import Carbon
 import Foundation
+import OSLog
+import ServiceManagement
 
 // MARK: - KeyboardShortcut
 
@@ -18,6 +20,13 @@ struct KeyboardShortcut: Codable, Equatable, Sendable {
         }
         return parts.joined()
     }
+}
+
+// MARK: - EdgeSide
+
+enum EdgeSide: String, Sendable {
+    case left
+    case right
 }
 
 // MARK: - ShortcutSettings
@@ -44,6 +53,42 @@ final class ShortcutSettings {
         didSet { UserDefaults.standard.set(activationDelay, forKey: activationDelayKey) }
     }
 
+    /// Which screen edge the panel appears from.
+    var edgeSide: EdgeSide {
+        didSet {
+            UserDefaults.standard.set(edgeSide.rawValue, forKey: edgeSideKey)
+            NotificationCenter.default.post(name: .shortcutSettingsChanged, object: nil)
+        }
+    }
+
+    /// Whether edge activation (mouse hover to trigger) is enabled.
+    var edgeActivationEnabled: Bool {
+        didSet { UserDefaults.standard.set(edgeActivationEnabled, forKey: edgeActivationEnabledKey) }
+    }
+
+    /// Whether to exclude screen corners from edge activation.
+    var excludeCorners: Bool {
+        didSet { UserDefaults.standard.set(excludeCorners, forKey: excludeCornersKey) }
+    }
+
+    /// Whether clicking outside the panel hides it.
+    var hideOnClickOutside: Bool {
+        didSet { UserDefaults.standard.set(hideOnClickOutside, forKey: hideOnClickOutsideKey) }
+    }
+
+    /// Whether to automatically check for updates on launch (24h throttle).
+    var autoCheckUpdates: Bool {
+        didSet { UserDefaults.standard.set(autoCheckUpdates, forKey: autoCheckUpdatesKey) }
+    }
+
+    /// Whether the app launches at login.
+    var launchAtLogin: Bool {
+        didSet {
+            UserDefaults.standard.set(launchAtLogin, forKey: launchAtLoginKey)
+            updateLoginItem()
+        }
+    }
+
     /// Custom storage directory for notes. nil = default (`~/Documents/EdgeMark/`).
     var storageDirectory: URL? {
         didSet {
@@ -52,6 +97,7 @@ final class ShortcutSettings {
             } else {
                 UserDefaults.standard.removeObject(forKey: storageDirectoryKey)
             }
+            NotificationCenter.default.post(name: .shortcutSettingsChanged, object: nil)
         }
     }
 
@@ -70,18 +116,56 @@ final class ShortcutSettings {
     private let autoHideKey = "autoHideOnMouseExit"
     private let hideDelayKey = "hideDelay"
     private let activationDelayKey = "activationDelay"
+    private let edgeSideKey = "edgeSide"
+    private let edgeActivationEnabledKey = "edgeActivationEnabled"
+    private let excludeCornersKey = "excludeCorners"
+    private let hideOnClickOutsideKey = "hideOnClickOutside"
+    private let autoCheckUpdatesKey = "autoCheckUpdates"
+    private let launchAtLoginKey = "launchAtLogin"
     private let storageDirectoryKey = "storageDirectory"
 
     // MARK: - Init
 
     private init() {
+        // Existing settings
         autoHideOnMouseExit = UserDefaults.standard.object(forKey: autoHideKey) as? Bool ?? true
         hideDelay = UserDefaults.standard.object(forKey: hideDelayKey) as? Double ?? 0.5
         activationDelay = UserDefaults.standard.object(forKey: activationDelayKey) as? Double ?? 0.0
+
+        // New settings
+        if let raw = UserDefaults.standard.string(forKey: edgeSideKey),
+           let side = EdgeSide(rawValue: raw)
+        {
+            edgeSide = side
+        } else {
+            edgeSide = .right
+        }
+        edgeActivationEnabled = UserDefaults.standard.object(forKey: edgeActivationEnabledKey) as? Bool ?? true
+        excludeCorners = UserDefaults.standard.object(forKey: excludeCornersKey) as? Bool ?? true
+        hideOnClickOutside = UserDefaults.standard.object(forKey: hideOnClickOutsideKey) as? Bool ?? true
+        autoCheckUpdates = UserDefaults.standard.object(forKey: autoCheckUpdatesKey) as? Bool ?? true
+        launchAtLogin = UserDefaults.standard.object(forKey: launchAtLoginKey) as? Bool ?? false
+
+        // Storage directory
         if let path = UserDefaults.standard.string(forKey: storageDirectoryKey) {
             storageDirectory = URL(fileURLWithPath: path, isDirectory: true)
         }
         loadShortcuts()
+    }
+
+    // MARK: - Login Item
+
+    private func updateLoginItem() {
+        do {
+            if launchAtLogin {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+        } catch {
+            let msg = error.localizedDescription
+            Log.app.error("Failed to update login item: \(msg)")
+        }
     }
 
     // MARK: - Persistence

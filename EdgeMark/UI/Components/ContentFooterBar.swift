@@ -62,14 +62,6 @@ struct ContentFooterBar: View {
         let menu = NSMenu()
         let delegate = NSApp.delegate as? AppDelegate
 
-        let folderItem = NSMenuItem(
-            title: "Change Notes Folder\u{2026}",
-            action: #selector(AppDelegate.changeNotesFolder),
-            keyEquivalent: "",
-        )
-        folderItem.target = delegate
-        menu.addItem(folderItem)
-
         let trashItem = NSMenuItem(
             title: "Trash",
             action: #selector(AppDelegate.showTrash),
@@ -81,12 +73,20 @@ struct ContentFooterBar: View {
 
         menu.addItem(.separator())
 
-        let settingsItem = NSMenuItem(title: "Settings\u{2026}", action: nil, keyEquivalent: "")
-        settingsItem.isEnabled = false
+        let settingsItem = NSMenuItem(
+            title: "Settings\u{2026}",
+            action: #selector(AppDelegate.openSettings),
+            keyEquivalent: "",
+        )
+        settingsItem.target = delegate
         menu.addItem(settingsItem)
 
-        let updateItem = NSMenuItem(title: "Check for Updates\u{2026}", action: nil, keyEquivalent: "")
-        updateItem.isEnabled = false
+        let updateItem = NSMenuItem(
+            title: "Check for Updates\u{2026}",
+            action: #selector(AppDelegate.checkForUpdates),
+            keyEquivalent: "",
+        )
+        updateItem.target = delegate
         menu.addItem(updateItem)
 
         menu.addItem(.separator())

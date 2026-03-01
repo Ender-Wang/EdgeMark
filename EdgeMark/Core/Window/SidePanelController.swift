@@ -35,11 +35,17 @@ final class SidePanelController: NSWindowController {
     init() {
         let visibleFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let panelWidth: CGFloat = 400
+        let side = ShortcutSettings.shared.edgeSide
 
-        // Start off-screen to the right
+        // Start off-screen on the configured edge
+        let startX: CGFloat = switch side {
+        case .right: visibleFrame.maxX
+        case .left: visibleFrame.minX - panelWidth
+        }
+
         let window = KeyableWindow(
             contentRect: NSRect(
-                x: visibleFrame.maxX,
+                x: startX,
                 y: visibleFrame.minY,
                 width: panelWidth,
                 height: visibleFrame.height,
@@ -61,8 +67,7 @@ final class SidePanelController: NSWindowController {
         hostingView.frame = NSRect(x: 0, y: 0, width: panelWidth, height: visibleFrame.height)
         hostingView.wantsLayer = true
         hostingView.layer?.cornerRadius = 10
-        // Right edge panel → round left corners only
-        hostingView.layer?.maskedCorners = [.layerMinXMinYCorner, .layerMinXMaxYCorner]
+        hostingView.layer?.maskedCorners = Self.maskedCorners(for: side)
         hostingView.layer?.masksToBounds = true
         window.contentView = hostingView
 
@@ -85,7 +90,8 @@ final class SidePanelController: NSWindowController {
 
         // Click-outside dismissal
         NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown) { [weak self] _ in
-            guard let self, isShown, !self.isMouseInPanel() else { return }
+            guard let self, isShown, !self.isMouseInPanel(),
+                  ShortcutSettings.shared.hideOnClickOutside else { return }
             hidePanel()
         }
 
@@ -101,11 +107,40 @@ final class SidePanelController: NSWindowController {
             }
             return event
         }
+
+        // Listen for settings changes (e.g. edge side) to reconfigure the panel
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleSettingsChanged),
+            name: .shortcutSettingsChanged,
+            object: nil,
+        )
     }
 
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    // MARK: - Settings Change
+
+    @objc private func handleSettingsChanged() {
+        guard let window, let hostingView = window.contentView else { return }
+
+        // Update corner radius for new edge side
+        let side = ShortcutSettings.shared.edgeSide
+        hostingView.layer?.maskedCorners = Self.maskedCorners(for: side)
+
+        // If panel is visible, hide it — user re-triggers to see it on the new edge
+        if isShown {
+            hidePanel()
+        } else {
+            // Reposition off-screen on the new edge
+            let targetScreen = window.screen ?? NSScreen.main ?? NSScreen.screens.first!
+            let visibleFrame = targetScreen.visibleFrame
+            let (_, hidden) = panelFrames(visibleFrame: visibleFrame, side: side)
+            window.setFrame(hidden, display: false)
+        }
     }
 
     // MARK: - Dummy Window
@@ -143,7 +178,8 @@ final class SidePanelController: NSWindowController {
     }
 
     override func mouseExited(with _: NSEvent) {
-        guard isShown, !isAnimating, !isEditorFocused else { return }
+        guard isShown, !isAnimating, !isEditorFocused,
+              ShortcutSettings.shared.autoHideOnMouseExit else { return }
         let delay = ShortcutSettings.shared.hideDelay
         if delay == 0 {
             hidePanel()
@@ -162,17 +198,13 @@ final class SidePanelController: NSWindowController {
         guard let window, !isShown else { return }
         let targetScreen = screen ?? NSScreen.main ?? NSScreen.screens.first!
         let visibleFrame = targetScreen.visibleFrame
+        let side = ShortcutSettings.shared.edgeSide
 
         isShown = true
         let gen = animationGeneration &+ 1
         animationGeneration = gen
 
-        let shownFrame = NSRect(
-            x: visibleFrame.maxX - panelWidth,
-            y: visibleFrame.minY,
-            width: panelWidth,
-            height: visibleFrame.height,
-        )
+        let (shownFrame, startFrame) = panelFrames(visibleFrame: visibleFrame, side: side)
 
         // Save the frontmost app so we can restore focus when hiding
         let frontmost = NSWorkspace.shared.frontmostApplication
@@ -191,10 +223,6 @@ final class SidePanelController: NSWindowController {
         } else {
             // Normal animated show
             isAnimating = true
-            let startFrame = NSRect(
-                x: visibleFrame.maxX, y: visibleFrame.minY,
-                width: panelWidth, height: visibleFrame.height,
-            )
             // Pre-render at start position so SwiftUI layout is done before animation
             window.setFrame(startFrame, display: true)
             window.makeKeyAndOrderFront(nil)
@@ -225,12 +253,8 @@ final class SidePanelController: NSWindowController {
 
         let targetScreen = window.screen ?? NSScreen.main ?? NSScreen.screens.first!
         let visibleFrame = targetScreen.visibleFrame
-        let hiddenFrame = NSRect(
-            x: visibleFrame.maxX,
-            y: visibleFrame.minY,
-            width: panelWidth,
-            height: visibleFrame.height,
-        )
+        let side = ShortcutSettings.shared.edgeSide
+        let (_, hiddenFrame) = panelFrames(visibleFrame: visibleFrame, side: side)
 
         if isAnimating {
             // Interrupt show animation — snap to hidden position
@@ -261,6 +285,39 @@ final class SidePanelController: NSWindowController {
             hidePanel()
         } else {
             showPanel()
+        }
+    }
+
+    // MARK: - Frame Calculation
+
+    /// Returns (shown, hidden) frames for the given edge side.
+    private func panelFrames(visibleFrame: NSRect, side: EdgeSide) -> (shown: NSRect, hidden: NSRect) {
+        let shown: NSRect
+        let hidden: NSRect
+        switch side {
+        case .right:
+            shown = NSRect(x: visibleFrame.maxX - panelWidth, y: visibleFrame.minY,
+                           width: panelWidth, height: visibleFrame.height)
+            hidden = NSRect(x: visibleFrame.maxX, y: visibleFrame.minY,
+                            width: panelWidth, height: visibleFrame.height)
+        case .left:
+            shown = NSRect(x: visibleFrame.minX, y: visibleFrame.minY,
+                           width: panelWidth, height: visibleFrame.height)
+            hidden = NSRect(x: visibleFrame.minX - panelWidth, y: visibleFrame.minY,
+                            width: panelWidth, height: visibleFrame.height)
+        }
+        return (shown, hidden)
+    }
+
+    /// Corner mask for the given edge side.
+    private static func maskedCorners(for side: EdgeSide) -> CACornerMask {
+        switch side {
+        case .right:
+            // Right edge → round left corners
+            [.layerMinXMinYCorner, .layerMinXMaxYCorner]
+        case .left:
+            // Left edge → round right corners
+            [.layerMaxXMinYCorner, .layerMaxXMaxYCorner]
         }
     }
 
