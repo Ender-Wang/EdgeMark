@@ -48,40 +48,42 @@ Or download the latest `.dmg` from [Releases](https://github.com/Ender-Wang/Edge
 - [x] Note model + folder-based organization
 - [x] File storage: plain `.md` files with YAML front matter in `~/Documents/EdgeMark/`
 - [x] Configurable notes storage directory
-- [x] NSTextView Markdown editor with live syntax highlighting
+- [x] CodeMirror 6 WYSIWYG editor with cursor-aware live preview (hides syntax, reveals on cursor line)
 - [x] Full Markdown support (headings, bold, italic, code, lists, task lists, blockquotes, links)
 - [x] Slash commands (`/h1`, `/todo`, `/code`, `/quote`, `/table`, and more)
 - [x] Note list UI: folder picker → note cards → editor
 - [x] 1-second debounced auto-save
+- [x] Trash: `.trash/` directory storage with read-only preview
 
-## M3: Settings + Polish
+## M3: Settings + Polish (in progress)
 
-- [ ] Settings window (General, Keyboard, About tabs)
-- [ ] Configurable: left/right edge, activation delay, corner exclusion, auto-hide
-- [ ] Custom global shortcut recorder
-- [ ] Launch at login
-- [ ] Note card colors, dark/light mode, search, drag-and-drop reorder
+- [x] Settings window (General, Keyboard, About tabs)
+- [x] Configurable: left/right edge, activation delay, corner exclusion, auto-hide
+- [x] Custom global shortcut recorder
+- [x] Launch at login
+- [x] Auto-update: check, download with progress, SHA256 verify, install & restart
+- [ ] Note card colors, search, drag-and-drop reorder
 - [ ] Find & Replace (Cmd+F)
 - [ ] Localization: JSON-based i18n (English + Simplified Chinese)
 
-## M4: CI/CD + Auto-Update
+## M4: CI/CD + Auto-Update ✅
 
-- [ ] GitHub Actions build pipeline (unsigned Release, DMG, SHA256, GitHub Releases)
-- [ ] Homebrew Cask auto-generated
-- [ ] In-app auto-update (check, download, verify, install, restart)
-- [ ] OSLog with categorized loggers
+- [x] GitHub Actions build pipeline (unsigned Release, DMG, SHA256, GitHub Releases)
+- [x] Homebrew Cask auto-generated
+- [x] In-app update check (check GitHub Releases, 24h throttle)
+- [x] Download + install update UI (progress, verify, install, restart)
+- [x] OSLog with categorized loggers
 
 ## M5: Sharing + Export
 
 - [ ] Copy as plain text / Markdown source / image
-- [ ] Save as image (configurable margins/background)
-- [ ] System share sheet
-- [ ] `edgemark://` URL scheme
+- [x] ~~Save as image (configurable margins/background)~~
+- [x] ~~System share sheet~~
+- [x] ~~`edgemark://` URL scheme~~
 
-## M6: Advanced Markdown (Typora-style)
+## M6: Advanced Markdown (Typora-style) ✅
 
-- [ ] Cursor-aware inline rendering — hide Markdown syntax when cursor isn't on the element
-- [ ] Neon + tree-sitter-markdown full integration
+- [x] Cursor-aware inline rendering — hide Markdown syntax when cursor isn't on the element (via CodeMirror 6 WYSIWYG plugin)
 
 ---
 
