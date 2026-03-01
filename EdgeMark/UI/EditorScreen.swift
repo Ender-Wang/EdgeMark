@@ -1,3 +1,4 @@
+import Cocoa
 import SwiftUI
 
 struct EditorScreen: View {
@@ -60,6 +61,8 @@ struct EditorScreen: View {
 
                     Spacer()
 
+                    CopyMenuButton(note: note)
+
                     DeleteIconButton {
                         showDeleteConfirm = true
                     }
@@ -85,6 +88,47 @@ struct EditorScreen: View {
     private func goBack() {
         noteStore.saveDirtyNotes()
         noteStore.selectedNote = nil
+    }
+}
+
+// MARK: - Copy Menu Button
+
+/// Copy icon that opens a menu with plain text and Markdown copy options.
+private struct CopyMenuButton: View {
+    let note: Note
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Menu {
+            Button("Copy as Plain Text") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(note.plainText, forType: .string)
+            }
+            Button("Copy as Markdown") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(note.content, forType: .string)
+            }
+        } label: {
+            Image(systemName: "doc.on.doc")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(isHovered ? .primary : .secondary)
+                .frame(width: 28, height: 28)
+                .background {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(.primary.opacity(isHovered ? 0.1 : 0))
+                }
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Copy Note")
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
     }
 }
 

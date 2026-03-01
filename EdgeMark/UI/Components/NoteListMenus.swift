@@ -18,6 +18,18 @@ enum NoteListMenus {
 
         Divider()
 
+        Button("Copy as Plain Text") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(note.plainText, forType: .string)
+        }
+
+        Button("Copy as Markdown") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(note.content, forType: .string)
+        }
+
+        Divider()
+
         Button("Show in Finder") {
             NSWorkspace.shared.activateFileViewerSelecting([
                 FileStorage.urlForNote(note),
