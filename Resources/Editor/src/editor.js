@@ -106,6 +106,84 @@ const listContinuationKeymap = keymap.of([
 ]);
 
 // ---------------------------------------------------------------------------
+// Markdown formatting shortcuts
+// ---------------------------------------------------------------------------
+
+/**
+ * Wrap the selection with a symmetric marker (e.g. ** for bold).
+ * - With selection: wrap it → **selection**
+ * - Empty selection: insert markers with cursor between → **|**
+ * - Already wrapped: unwrap (toggle off)
+ */
+function wrapSelection(marker) {
+  return ({ state, dispatch }) => {
+    const { from, to } = state.selection.main;
+    const len = marker.length;
+
+    // Check if selection is already wrapped — toggle off
+    if (from >= len && to + len <= state.doc.length) {
+      const before = state.doc.sliceString(from - len, from);
+      const after = state.doc.sliceString(to, to + len);
+      if (before === marker && after === marker) {
+        dispatch({
+          changes: [
+            { from: from - len, to: from, insert: "" },
+            { from: to, to: to + len, insert: "" },
+          ],
+          selection: { anchor: from - len, head: to - len },
+        });
+        return true;
+      }
+    }
+
+    if (from === to) {
+      // Empty selection: insert markers with cursor between
+      dispatch({
+        changes: { from, to, insert: marker + marker },
+        selection: { anchor: from + len },
+      });
+    } else {
+      // Wrap selection
+      const text = state.doc.sliceString(from, to);
+      dispatch({
+        changes: { from, to, insert: marker + text + marker },
+        selection: { anchor: from + len, head: to + len },
+      });
+    }
+    return true;
+  };
+}
+
+function insertLink({ state, dispatch }) {
+  const { from, to } = state.selection.main;
+  if (from === to) {
+    // Empty selection: insert [text](url) template
+    const insert = "[](url)";
+    dispatch({
+      changes: { from, to, insert },
+      selection: { anchor: from + 1 }, // cursor inside []
+    });
+  } else {
+    // Wrap selection as link text
+    const text = state.doc.sliceString(from, to);
+    const insert = `[${text}](url)`;
+    dispatch({
+      changes: { from, to, insert },
+      selection: { anchor: from + text.length + 3, head: from + text.length + 6 }, // select "url"
+    });
+  }
+  return true;
+}
+
+const markdownFormattingKeymap = keymap.of([
+  { key: "Mod-b", run: wrapSelection("**") },
+  { key: "Mod-i", run: wrapSelection("*") },
+  { key: "Mod-Shift-x", run: wrapSelection("~~") },
+  { key: "Mod-e", run: wrapSelection("`") },
+  { key: "Mod-k", run: insertLink },
+]);
+
+// ---------------------------------------------------------------------------
 // Theme (base styling — colors in styles.css)
 // ---------------------------------------------------------------------------
 
@@ -168,6 +246,7 @@ function createEditor(readOnly = false) {
     markdown({ base: markdownLanguage }),
     wysiwyg(),
     listContinuationKeymap,
+    markdownFormattingKeymap,
     keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
     placeholderExt("Start writing…"),
     // Listen for doc changes → notify Swift (debounced)
