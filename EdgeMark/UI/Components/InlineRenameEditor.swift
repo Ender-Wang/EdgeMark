@@ -27,7 +27,7 @@ struct InlineRenameEditor: View {
                 .focused(isFocused)
                 .onSubmit(onCommit)
                 .overlay(alignment: .trailing) {
-                    Text("Name taken")
+                    Text(L10n.shared["common.nameTaken"])
                         .font(.caption2)
                         .foregroundStyle(.red)
                         .padding(.horizontal, 6)

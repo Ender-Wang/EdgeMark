@@ -10,27 +10,28 @@ enum NoteListMenus {
     static func noteContextMenuItems(
         note: Note,
         noteStore: NoteStore,
+        l10n: L10n,
         onRename: @escaping () -> Void,
     ) -> some View {
-        Button("Rename", action: onRename)
+        Button(l10n["common.rename"], action: onRename)
 
-        noteMoveMenu(for: note, noteStore: noteStore)
+        noteMoveMenu(for: note, noteStore: noteStore, l10n: l10n)
 
         Divider()
 
-        Button("Copy as Plain Text") {
+        Button(l10n["common.copyPlainText"]) {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(note.plainText, forType: .string)
         }
 
-        Button("Copy as Markdown") {
+        Button(l10n["common.copyMarkdown"]) {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(note.content, forType: .string)
         }
 
         Divider()
 
-        Button("Show in Finder") {
+        Button(l10n["common.showInFinder"]) {
             NSWorkspace.shared.activateFileViewerSelecting([
                 FileStorage.urlForNote(note),
             ])
@@ -38,7 +39,7 @@ enum NoteListMenus {
 
         Divider()
 
-        Button("Delete", role: .destructive) {
+        Button(l10n["common.delete"], role: .destructive) {
             noteStore.trashNote(note)
         }
     }
@@ -48,14 +49,15 @@ enum NoteListMenus {
     static func folderContextMenuItems(
         folder: Folder,
         noteStore: NoteStore,
+        l10n: L10n,
         onRename: @escaping () -> Void,
         onDelete: @escaping () -> Void,
     ) -> some View {
-        Button("Rename", action: onRename)
+        Button(l10n["common.rename"], action: onRename)
 
-        folderMoveMenu(for: folder, noteStore: noteStore)
+        folderMoveMenu(for: folder, noteStore: noteStore, l10n: l10n)
 
-        Button("Show in Finder") {
+        Button(l10n["common.showInFinder"]) {
             NSWorkspace.shared.activateFileViewerSelecting([
                 FileStorage.urlForFolder(folder.name),
             ])
@@ -63,26 +65,26 @@ enum NoteListMenus {
 
         Divider()
 
-        Button("Delete", role: .destructive, action: onDelete)
+        Button(l10n["common.delete"], role: .destructive, action: onDelete)
     }
 
     // MARK: - Note Move Menu
 
     /// "Move to" submenu for a note — lists all available folders as a tree.
     @ViewBuilder
-    static func noteMoveMenu(for note: Note, noteStore: NoteStore) -> some View {
+    static func noteMoveMenu(for note: Note, noteStore: NoteStore, l10n: L10n) -> some View {
         let topLevel = noteStore.folders.filter(\.isTopLevel)
         let canMoveToRoot = !note.folder.isEmpty
         if canMoveToRoot || !topLevel.isEmpty {
-            Menu("Move to") {
+            Menu(l10n["common.moveTo"]) {
                 if canMoveToRoot {
-                    Button("Root") {
+                    Button(l10n["common.root"]) {
                         noteStore.moveNote(note, to: "")
                     }
                 }
                 ForEach(topLevel) { folder in
                     if folder.name != note.folder {
-                        noteMoveTreeItem(folder: folder, note: note, noteStore: noteStore)
+                        noteMoveTreeItem(folder: folder, note: note, noteStore: noteStore, l10n: l10n)
                     }
                 }
             }
@@ -90,7 +92,7 @@ enum NoteListMenus {
     }
 
     /// Recursive folder tree menu item for note move destinations.
-    static func noteMoveTreeItem(folder: Folder, note: Note, noteStore: NoteStore) -> AnyView {
+    static func noteMoveTreeItem(folder: Folder, note: Note, noteStore: NoteStore, l10n: L10n) -> AnyView {
         let children = noteStore.childFolders(of: folder.name)
             .filter { $0.name != note.folder }
         if children.isEmpty {
@@ -102,12 +104,12 @@ enum NoteListMenus {
         } else {
             return AnyView(
                 Menu(folder.displayName) {
-                    Button("Move here") {
+                    Button(l10n["common.moveHere"]) {
                         noteStore.moveNote(note, to: folder.name)
                     }
                     Divider()
                     ForEach(children) { child in
-                        noteMoveTreeItem(folder: child, note: note, noteStore: noteStore)
+                        noteMoveTreeItem(folder: child, note: note, noteStore: noteStore, l10n: l10n)
                     }
                 },
             )
@@ -118,26 +120,26 @@ enum NoteListMenus {
 
     /// "Move to" submenu for a folder — lists valid target locations as a tree.
     @ViewBuilder
-    static func folderMoveMenu(for folder: Folder, noteStore: NoteStore) -> some View {
+    static func folderMoveMenu(for folder: Folder, noteStore: NoteStore, l10n: L10n) -> some View {
         let topLevel = noteStore.folders.filter(\.isTopLevel)
             .filter { $0.name != folder.name && !$0.name.hasPrefix(folder.name + "/") }
         let canMoveToRoot = !folder.isTopLevel
         if canMoveToRoot || !topLevel.isEmpty {
-            Menu("Move to") {
+            Menu(l10n["common.moveTo"]) {
                 if canMoveToRoot {
-                    Button("Root") {
+                    Button(l10n["common.root"]) {
                         noteStore.moveFolder(folder.name, toParent: "")
                     }
                 }
                 ForEach(topLevel) { target in
-                    folderMoveTreeItem(target: target, movingFolder: folder, noteStore: noteStore)
+                    folderMoveTreeItem(target: target, movingFolder: folder, noteStore: noteStore, l10n: l10n)
                 }
             }
         }
     }
 
     /// Recursive tree menu item for folder move destinations.
-    static func folderMoveTreeItem(target: Folder, movingFolder: Folder, noteStore: NoteStore) -> AnyView {
+    static func folderMoveTreeItem(target: Folder, movingFolder: Folder, noteStore: NoteStore, l10n: L10n) -> AnyView {
         let isCurrentParent = target.name == movingFolder.parentPath
         let children = noteStore.childFolders(of: target.name)
             .filter { $0.name != movingFolder.name && !$0.name.hasPrefix(movingFolder.name + "/") }
@@ -149,7 +151,7 @@ enum NoteListMenus {
             return AnyView(
                 Menu(target.displayName) {
                     ForEach(children) { child in
-                        folderMoveTreeItem(target: child, movingFolder: movingFolder, noteStore: noteStore)
+                        folderMoveTreeItem(target: child, movingFolder: movingFolder, noteStore: noteStore, l10n: l10n)
                     }
                 },
             )
@@ -165,12 +167,12 @@ enum NoteListMenus {
 
         return AnyView(
             Menu(target.displayName) {
-                Button("Move here") {
+                Button(l10n["common.moveHere"]) {
                     noteStore.moveFolder(movingFolder.name, toParent: target.name)
                 }
                 Divider()
                 ForEach(children) { child in
-                    folderMoveTreeItem(target: child, movingFolder: movingFolder, noteStore: noteStore)
+                    folderMoveTreeItem(target: child, movingFolder: movingFolder, noteStore: noteStore, l10n: l10n)
                 }
             },
         )

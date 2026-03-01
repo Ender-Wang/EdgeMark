@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct GeneralSettingsTab: View {
+    @Environment(L10n.self) var l10n
+
     @State private var edgeSide: EdgeSide
     @State private var edgeActivationEnabled: Bool
     @State private var activationDelay: Double
@@ -11,6 +13,7 @@ struct GeneralSettingsTab: View {
     @State private var autoCheckUpdates: Bool
     @State private var launchAtLogin: Bool
     @State private var storagePath: String
+    @State private var selectedLocale: String
 
     init() {
         let s = ShortcutSettings.shared
@@ -24,14 +27,15 @@ struct GeneralSettingsTab: View {
         _autoCheckUpdates = State(initialValue: s.autoCheckUpdates)
         _launchAtLogin = State(initialValue: s.launchAtLogin)
         _storagePath = State(initialValue: s.resolvedStorageDirectory.path(percentEncoded: false))
+        _selectedLocale = State(initialValue: L10n.shared.locale)
     }
 
     var body: some View {
         Form {
-            Section("Panel position") {
-                Picker("Edge", selection: $edgeSide) {
-                    Text("Left").tag(EdgeSide.left)
-                    Text("Right").tag(EdgeSide.right)
+            Section(l10n["settings.general.panelPosition"]) {
+                Picker(l10n["settings.general.edge"], selection: $edgeSide) {
+                    Text(l10n["settings.general.left"]).tag(EdgeSide.left)
+                    Text(l10n["settings.general.right"]).tag(EdgeSide.right)
                 }
                 .pickerStyle(.segmented)
                 .fixedSize()
@@ -40,15 +44,15 @@ struct GeneralSettingsTab: View {
                 }
             }
 
-            Section("Edge activation") {
-                Toggle("Enable edge activation", isOn: $edgeActivationEnabled)
+            Section(l10n["settings.general.edgeActivation"]) {
+                Toggle(l10n["settings.general.enableEdgeActivation"], isOn: $edgeActivationEnabled)
                     .onChange(of: edgeActivationEnabled) { _, v in
                         ShortcutSettings.shared.edgeActivationEnabled = v
                     }
 
                 if edgeActivationEnabled {
                     HStack {
-                        Text("Activation delay")
+                        Text(l10n["settings.general.activationDelay"])
                         Slider(value: $activationDelay, in: 0 ... 1, step: 0.1)
                             .onChange(of: activationDelay) { _, v in
                                 ShortcutSettings.shared.activationDelay = v
@@ -58,22 +62,22 @@ struct GeneralSettingsTab: View {
                             .frame(width: 36, alignment: .trailing)
                     }
 
-                    Toggle("Exclude screen corners", isOn: $excludeCorners)
+                    Toggle(l10n["settings.general.excludeCorners"], isOn: $excludeCorners)
                         .onChange(of: excludeCorners) { _, v in
                             ShortcutSettings.shared.excludeCorners = v
                         }
                 }
             }
 
-            Section("Auto-hide") {
-                Toggle("Auto-hide when mouse exits", isOn: $autoHideOnMouseExit)
+            Section(l10n["settings.general.autoHide"]) {
+                Toggle(l10n["settings.general.autoHideOnExit"], isOn: $autoHideOnMouseExit)
                     .onChange(of: autoHideOnMouseExit) { _, v in
                         ShortcutSettings.shared.autoHideOnMouseExit = v
                     }
 
                 if autoHideOnMouseExit {
                     HStack {
-                        Text("Hide delay")
+                        Text(l10n["settings.general.hideDelay"])
                         Slider(value: $hideDelay, in: 0 ... 3, step: 0.1)
                             .onChange(of: hideDelay) { _, v in
                                 ShortcutSettings.shared.hideDelay = v
@@ -84,26 +88,38 @@ struct GeneralSettingsTab: View {
                     }
                 }
 
-                Toggle("Hide when clicking outside", isOn: $hideOnClickOutside)
+                Toggle(l10n["settings.general.hideOnClickOutside"], isOn: $hideOnClickOutside)
                     .onChange(of: hideOnClickOutside) { _, v in
                         ShortcutSettings.shared.hideOnClickOutside = v
                     }
             }
 
-            Section("System") {
-                Toggle("Check for updates automatically", isOn: $autoCheckUpdates)
+            Section(l10n["settings.general.system"]) {
+                Toggle(l10n["settings.general.autoCheckUpdates"], isOn: $autoCheckUpdates)
                     .onChange(of: autoCheckUpdates) { _, v in
                         ShortcutSettings.shared.autoCheckUpdates = v
                     }
 
-                Toggle("Launch at login", isOn: $launchAtLogin)
+                Toggle(l10n["settings.general.launchAtLogin"], isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, v in
                         ShortcutSettings.shared.launchAtLogin = v
                     }
             }
 
-            Section("Notes storage") {
-                LabeledContent("Location") {
+            Section(l10n["settings.general.language"]) {
+                Picker(l10n["settings.general.language"], selection: $selectedLocale) {
+                    Text(l10n["settings.language.system"]).tag("system")
+                    Text(l10n["settings.language.en"]).tag("en")
+                    Text(l10n["settings.language.zh"]).tag("zh-Hans")
+                }
+                .fixedSize()
+                .onChange(of: selectedLocale) { _, newValue in
+                    L10n.shared.locale = newValue
+                }
+            }
+
+            Section(l10n["settings.general.storage"]) {
+                LabeledContent(l10n["settings.general.location"]) {
                     Text(storagePath)
                         .font(.system(.caption, design: .monospaced))
                         .lineLimit(2)
@@ -113,11 +129,11 @@ struct GeneralSettingsTab: View {
                 }
 
                 HStack {
-                    Button("Show in Finder") {
+                    Button(l10n["settings.general.showInFinder"]) {
                         NSWorkspace.shared.open(ShortcutSettings.shared.resolvedStorageDirectory)
                     }
                     Spacer()
-                    Button("Change Notes Folder\u{2026}") {
+                    Button(l10n["settings.general.changeFolder"]) {
                         NSApp.sendAction(#selector(AppDelegate.changeNotesFolder), to: nil, from: nil)
                     }
                 }

@@ -40,5 +40,6 @@ struct ContentView: View {
     ContentView()
         .environment(NoteStore())
         .environment(AppSettings())
+        .environment(L10n.shared)
         .frame(width: 400, height: 600)
 }

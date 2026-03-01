@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct KeyboardSettingsTab: View {
+    @Environment(L10n.self) var l10n
     @State private var toggleShortcut: KeyboardShortcut?
 
     init() {
@@ -10,12 +11,12 @@ struct KeyboardSettingsTab: View {
     var body: some View {
         Form {
             Section {
-                Text("These keyboard shortcuts work system-wide, even when EdgeMark is in the background.")
+                Text(l10n["settings.keyboard.globalDescription"])
                     .font(.callout)
                     .foregroundStyle(.secondary)
 
                 HStack {
-                    Text("Toggle EdgeMark")
+                    Text(l10n["settings.keyboard.togglePanel"])
                     Spacer()
                     ShortcutRecorderView(shortcut: $toggleShortcut)
                         .frame(width: 180, height: 32)
@@ -24,14 +25,14 @@ struct KeyboardSettingsTab: View {
                     ShortcutSettings.shared.togglePanelShortcut = newValue
                 }
             } header: {
-                Text("Global shortcuts")
+                Text(l10n["settings.keyboard.globalShortcuts"])
             }
 
-            Section("Local shortcuts") {
-                localShortcutRow("Escape", "Hide panel or go back")
-                localShortcutRow("/ (at line start)", "Open slash command menu")
-                localShortcutRow("\u{2318}Z", "Undo")
-                localShortcutRow("\u{21E7}\u{2318}Z", "Redo")
+            Section(l10n["settings.keyboard.localShortcuts"]) {
+                localShortcutRow("Escape", l10n["settings.keyboard.hidePanel"])
+                localShortcutRow("/ (at line start)", l10n["settings.keyboard.slashCommand"])
+                localShortcutRow("\u{2318}Z", l10n["settings.keyboard.undo"])
+                localShortcutRow("\u{21E7}\u{2318}Z", l10n["settings.keyboard.redo"])
             }
         }
         .formStyle(.grouped)

@@ -36,3 +36,13 @@ final class AppSettings {
         }
     }
 }
+
+extension AppSettings.SortBy {
+    func displayName(_ l10n: L10n) -> String {
+        switch self {
+        case .name: l10n["sort.name"]
+        case .dateModified: l10n["sort.dateModified"]
+        case .dateCreated: l10n["sort.dateCreated"]
+        }
+    }
+}

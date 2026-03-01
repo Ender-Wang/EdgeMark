@@ -3,6 +3,7 @@ import SwiftUI
 
 struct TrashView: View {
     @Environment(NoteStore.self) var noteStore
+    @Environment(L10n.self) var l10n
 
     @State private var deletingNote: Note?
     @State private var deletingFolder: TrashedFolder?
@@ -73,7 +74,7 @@ struct TrashView: View {
             HStack {
                 HeaderIconButton(
                     systemName: "chevron.left",
-                    help: "Back",
+                    help: l10n["common.back"],
                 ) {
                     noteStore.showTrash = false
                 }
@@ -82,7 +83,7 @@ struct TrashView: View {
 
                 HeaderIconButton(
                     systemName: "trash.slash",
-                    help: "Empty Trash",
+                    help: l10n["trash.emptyTrash"],
                 ) {
                     showEmptyTrashConfirm = true
                 }
@@ -90,7 +91,7 @@ struct TrashView: View {
                 .disabled(noteStore.isTrashEmpty)
             }
             .overlay {
-                Text("Trash")
+                Text(l10n["trash.title"])
                     .font(.headline)
             }
         } content: {
@@ -121,32 +122,32 @@ struct TrashView: View {
                 ContentFooterBar()
             }
         }
-        .alert("Empty Trash?", isPresented: $showEmptyTrashConfirm) {
-            Button("Empty Trash", role: .destructive) {
+        .alert(l10n["alert.emptyTrash.title"], isPresented: $showEmptyTrashConfirm) {
+            Button(l10n["trash.emptyTrash"], role: .destructive) {
                 noteStore.emptyTrash()
             }
-            Button("Cancel", role: .cancel) {}
+            Button(l10n["common.cancel"], role: .cancel) {}
         } message: {
             let count = noteStore.trashItemCount
-            Text("All \(count) item(s) will be permanently deleted. This cannot be undone.")
+            Text(l10n.t("alert.emptyTrash.message", "\(count)"))
         }
-        .alert("Delete Permanently?", isPresented: $showDeleteNoteConfirm) {
-            Button("Delete", role: .destructive) {
+        .alert(l10n["alert.deletePermanent.note.title"], isPresented: $showDeleteNoteConfirm) {
+            Button(l10n["common.delete"], role: .destructive) {
                 if let note = deletingNote {
                     noteStore.permanentlyDeleteNote(note)
                     deletingNote = nil
                 }
             }
-            Button("Cancel", role: .cancel) {
+            Button(l10n["common.cancel"], role: .cancel) {
                 deletingNote = nil
             }
         } message: {
             if let note = deletingNote {
-                Text("\u{201C}\(note.title)\u{201D} will be permanently deleted. This cannot be undone.")
+                Text(l10n.t("alert.deletePermanent.note.message", note.title))
             }
         }
-        .alert("Delete Folder Permanently?", isPresented: $showDeleteFolderConfirm) {
-            Button("Delete", role: .destructive) {
+        .alert(l10n["alert.deletePermanent.folder.title"], isPresented: $showDeleteFolderConfirm) {
+            Button(l10n["common.delete"], role: .destructive) {
                 if let folder = deletingFolder {
                     noteStore.permanentlyDeleteFolder(folder)
                     deletingFolder = nil
@@ -156,15 +157,13 @@ struct TrashView: View {
                     }
                 }
             }
-            Button("Cancel", role: .cancel) {
+            Button(l10n["common.cancel"], role: .cancel) {
                 deletingFolder = nil
             }
         } message: {
             if let folder = deletingFolder {
                 let noteCount = folder.notes.count
-                Text(
-                    "\u{201C}\(folder.displayName)\u{201D} and its \(noteCount) note(s) will be permanently deleted. This cannot be undone.",
-                )
+                Text(l10n.t("alert.deletePermanent.folder.message", folder.displayName, "\(noteCount)"))
             }
         }
     }
@@ -178,7 +177,7 @@ struct TrashView: View {
                     HStack {
                         HeaderIconButton(
                             systemName: "chevron.left",
-                            help: "Back",
+                            help: l10n["common.back"],
                         ) {
                             previewingNote = nil
                         }
@@ -186,11 +185,11 @@ struct TrashView: View {
                         Spacer()
 
                         HStack(spacing: 4) {
-                            Text(note.title.isEmpty ? "Untitled" : note.title)
+                            Text(note.title.isEmpty ? l10n["common.untitled"] : note.title)
                                 .font(.headline)
                                 .lineLimit(1)
 
-                            Text("(read-only)")
+                            Text(l10n["editor.readOnly"])
                                 .font(.caption)
                                 .foregroundStyle(.tertiary)
                         }
@@ -200,7 +199,7 @@ struct TrashView: View {
                         if isPreviewingIndividualNote {
                             HeaderIconButton(
                                 systemName: "arrow.uturn.backward",
-                                help: "Restore Note",
+                                help: l10n["editor.restoreNote"],
                             ) {
                                 noteStore.restoreNote(note)
                                 previewingNote = nil
@@ -263,7 +262,7 @@ struct TrashView: View {
             HStack {
                 HeaderIconButton(
                     systemName: "chevron.left",
-                    help: "Back",
+                    help: l10n["common.back"],
                 ) {
                     navigateBackInFolder(folder: folder)
                 }
@@ -272,7 +271,7 @@ struct TrashView: View {
 
                 HeaderIconButton(
                     systemName: "arrow.uturn.backward",
-                    help: "Restore Folder",
+                    help: l10n["trash.restoreFolder"],
                 ) {
                     noteStore.restoreFolder(folder)
                     selectedTrashedFolder = nil
@@ -281,7 +280,7 @@ struct TrashView: View {
 
                 HeaderIconButton(
                     systemName: "trash",
-                    help: "Delete Permanently",
+                    help: l10n["common.deletePermanently"],
                 ) {
                     deletingFolder = folder
                     showDeleteFolderConfirm = true
@@ -309,8 +308,8 @@ struct TrashView: View {
                 ZStack {
                     EmptyStateView(
                         icon: "folder",
-                        title: "Empty Folder",
-                        subtitle: "This folder has no notes",
+                        title: l10n["trash.emptyFolder.title"],
+                        subtitle: l10n["trash.emptyFolder.subtitle"],
                     )
                     .opacity(isEmpty ? 1 : 0)
 
@@ -353,8 +352,8 @@ struct TrashView: View {
                 ContentFooterBar()
             }
         }
-        .alert("Delete Folder Permanently?", isPresented: $showDeleteFolderConfirm) {
-            Button("Delete", role: .destructive) {
+        .alert(l10n["alert.deletePermanent.folder.title"], isPresented: $showDeleteFolderConfirm) {
+            Button(l10n["common.delete"], role: .destructive) {
                 if let folder = deletingFolder {
                     noteStore.permanentlyDeleteFolder(folder)
                     deletingFolder = nil
@@ -362,15 +361,13 @@ struct TrashView: View {
                     browsePath = nil
                 }
             }
-            Button("Cancel", role: .cancel) {
+            Button(l10n["common.cancel"], role: .cancel) {
                 deletingFolder = nil
             }
         } message: {
             if let folder = deletingFolder {
                 let noteCount = folder.notes.count
-                Text(
-                    "\u{201C}\(folder.displayName)\u{201D} and its \(noteCount) note(s) will be permanently deleted. This cannot be undone.",
-                )
+                Text(l10n.t("alert.deletePermanent.folder.message", folder.displayName, "\(noteCount)"))
             }
         }
     }
@@ -415,13 +412,13 @@ struct TrashView: View {
             previewingNote = note
         }
         .contextMenu {
-            Button("Restore") {
+            Button(l10n["common.restore"]) {
                 noteStore.restoreNote(note)
             }
 
             Divider()
 
-            Button("Delete Permanently", role: .destructive) {
+            Button(l10n["common.deletePermanently"], role: .destructive) {
                 deletingNote = note
                 showDeleteNoteConfirm = true
             }
@@ -434,18 +431,18 @@ struct TrashView: View {
             browsePath = folder.originalPath
         }
         .contextMenu {
-            Button("Open") {
+            Button(l10n["common.open"]) {
                 selectedTrashedFolder = folder
                 browsePath = folder.originalPath
             }
 
-            Button("Restore") {
+            Button(l10n["common.restore"]) {
                 noteStore.restoreFolder(folder)
             }
 
             Divider()
 
-            Button("Delete Permanently", role: .destructive) {
+            Button(l10n["common.deletePermanently"], role: .destructive) {
                 deletingFolder = folder
                 showDeleteFolderConfirm = true
             }
@@ -457,8 +454,8 @@ struct TrashView: View {
     private var emptyState: some View {
         EmptyStateView(
             icon: "trash",
-            title: "Trash is Empty",
-            subtitle: "Deleted items appear here for 60 days",
+            title: l10n["trash.empty.title"],
+            subtitle: l10n["trash.empty.subtitle"],
         )
     }
 }
@@ -474,14 +471,14 @@ private struct TrashedNoteRowView: View {
     @State private var isHovered = false
 
     private var trashInfo: String {
+        let l10n = L10n.shared
         guard let trashedAt = note.trashedAt else { return "" }
         let days = Calendar.current.dateComponents([.day], from: trashedAt, to: Date()).day ?? 0
         let remaining = max(60 - days, 0)
-        let folder = note.folder.isEmpty ? "Root" : note.folder
-        if days == 0 {
-            return "\(folder) \u{00B7} Trashed today \u{00B7} \(remaining)d left"
-        }
-        return "\(folder) \u{00B7} Trashed \(days)d ago \u{00B7} \(remaining)d left"
+        let folder = note.folder.isEmpty ? l10n["common.root"] : note.folder
+        let trashedText = days == 0 ? l10n["trash.trashedToday"] : l10n.t("trash.trashedAgo", "\(days)")
+        let daysLeft = l10n.t("trash.daysLeft", "\(remaining)")
+        return "\(folder) \u{00B7} \(trashedText) \u{00B7} \(daysLeft)"
     }
 
     var body: some View {
@@ -496,7 +493,7 @@ private struct TrashedNoteRowView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
-                        Text(note.title.isEmpty ? "Untitled" : note.title)
+                        Text(note.title.isEmpty ? L10n.shared["common.untitled"] : note.title)
                             .font(.body)
                             .foregroundStyle(.primary)
                             .lineLimit(1)
@@ -543,14 +540,14 @@ private struct TrashedFolderRowView: View {
     @State private var isHovered = false
 
     private var trashInfo: String {
+        let l10n = L10n.shared
         let days = Calendar.current.dateComponents([.day], from: folder.trashedAt, to: Date()).day ?? 0
         let remaining = max(60 - days, 0)
         let parent = (folder.originalPath as NSString).deletingLastPathComponent
-        let parentDisplay = parent.isEmpty || parent == "." ? "" : "from \(parent)/ \u{00B7} "
-        if days == 0 {
-            return "\(parentDisplay)Trashed today \u{00B7} \(remaining)d left"
-        }
-        return "\(parentDisplay)Trashed \(days)d ago \u{00B7} \(remaining)d left"
+        let parentDisplay = parent.isEmpty || parent == "." ? "" : l10n.t("trash.from", parent) + " \u{00B7} "
+        let trashedText = days == 0 ? l10n["trash.trashedToday"] : l10n.t("trash.trashedAgo", "\(days)")
+        let daysLeft = l10n.t("trash.daysLeft", "\(remaining)")
+        return "\(parentDisplay)\(trashedText) \u{00B7} \(daysLeft)"
     }
 
     var body: some View {

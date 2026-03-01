@@ -9,7 +9,7 @@ final class SettingsWindowController: NSWindowController {
             backing: .buffered,
             defer: false,
         )
-        window.title = "EdgeMark Settings"
+        window.title = L10n.shared["settings.windowTitle"]
         window.titlebarAppearsTransparent = false
         window.backgroundColor = .windowBackgroundColor
         window.level = .normal
@@ -20,6 +20,7 @@ final class SettingsWindowController: NSWindowController {
         super.init(window: window)
 
         let settingsView = SettingsView()
+            .environment(L10n.shared)
         let hostingView = NSHostingView(rootView: settingsView)
         hostingView.frame = window.contentView!.bounds
         hostingView.autoresizingMask = [.width, .height]

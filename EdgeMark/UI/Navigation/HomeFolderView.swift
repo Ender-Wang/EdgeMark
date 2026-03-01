@@ -4,6 +4,7 @@ import SwiftUI
 struct HomeFolderView: View {
     @Environment(NoteStore.self) var noteStore
     @Environment(AppSettings.self) var appSettings
+    @Environment(L10n.self) var l10n
     @State private var isCreatingFolder = false
     @State private var newFolderName = ""
     @State private var isSearching = false
@@ -104,7 +105,7 @@ struct HomeFolderView: View {
                 ContentFooterBar()
             }
         }
-        .moveConflictAlerts(noteStore: noteStore)
+        .moveConflictAlerts(noteStore: noteStore, l10n: l10n)
     }
 
     // MARK: - Header
@@ -116,7 +117,7 @@ struct HomeFolderView: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
 
-                TextField("Search notes", text: $searchQuery)
+                TextField(l10n["search.placeholder"], text: $searchQuery)
                     .textFieldStyle(.plain)
                     .focused($isSearchFieldFocused)
 
@@ -125,7 +126,7 @@ struct HomeFolderView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.borderless)
-                .help("Close Search")
+                .help(l10n["search.close"])
             }
             .onExitCommand { dismissSearch() }
             .opacity(isSearching ? 1 : 0)
@@ -133,14 +134,14 @@ struct HomeFolderView: View {
 
             // Title bar
             HStack {
-                Text("EdgeMark")
+                Text(l10n["home.title"])
                     .font(.title2.bold())
 
                 Spacer()
 
                 HeaderIconButton(
                     systemName: "magnifyingglass",
-                    help: "Search",
+                    help: l10n["common.search"],
                 ) {
                     isSearching = true
                     isSearchFieldFocused = true
@@ -148,14 +149,14 @@ struct HomeFolderView: View {
 
                 HeaderIconButton(
                     systemName: "folder.badge.plus",
-                    help: "New Folder",
+                    help: l10n["common.newFolder"],
                 ) {
                     startCreatingFolder()
                 }
 
                 HeaderIconButton(
                     systemName: "square.and.pencil",
-                    help: "New Note",
+                    help: l10n["common.newNote"],
                 ) {
                     createRootNote()
                 }
@@ -193,21 +194,21 @@ struct HomeFolderView: View {
             .padding(.vertical, 10)
         }
         .alert(
-            "Delete Folder?",
+            l10n["alert.deleteFolder.title"],
             isPresented: $showDeleteFolderConfirm,
             presenting: deletingFolderName,
         ) { folderName in
-            Button("Cancel", role: .cancel) {}
-            Button("Delete", role: .destructive) {
+            Button(l10n["common.cancel"], role: .cancel) {}
+            Button(l10n["common.delete"], role: .destructive) {
                 noteStore.trashFolder(folderName)
             }
         } message: { folderName in
             let prefix = folderName + "/"
             let count = noteStore.notes.count(where: { $0.folder == folderName || $0.folder.hasPrefix(prefix) })
             if count > 0 {
-                Text("\"\(folderName)\" and its \(count) note\(count == 1 ? "" : "s") will be moved to Trash.")
+                Text(l10n.t("alert.deleteFolder.withNotes", folderName, "\(count)"))
             } else {
-                Text("\"\(folderName)\" will be deleted.")
+                Text(l10n.t("alert.deleteFolder.empty", folderName))
             }
         }
     }
@@ -242,7 +243,7 @@ struct HomeFolderView: View {
         InlineRenameEditor(
             icon: "folder.fill",
             iconColor: .accentColor,
-            placeholder: "Folder name",
+            placeholder: l10n["common.folderNamePlaceholder"],
             text: $newFolderName,
             isFocused: $isFolderFieldFocused,
             isConflicting: newFolderNameConflicts,
@@ -272,6 +273,7 @@ struct HomeFolderView: View {
                 NoteListMenus.folderContextMenuItems(
                     folder: folder,
                     noteStore: noteStore,
+                    l10n: l10n,
                     onRename: { startRenamingFolder(folder.name) },
                     onDelete: {
                         deletingFolderName = folder.name
@@ -299,6 +301,7 @@ struct HomeFolderView: View {
                 NoteListMenus.noteContextMenuItems(
                     note: note,
                     noteStore: noteStore,
+                    l10n: l10n,
                     onRename: { startRenamingNote(note) },
                 )
             }
@@ -310,7 +313,7 @@ struct HomeFolderView: View {
     private func inlineNoteRenameEditor(note: Note) -> some View {
         InlineRenameEditor(
             icon: "doc.text",
-            placeholder: "Note title",
+            placeholder: l10n["common.noteTitlePlaceholder"],
             text: $renamingNoteText,
             isFocused: $isNoteRenameFocused,
             isConflicting: noteRenameConflicts,
@@ -327,7 +330,7 @@ struct HomeFolderView: View {
         InlineRenameEditor(
             icon: "folder.fill",
             iconColor: .accentColor,
-            placeholder: "Folder name",
+            placeholder: l10n["common.folderNamePlaceholder"],
             text: $renamingFolderText,
             isFocused: $isFolderRenameFocused,
             isConflicting: folderRenameConflicts,
@@ -345,24 +348,24 @@ struct HomeFolderView: View {
             if trimmedQuery.isEmpty {
                 emptySearchPlaceholder(
                     icon: "magnifyingglass",
-                    message: "Search by title or content",
+                    message: l10n["search.hint"],
                 )
             } else if !hasAnyResults {
                 emptySearchPlaceholder(
                     icon: "doc.questionmark",
-                    message: "No results",
+                    message: l10n["search.noResults"],
                 )
             } else {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     if !titleMatches.isEmpty {
-                        sectionHeader("Titles")
+                        sectionHeader(l10n["search.titles"])
                         ForEach(titleMatches) { note in
                             titleResultRow(note: note)
                         }
                     }
 
                     if !contentMatches.isEmpty {
-                        sectionHeader("Content")
+                        sectionHeader(l10n["search.content"])
                         ForEach(contentMatches) { match in
                             contentResultRow(note: match.note, snippet: match.snippet)
                         }
@@ -398,8 +401,8 @@ struct HomeFolderView: View {
     }
 
     /// Build an attributed title with the matched portion highlighted in bold orange.
-    static func highlightedTitle(_ title: String, query: String) -> AttributedString {
-        let displayTitle = title.isEmpty ? "Untitled" : title
+    static func highlightedTitle(_ title: String, query: String, untitled: String = L10n.shared["common.untitled"]) -> AttributedString {
+        let displayTitle = title.isEmpty ? untitled : title
         var attributed = AttributedString(displayTitle)
         attributed.foregroundColor = .primary
         if let range = attributed.range(of: query, options: .caseInsensitive) {
@@ -459,7 +462,7 @@ struct HomeFolderView: View {
                         .font(.body)
                         .lineLimit(1)
 
-                    Text(note.folder.isEmpty ? "Root" : note.folder)
+                    Text(note.folder.isEmpty ? L10n.shared["common.root"] : note.folder)
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -484,7 +487,7 @@ struct HomeFolderView: View {
                     .frame(width: iconWidth)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(note.title.isEmpty ? "Untitled" : note.title)
+                    Text(note.title.isEmpty ? L10n.shared["common.untitled"] : note.title)
                         .font(.body)
                         .foregroundStyle(.primary)
                         .lineLimit(1)
@@ -708,7 +711,7 @@ struct NoteRowView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
-                        Text(note.title.isEmpty ? "Untitled" : note.title)
+                        Text(note.title.isEmpty ? L10n.shared["common.untitled"] : note.title)
                             .font(.body)
                             .foregroundStyle(.primary)
                             .lineLimit(1)

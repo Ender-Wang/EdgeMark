@@ -8,12 +8,13 @@ struct ContentFooterBar: View {
     @Environment(NoteStore.self) var noteStore
 
     var body: some View {
+        let l10n = L10n.shared
         HStack {
-            HeaderIconButton(systemName: "arrow.up.arrow.down", help: "Sort") {
+            HeaderIconButton(systemName: "arrow.up.arrow.down", help: l10n["sort.help"]) {
                 showSortMenu()
             }
             Spacer()
-            HeaderIconButton(systemName: "gearshape", help: "Settings") {
+            HeaderIconButton(systemName: "gearshape", help: l10n["menu.settings"]) {
                 showSettingsMenu()
             }
         }
@@ -24,6 +25,7 @@ struct ContentFooterBar: View {
     // MARK: - Sort Menu
 
     private func showSortMenu() {
+        let l10n = L10n.shared
         let menu = NSMenu()
         let delegate = NSApp.delegate as? AppDelegate
 
@@ -33,7 +35,7 @@ struct ContentFooterBar: View {
             case .dateModified: #selector(AppDelegate.setSortByDateModified)
             case .dateCreated: #selector(AppDelegate.setSortByDateCreated)
             }
-            let item = NSMenuItem(title: option.rawValue, action: action, keyEquivalent: "")
+            let item = NSMenuItem(title: option.displayName(l10n), action: action, keyEquivalent: "")
             item.target = delegate
             item.state = settings.sortBy == option ? .on : .off
             menu.addItem(item)
@@ -42,7 +44,7 @@ struct ContentFooterBar: View {
         menu.addItem(.separator())
 
         let dirItem = NSMenuItem(
-            title: settings.sortAscending ? "Ascending" : "Descending",
+            title: settings.sortAscending ? l10n["sort.ascending"] : l10n["sort.descending"],
             action: #selector(AppDelegate.toggleSortDirection),
             keyEquivalent: "",
         )
@@ -59,11 +61,12 @@ struct ContentFooterBar: View {
     // MARK: - Settings Menu
 
     private func showSettingsMenu() {
+        let l10n = L10n.shared
         let menu = NSMenu()
         let delegate = NSApp.delegate as? AppDelegate
 
         let trashItem = NSMenuItem(
-            title: "Trash",
+            title: l10n["common.trash"],
             action: #selector(AppDelegate.showTrash),
             keyEquivalent: "",
         )
@@ -74,7 +77,7 @@ struct ContentFooterBar: View {
         menu.addItem(.separator())
 
         let settingsItem = NSMenuItem(
-            title: "Settings\u{2026}",
+            title: l10n["menu.settings"],
             action: #selector(AppDelegate.openSettings),
             keyEquivalent: "",
         )
@@ -82,7 +85,7 @@ struct ContentFooterBar: View {
         menu.addItem(settingsItem)
 
         let updateItem = NSMenuItem(
-            title: "Check for Updates\u{2026}",
+            title: l10n["menu.checkUpdates"],
             action: #selector(AppDelegate.checkForUpdates),
             keyEquivalent: "",
         )
@@ -92,7 +95,7 @@ struct ContentFooterBar: View {
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(
-            title: "Quit EdgeMark",
+            title: l10n["menu.quit"],
             action: #selector(AppDelegate.quitApp),
             keyEquivalent: "",
         )

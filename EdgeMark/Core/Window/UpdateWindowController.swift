@@ -5,6 +5,7 @@ final class UpdateWindowController: NSWindowController {
     init(updateState: UpdateState) {
         let updateView = UpdateView()
             .environment(updateState)
+            .environment(L10n.shared)
         let hostingView = NSHostingView(rootView: updateView)
 
         let fitting = hostingView.fittingSize
@@ -19,7 +20,7 @@ final class UpdateWindowController: NSWindowController {
             backing: .buffered,
             defer: false,
         )
-        window.title = "Software Update"
+        window.title = L10n.shared["updates.windowTitle"]
         window.titlebarAppearsTransparent = false
         window.backgroundColor = .windowBackgroundColor
         window.level = .normal

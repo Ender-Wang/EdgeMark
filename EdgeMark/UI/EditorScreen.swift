@@ -3,10 +3,11 @@ import SwiftUI
 
 struct EditorScreen: View {
     @Environment(NoteStore.self) var noteStore
+    @Environment(L10n.self) var l10n
     @State private var showDeleteConfirm = false
 
     private var backLabel: String {
-        noteStore.selectedFolder?.name ?? "Home"
+        noteStore.selectedFolder?.name ?? l10n["common.home"]
     }
 
     var body: some View {
@@ -23,14 +24,14 @@ struct EditorScreen: View {
                 )
             }
         }
-        .alert("Delete Note?", isPresented: $showDeleteConfirm) {
-            Button("Delete", role: .destructive) {
+        .alert(l10n["alert.deleteNote.title"], isPresented: $showDeleteConfirm) {
+            Button(l10n["common.delete"], role: .destructive) {
                 if let note = noteStore.selectedNote {
                     noteStore.selectedNote = nil
                     noteStore.deleteNote(note)
                 }
             }
-            Button("Cancel", role: .cancel) {}
+            Button(l10n["common.cancel"], role: .cancel) {}
         }
     }
 
@@ -49,7 +50,7 @@ struct EditorScreen: View {
                     Spacer()
 
                     HStack(spacing: 4) {
-                        Text(note.title.isEmpty ? "Untitled" : note.title)
+                        Text(note.title.isEmpty ? l10n["common.untitled"] : note.title)
                             .font(.headline)
                             .lineLimit(1)
 
@@ -72,13 +73,13 @@ struct EditorScreen: View {
                     DateLabelView(
                         systemName: "clock",
                         date: note.modifiedAt.homeDisplayFormat,
-                        tooltip: "Modified at \(note.modifiedAt.homeDisplayFormat)",
+                        tooltip: L10n.shared.t("editor.modifiedAt", note.modifiedAt.homeDisplayFormat),
                     )
 
                     DateLabelView(
                         systemName: "calendar",
                         date: note.createdAt.homeDisplayFormat,
-                        tooltip: "Created at \(note.createdAt.homeDisplayFormat)",
+                        tooltip: L10n.shared.t("editor.createdAt", note.createdAt.homeDisplayFormat),
                     )
                 }
             }
@@ -100,12 +101,13 @@ private struct CopyMenuButton: View {
     @State private var isHovered = false
 
     var body: some View {
+        let l10n = L10n.shared
         Menu {
-            Button("Copy as Plain Text") {
+            Button(l10n["common.copyPlainText"]) {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(note.plainText, forType: .string)
             }
-            Button("Copy as Markdown") {
+            Button(l10n["common.copyMarkdown"]) {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(note.content, forType: .string)
             }
@@ -123,7 +125,7 @@ private struct CopyMenuButton: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("Copy Note")
+        .help(l10n["editor.copyNote"])
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovered = hovering
@@ -153,7 +155,7 @@ private struct DeleteIconButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("Delete Note")
+        .help(L10n.shared["editor.deleteNote"])
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovered = hovering

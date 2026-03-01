@@ -27,50 +27,53 @@ final class SlashCommandHandler {
         popup != nil
     }
 
-    static let commands: [SlashCommand] = [
-        SlashCommand(
-            id: "h1", title: "Heading 1", aliases: ["h1", "heading"],
-            icon: "textformat.size.larger", insertion: "# ", cursorOffset: nil,
-        ),
-        SlashCommand(
-            id: "h2", title: "Heading 2", aliases: ["h2"],
-            icon: "textformat.size", insertion: "## ", cursorOffset: nil,
-        ),
-        SlashCommand(
-            id: "h3", title: "Heading 3", aliases: ["h3"],
-            icon: "textformat.size.smaller", insertion: "### ", cursorOffset: nil,
-        ),
-        SlashCommand(
-            id: "todo", title: "Task List", aliases: ["todo", "task", "checkbox"],
-            icon: "checkmark.square", insertion: "- [ ] ", cursorOffset: nil,
-        ),
-        SlashCommand(
-            id: "bullet", title: "Bullet List", aliases: ["bullet", "list", "ul"],
-            icon: "list.bullet", insertion: "- ", cursorOffset: nil,
-        ),
-        SlashCommand(
-            id: "numbered", title: "Numbered List", aliases: ["numbered", "ol", "ordered"],
-            icon: "list.number", insertion: "1. ", cursorOffset: nil,
-        ),
-        SlashCommand(
-            id: "code", title: "Code Block", aliases: ["code", "codeblock"],
-            icon: "chevron.left.forwardslash.chevron.right", insertion: "```\n\n```", cursorOffset: 4,
-        ),
-        SlashCommand(
-            id: "quote", title: "Blockquote", aliases: ["quote", "blockquote"],
-            icon: "text.quote", insertion: "> ", cursorOffset: nil,
-        ),
-        SlashCommand(
-            id: "table", title: "Table", aliases: ["table"],
-            icon: "tablecells",
-            insertion: "| Column 1 | Column 2 |\n| --- | --- |\n| Cell | Cell |",
-            cursorOffset: nil,
-        ),
-        SlashCommand(
-            id: "divider", title: "Divider", aliases: ["divider", "hr", "line"],
-            icon: "minus", insertion: "\n---\n", cursorOffset: nil,
-        ),
-    ]
+    static var commands: [SlashCommand] {
+        let l10n = L10n.shared
+        return [
+            SlashCommand(
+                id: "h1", title: l10n["slashCmd.heading1"], aliases: ["h1", "heading"],
+                icon: "textformat.size.larger", insertion: "# ", cursorOffset: nil,
+            ),
+            SlashCommand(
+                id: "h2", title: l10n["slashCmd.heading2"], aliases: ["h2"],
+                icon: "textformat.size", insertion: "## ", cursorOffset: nil,
+            ),
+            SlashCommand(
+                id: "h3", title: l10n["slashCmd.heading3"], aliases: ["h3"],
+                icon: "textformat.size.smaller", insertion: "### ", cursorOffset: nil,
+            ),
+            SlashCommand(
+                id: "todo", title: l10n["slashCmd.taskList"], aliases: ["todo", "task", "checkbox"],
+                icon: "checkmark.square", insertion: "- [ ] ", cursorOffset: nil,
+            ),
+            SlashCommand(
+                id: "bullet", title: l10n["slashCmd.bulletList"], aliases: ["bullet", "list", "ul"],
+                icon: "list.bullet", insertion: "- ", cursorOffset: nil,
+            ),
+            SlashCommand(
+                id: "numbered", title: l10n["slashCmd.numberedList"], aliases: ["numbered", "ol", "ordered"],
+                icon: "list.number", insertion: "1. ", cursorOffset: nil,
+            ),
+            SlashCommand(
+                id: "code", title: l10n["slashCmd.codeBlock"], aliases: ["code", "codeblock"],
+                icon: "chevron.left.forwardslash.chevron.right", insertion: "```\n\n```", cursorOffset: 4,
+            ),
+            SlashCommand(
+                id: "quote", title: l10n["slashCmd.blockquote"], aliases: ["quote", "blockquote"],
+                icon: "text.quote", insertion: "> ", cursorOffset: nil,
+            ),
+            SlashCommand(
+                id: "table", title: l10n["slashCmd.table"], aliases: ["table"],
+                icon: "tablecells",
+                insertion: "| Column 1 | Column 2 |\n| --- | --- |\n| Cell | Cell |",
+                cursorOffset: nil,
+            ),
+            SlashCommand(
+                id: "divider", title: l10n["slashCmd.divider"], aliases: ["divider", "hr", "line"],
+                icon: "minus", insertion: "\n---\n", cursorOffset: nil,
+            ),
+        ]
+    }
 
     init(webView: WKWebView?) {
         self.webView = webView

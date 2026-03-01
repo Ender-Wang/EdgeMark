@@ -63,7 +63,7 @@ final class SidePanelController: NSWindowController {
         window.isMovableByWindowBackground = false
 
         // Host SwiftUI content
-        let hostingView = NSHostingView(rootView: ContentView().environment(noteStore).environment(appSettings))
+        let hostingView = NSHostingView(rootView: ContentView().environment(noteStore).environment(appSettings).environment(L10n.shared))
         hostingView.frame = NSRect(x: 0, y: 0, width: panelWidth, height: visibleFrame.height)
         hostingView.wantsLayer = true
         hostingView.layer?.cornerRadius = 10

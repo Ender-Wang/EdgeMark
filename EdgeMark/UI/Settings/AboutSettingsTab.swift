@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct AboutSettingsTab: View {
+    @Environment(L10n.self) var l10n
+
     var body: some View {
         VStack(spacing: 20) {
             Spacer()
@@ -14,7 +16,7 @@ struct AboutSettingsTab: View {
                 Text("EdgeMark")
                     .font(.title.bold())
 
-                Text("Version \(appVersion) (Build \(buildNumber))")
+                Text(l10n.t("settings.about.version", appVersion, buildNumber))
                     .foregroundStyle(.secondary)
             }
 
@@ -24,22 +26,22 @@ struct AboutSettingsTab: View {
             // Links
             VStack(spacing: 10) {
                 Link(destination: URL(string: "https://github.com/Ender-Wang/EdgeMark")!) {
-                    Label("View on GitHub", systemImage: "arrow.up.right.square")
+                    Label(l10n["settings.about.viewOnGitHub"], systemImage: "arrow.up.right.square")
                 }
 
                 Link(destination: URL(string: "https://github.com/Ender-Wang/EdgeMark/issues/new?template=bug_report.md")!) {
-                    Label("Report a Bug", systemImage: "ladybug")
+                    Label(l10n["settings.about.reportBug"], systemImage: "ladybug")
                 }
 
                 Link(destination: URL(string: "https://github.com/Ender-Wang/EdgeMark/issues/new?template=feature_request.md")!) {
-                    Label("Request a Feature", systemImage: "lightbulb")
+                    Label(l10n["settings.about.requestFeature"], systemImage: "lightbulb")
                 }
             }
 
             Spacer()
 
             // Copyright
-            Text("\u{00A9} \(currentYear) Ender Wang. Licensed under GPLv3.")
+            Text(l10n.t("settings.about.copyright", currentYear))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .padding(.bottom, 8)

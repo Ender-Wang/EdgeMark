@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
     private var settingsWindowController: SettingsWindowController?
     private var updateWindowController: UpdateWindowController?
+    private var localeObserver: Any?
 
     // MARK: - Updates
 
@@ -17,6 +18,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panelController = SidePanelController()
         panelController?.noteStore.loadFromDisk()
         ShortcutManager.shared.setup(panelController: panelController!)
+
+        // Rebuild menu bar when locale changes
+        localeObserver = NotificationCenter.default.addObserver(
+            forName: .localeDidChange,
+            object: nil,
+            queue: .main,
+        ) { [weak self] _ in
+            self?.setupMenuBar()
+        }
 
         // Auto-check for updates on launch (24h throttle, respects user setting)
         if ShortcutSettings.shared.autoCheckUpdates {
@@ -45,10 +55,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.image?.isTemplate = true
         }
 
+        let l10n = L10n.shared
         let menu = NSMenu()
 
         menu.addItem(NSMenuItem(
-            title: "Toggle EdgeMark",
+            title: l10n["menu.toggle"],
             action: #selector(togglePanel),
             keyEquivalent: "",
         ))
@@ -56,7 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
 
         let settingsItem = NSMenuItem(
-            title: "Settings\u{2026}",
+            title: l10n["menu.settings"],
             action: #selector(openSettings),
             keyEquivalent: ",",
         )
@@ -65,7 +76,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
 
         menu.addItem(NSMenuItem(
-            title: "Check for Updates\u{2026}",
+            title: l10n["menu.checkUpdates"],
             action: #selector(checkForUpdates),
             keyEquivalent: "",
         ))
@@ -73,7 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
 
         menu.addItem(NSMenuItem(
-            title: "Quit EdgeMark",
+            title: l10n["menu.quit"],
             action: #selector(quitApp),
             keyEquivalent: "q",
         ))
@@ -91,8 +102,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
-        panel.message = "Choose a folder to store your notes"
-        panel.prompt = "Select"
+        panel.message = L10n.shared["settings.general.chooseFolderMessage"]
+        panel.prompt = L10n.shared["common.select"]
 
         // Pre-select current storage directory
         panel.directoryURL = ShortcutSettings.shared.resolvedStorageDirectory
@@ -168,18 +179,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .upToDate:
             let alert = NSAlert()
             let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
-            alert.messageText = "You\u{2019}re Up to Date"
-            alert.informativeText = "EdgeMark v\(currentVersion) is the latest version."
+            alert.messageText = L10n.shared["updates.upToDate.title"]
+            alert.informativeText = L10n.shared.t("updates.upToDate.message", currentVersion)
             alert.alertStyle = .informational
-            alert.addButton(withTitle: "OK")
+            alert.addButton(withTitle: L10n.shared["common.ok"])
             alert.runModal()
 
         case let .error(error):
             let alert = NSAlert()
-            alert.messageText = "Update Check Failed"
+            alert.messageText = L10n.shared["updates.checkFailed"]
             alert.informativeText = error.localizedDescription
             alert.alertStyle = .warning
-            alert.addButton(withTitle: "OK")
+            alert.addButton(withTitle: L10n.shared["common.ok"])
             alert.runModal()
 
         default:

@@ -4,6 +4,7 @@ import SwiftUI
 struct NoteListView: View {
     @Environment(NoteStore.self) var noteStore
     @Environment(AppSettings.self) var appSettings
+    @Environment(L10n.self) var l10n
 
     // Folder creation
     @State private var isCreatingFolder = false
@@ -57,7 +58,7 @@ struct NoteListView: View {
             HStack {
                 HeaderIconButton(
                     systemName: "chevron.left",
-                    help: "Back",
+                    help: l10n["common.back"],
                 ) {
                     navigateBack()
                 }
@@ -66,14 +67,14 @@ struct NoteListView: View {
 
                 HeaderIconButton(
                     systemName: "folder.badge.plus",
-                    help: "New Folder",
+                    help: l10n["common.newFolder"],
                 ) {
                     startCreatingFolder()
                 }
 
                 HeaderIconButton(
                     systemName: "square.and.pencil",
-                    help: "New Note",
+                    help: l10n["common.newNote"],
                 ) {
                     createNote()
                 }
@@ -133,24 +134,25 @@ struct NoteListView: View {
             }
         }
         .alert(
-            "Delete Folder?",
+            l10n["alert.deleteFolder.title"],
             isPresented: $showDeleteFolderConfirm,
             presenting: deletingFolderName,
         ) { folderName in
-            Button("Cancel", role: .cancel) {}
-            Button("Delete", role: .destructive) {
+            Button(l10n["common.cancel"], role: .cancel) {}
+            Button(l10n["common.delete"], role: .destructive) {
                 noteStore.trashFolder(folderName)
             }
         } message: { folderName in
+            let displayName = (folderName as NSString).lastPathComponent
             let prefix = folderName + "/"
             let count = noteStore.notes.count(where: { $0.folder == folderName || $0.folder.hasPrefix(prefix) })
             if count > 0 {
-                Text("\"\((folderName as NSString).lastPathComponent)\" and its \(count) note\(count == 1 ? "" : "s") will be moved to Trash.")
+                Text(l10n.t("alert.deleteFolder.withNotes", displayName, "\(count)"))
             } else {
-                Text("\"\((folderName as NSString).lastPathComponent)\" will be deleted.")
+                Text(l10n.t("alert.deleteFolder.empty", displayName))
             }
         }
-        .moveConflictAlerts(noteStore: noteStore)
+        .moveConflictAlerts(noteStore: noteStore, l10n: l10n)
     }
 
     // MARK: - Folder Row with Context Menu
@@ -172,6 +174,7 @@ struct NoteListView: View {
                 NoteListMenus.folderContextMenuItems(
                     folder: folder,
                     noteStore: noteStore,
+                    l10n: l10n,
                     onRename: { startRenamingFolder(folder.name) },
                     onDelete: {
                         deletingFolderName = folder.name
@@ -199,6 +202,7 @@ struct NoteListView: View {
                 NoteListMenus.noteContextMenuItems(
                     note: note,
                     noteStore: noteStore,
+                    l10n: l10n,
                     onRename: { startRenamingNote(note) },
                 )
             }
@@ -210,7 +214,7 @@ struct NoteListView: View {
     private func inlineNoteRenameEditor(note: Note) -> some View {
         InlineRenameEditor(
             icon: "doc.text",
-            placeholder: "Note title",
+            placeholder: l10n["common.noteTitlePlaceholder"],
             text: $renamingNoteText,
             isFocused: $isNoteRenameFocused,
             isConflicting: noteRenameConflicts,
@@ -251,7 +255,7 @@ struct NoteListView: View {
         InlineRenameEditor(
             icon: "folder.fill",
             iconColor: .accentColor,
-            placeholder: "Folder name",
+            placeholder: l10n["common.folderNamePlaceholder"],
             text: $newFolderName,
             isFocused: $isFolderFieldFocused,
             isConflicting: newFolderNameConflicts,
@@ -268,7 +272,7 @@ struct NoteListView: View {
         InlineRenameEditor(
             icon: "folder.fill",
             iconColor: .accentColor,
-            placeholder: "Folder name",
+            placeholder: l10n["common.folderNamePlaceholder"],
             text: $renamingFolderText,
             isFocused: $isFolderRenameFocused,
             isConflicting: folderRenameConflicts,
@@ -284,8 +288,8 @@ struct NoteListView: View {
     private var emptyState: some View {
         EmptyStateView(
             icon: "note.text",
-            title: "No Notes",
-            subtitle: "Tap the pencil icon to create a note",
+            title: l10n["noteList.empty.title"],
+            subtitle: l10n["noteList.empty.subtitle"],
         )
     }
 

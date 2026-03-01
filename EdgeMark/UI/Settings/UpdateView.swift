@@ -3,6 +3,10 @@ import SwiftUI
 struct UpdateView: View {
     @Environment(UpdateState.self) private var updateState
 
+    private var l10n: L10n {
+        L10n.shared
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             switch updateState.status {
@@ -35,7 +39,7 @@ struct UpdateView: View {
                     .frame(width: 64, height: 64)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("EdgeMark \u{2014} Update Available")
+                    Text(l10n["updates.available.title"])
                         .font(.headline)
                     HStack(spacing: 0) {
                         if let date = release.publishedDate {
@@ -51,7 +55,7 @@ struct UpdateView: View {
                     HStack(spacing: 0) {
                         Text("v\(currentVersion) (build \(buildNumber))")
                         Text(" \u{00B7} ")
-                        Text("Current")
+                        Text(l10n["updates.current"])
                     }
                     .font(.subheadline)
                     .foregroundStyle(.tertiary)
@@ -66,7 +70,7 @@ struct UpdateView: View {
             // Release notes
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Release Notes")
+                    Text(l10n["updates.releaseNotes"])
                         .font(.headline)
 
                     releaseNotesBody(release.body)
@@ -80,7 +84,7 @@ struct UpdateView: View {
 
             // Footer
             HStack {
-                Button("View on GitHub") {
+                Button(l10n["updates.viewOnGitHub"]) {
                     if let url = URL(string: release.htmlURL) {
                         NSWorkspace.shared.open(url)
                     }
@@ -88,12 +92,12 @@ struct UpdateView: View {
 
                 Spacer()
 
-                Button("Later") {
+                Button(l10n["updates.later"]) {
                     closeWindow()
                 }
                 .keyboardShortcut(.cancelAction)
 
-                Button("Download & Install") {
+                Button(l10n["updates.downloadInstall"]) {
                     updateState.downloadUpdate(release)
                 }
                 .keyboardShortcut(.defaultAction)
@@ -107,7 +111,7 @@ struct UpdateView: View {
 
     private func downloadingContent(progress: UpdateProgress) -> some View {
         VStack(spacing: 16) {
-            Text("Downloading Update\u{2026}")
+            Text(l10n["updates.downloading"])
                 .font(.headline)
                 .padding(.top, 20)
 
@@ -132,7 +136,7 @@ struct UpdateView: View {
                 .font(.title2.monospacedDigit())
                 .foregroundStyle(.secondary)
 
-            Button("Cancel") {
+            Button(l10n["updates.cancel"]) {
                 updateState.cancelDownload()
                 closeWindow()
             }
@@ -149,21 +153,21 @@ struct UpdateView: View {
                 .foregroundStyle(.green)
                 .padding(.top, 20)
 
-            Text("Download Complete")
+            Text(l10n["updates.downloadComplete"])
                 .font(.headline)
 
-            Text("EdgeMark will quit and restart to complete the update.")
+            Text(l10n["updates.willRestart"])
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
 
             HStack {
-                Button("Later") {
+                Button(l10n["updates.later"]) {
                     closeWindow()
                 }
 
-                Button("Install & Restart") {
+                Button(l10n["updates.installRestart"]) {
                     Task {
                         await updateState.installUpdate()
                     }
@@ -182,10 +186,10 @@ struct UpdateView: View {
                 .controlSize(.large)
                 .padding(.top, 20)
 
-            Text("Installing\u{2026}")
+            Text(l10n["updates.installing"])
                 .font(.headline)
 
-            Text("EdgeMark will restart automatically.")
+            Text(l10n["updates.willRestartAuto"])
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -203,7 +207,7 @@ struct UpdateView: View {
                 .foregroundStyle(.yellow)
                 .padding(.top, 20)
 
-            Text("Update Failed")
+            Text(l10n["updates.failed"])
                 .font(.headline)
 
             Text(error.localizedDescription)
@@ -212,7 +216,7 @@ struct UpdateView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
 
-            Button("Dismiss") {
+            Button(l10n["updates.dismiss"]) {
                 updateState.status = .idle
                 closeWindow()
             }
@@ -282,9 +286,9 @@ struct UpdateView: View {
     private func formatETA(_ seconds: Double) -> String {
         let s = Int(seconds)
         if s < 60 {
-            return "\(s)s remaining"
+            return l10n.t("updates.eta.seconds", "\(s)")
         }
-        return "\(s / 60)m remaining"
+        return l10n.t("updates.eta.minutes", "\(s / 60)")
     }
 
     // MARK: - App Info
