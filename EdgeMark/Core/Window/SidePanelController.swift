@@ -108,6 +108,14 @@ final class SidePanelController: NSWindowController {
             return event
         }
 
+        // Clear previousApp on desktop switch so we don't yank the user back
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(handleSpaceChange),
+            name: NSWorkspace.activeSpaceDidChangeNotification,
+            object: nil,
+        )
+
         // Listen for settings changes (e.g. edge side) to reconfigure the panel
         NotificationCenter.default.addObserver(
             self,
@@ -140,6 +148,24 @@ final class SidePanelController: NSWindowController {
             let visibleFrame = targetScreen.visibleFrame
             let (_, hidden) = panelFrames(visibleFrame: visibleFrame, side: side)
             window.setFrame(hidden, display: false)
+        }
+    }
+
+    // MARK: - Space Change
+
+    @objc private func handleSpaceChange() {
+        // Clear previousApp so hidePanel() doesn't activate an app on a
+        // different Space and yank the user back.
+        previousApp = nil
+
+        // If the panel is shown and the mouse is outside, restart the auto-hide
+        // timer with a short delay so the animation plays after the Space
+        // transition settles (animations don't render mid-transition).
+        guard isShown else { return }
+        cancelHideTimer()
+        if !isMouseInPanel() {
+            let delay = max(ShortcutSettings.shared.hideDelay, 0.5)
+            startHideTimer(delay: delay)
         }
     }
 
@@ -342,7 +368,7 @@ final class SidePanelController: NSWindowController {
     private func startHideTimer(delay: Double) {
         cancelHideTimer()
         hideTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
-            guard let self, isShown, !self.isMouseInPanel() else { return }
+            guard let self, isShown, !isMouseInPanel() else { return }
             hidePanel()
         }
     }
