@@ -29,61 +29,156 @@ Or download the latest `.dmg` from [Releases](https://github.com/Ender-Wang/Edge
 
 ---
 
-# Roadmap
+# Features
 
-## M1: The Bone — Side Panel + Animation ✅
+**Side Panel**
 
-- [x] Borderless floating panel (400px, full height, stays on top)
-- [x] Works on every virtual Desktop + alongside fullscreen apps
-- [x] Butter-smooth slide-in/out animation (0.2s)
-- [x] Edge activation (mouse to screen edge to reveal)
-- [x] Click outside / Escape / auto-hide dismissal
-- [x] Global shortcut: `Ctrl+Shift+Space` toggles from any app
-- [x] Menu bar icon + menu (Toggle, Settings, Quit)
-- [x] Multi-monitor support
-- [x] Corner exclusion (avoid conflict with macOS hot corners)
+- Borderless floating panel (400px, full height, always on top)
+- Works on every virtual Desktop and alongside fullscreen apps
+- Smooth slide-in/out animation with edge activation — move mouse to screen edge to reveal
+- Click outside, Escape, or auto-hide dismissal
+- Multi-monitor support with configurable left or right edge
 
-## M2: Markdown Notes — Core Editing ✅
+**Markdown Editing**
 
-- [x] Note model + folder-based organization
-- [x] File storage: plain `.md` files with YAML front matter in `~/Documents/EdgeMark/`
-- [x] Configurable notes storage directory
-- [x] CodeMirror 6 WYSIWYG editor with cursor-aware live preview (hides syntax, reveals on cursor line)
-- [x] Full Markdown support (headings, bold, italic, code, lists, task lists, blockquotes, links)
-- [x] Slash commands (`/h1`, `/todo`, `/code`, `/quote`, `/table`, and more)
-- [x] Note list UI: folder picker → note cards → editor
-- [x] 1-second debounced auto-save
-- [x] Trash: `.trash/` directory storage with read-only preview
+- CodeMirror 6 WYSIWYG editor with cursor-aware live preview (hides syntax, reveals on cursor line)
+- Full Markdown: headings, bold, italic, code, lists, task lists, blockquotes, links, tables
+- Slash commands (`/h1`, `/todo`, `/code`, `/quote`, `/table`, and more)
+- Formatting shortcuts (Cmd+B/I/E/K, Shift+X for strikethrough)
+- Find & Replace (Cmd+F)
 
-## M3: Settings + Polish ✅
+**Notes & Storage**
 
-- [x] Settings window (General, Keyboard, About tabs)
-- [x] Configurable: left/right edge, activation delay, corner exclusion, auto-hide
-- [x] Custom global shortcut recorder
-- [x] Launch at login
-- [x] Auto-update: check, download with progress, SHA256 verify, install & restart
-- [x] ~~Note card colors, search, drag-and-drop reorder~~
-- [x] Find & Replace (Cmd+F)
-- [x] Localization: JSON-based i18n (English + Simplified Chinese)
+- Plain `.md` files with YAML front matter — open in any editor, sync with any service
+- Folder-based organization with drag-and-drop
+- Configurable storage directory
+- 1-second debounced auto-save
+- Trash with 30-day auto-purge and read-only preview
 
-## M4: CI/CD + Auto-Update ✅
+**Keyboard & Shortcuts**
 
-- [x] GitHub Actions build pipeline (unsigned Release, DMG, SHA256, GitHub Releases)
-- [x] Homebrew Cask auto-generated
-- [x] In-app update check (check GitHub Releases, 24h throttle)
-- [x] Download + install update UI (progress, verify, install, restart)
-- [x] OSLog with categorized loggers
+- Global shortcut: `Ctrl+Shift+Space` toggles from any app (customizable)
+- Custom shortcut recorder with conflict detection
+- Configurable activation delay and corner exclusion zones
 
-## M5: Sharing + Export ✅
+**Auto-Update & CI/CD**
 
-- [x] Copy as plain text / Markdown source / ~~Copy as image~~
-- [x] ~~Save as image (configurable margins/background)~~
-- [x] ~~System share sheet~~
-- [x] ~~`edgemark://` URL scheme~~
+- In-app update check (GitHub Releases, 24h throttle)
+- Download with progress bar, SHA256 verification, install & restart
+- GitHub Actions build pipeline (unsigned Release, DMG, SHA256)
+- Homebrew Cask installation
 
-## M6: Advanced Markdown (Typora-style) ✅
+**Quality of Life**
 
-- [x] Cursor-aware inline rendering — hide Markdown syntax when cursor isn't on the element (via CodeMirror 6 WYSIWYG plugin)
+- Menu bar resident (no Dock icon)
+- Launch at login
+- Copy note as plain text or Markdown source
+- English + Simplified Chinese (JSON-based, easy to contribute)
+
+---
+
+# Architecture
+
+## Data Flow
+
+```mermaid
+graph TD
+    EM["EdgeDetector<br/>(mouse monitor)"] -->|"edge hit"| SP["SidePanelController<br/>(NSWindow)"]
+    HK["ShortcutManager<br/>(Carbon hotkey)"] -->|"toggle"| SP
+    SP -->|"host"| SUI["SwiftUI Views"]
+    SUI -->|"observe"| NS["NoteStore (@Observable)"]
+    NS -->|"read / write"| FS["FileStorage"]
+    FS -->|"YAML + .md"| Disk[("~/Documents/EdgeMark/")]
+    SUI -->|"observe"| AS["AppSettings (@Observable)"]
+    AS -->|"persist"| UD["UserDefaults"]
+    SUI -->|"observe"| US["UpdateState (@Observable)"]
+    US -->|"check · download · install"| UC["UpdateChecker / Installer"]
+    UC -->|"GitHub API"| GH["GitHub Releases"]
+    Log["OSLog (5 categories)"] -.->|"Console.app"| CA["Diagnostic Logs"]
+```
+
+## Source Tree
+
+```
+EdgeMark/
+├── App/                            # Entry point + global state
+│   ├── EdgeMarkApp.swift           #   @main, menu bar utility (LSUIElement)
+│   ├── AppDelegate.swift           #   Lifecycle, storage migration, shortcut setup
+│   └── ContentView.swift           #   Navigation shell (folders → notes → editor)
+│
+├── Core/                           # Business logic — no SwiftUI imports
+│   ├── Editor/
+│   │   ├── MarkdownEditorView.swift      # WKWebView ↔ CodeMirror 6 bridge
+│   │   ├── ReadOnlyMarkdownView.swift    # Read-only Markdown preview (trash)
+│   │   ├── SlashCommandHandler.swift     # /h1, /todo, /code, /quote routing
+│   │   └── SlashCommandPopup.swift       # Floating autocomplete popup
+│   ├── Settings/
+│   │   └── AppSettings.swift       #   @Observable — sort order, date format, prefs
+│   ├── Shortcuts/
+│   │   ├── ShortcutManager.swift   #   Carbon RegisterEventHotKey global shortcut
+│   │   ├── ShortcutSettings.swift  #   UserDefaults persistence for settings
+│   │   └── KeyCodeTranslator.swift #   Virtual key code → display string mapping
+│   ├── Storage/
+│   │   ├── NoteStore.swift         #   @Observable — note CRUD, trash, folders
+│   │   ├── FileStorage.swift       #   Plain .md files with YAML front matter
+│   │   ├── Note.swift              #   Note model (id, title, body, timestamps)
+│   │   ├── Folder.swift            #   Folder model
+│   │   └── TrashedFolder.swift     #   Trashed folder with expiry metadata
+│   ├── Updates/
+│   │   ├── UpdateChecker.swift     #   GitHub Releases API, version comparison
+│   │   ├── UpdateDownloader.swift  #   URLSession delegate with progress tracking
+│   │   ├── UpdateInstaller.swift   #   DMG mount → verify → copy → replace → restart
+│   │   ├── UpdateModels.swift      #   GitHubRelease, UpdateProgress, UpdateError
+│   │   ├── UpdateState.swift       #   @Observable — update UI state machine
+│   │   └── ChecksumVerifier.swift  #   SHA256 verification via CryptoKit
+│   └── Window/
+│       ├── SidePanelController.swift     # NSWindowController — show/hide/animate
+│       ├── EdgeDetector.swift            # Global mouse monitor → edge activation
+│       ├── SettingsWindowController.swift # Settings window lifecycle
+│       └── UpdateWindowController.swift  # Update window lifecycle
+│
+├── UI/                             # SwiftUI views
+│   ├── EditorScreen.swift          #   Editor chrome (header, editor, footer)
+│   ├── Navigation/
+│   │   ├── HomeFolderView.swift    #   Folder list with create/rename/trash
+│   │   ├── NoteListView.swift      #   Note cards with search, sort, context menus
+│   │   └── TrashView.swift         #   Trash browser with restore/delete/empty
+│   ├── Components/                 #   Reusable UI (HeaderIconButton, NoteCardView,
+│   │   └── ...                     #   InlineRenameEditor, EmptyStateView, etc.)
+│   └── Settings/
+│       ├── SettingsView.swift      #   Tab container (General, Keyboard, About)
+│       ├── GeneralSettingsTab.swift #   Edge, activation, auto-hide, storage path
+│       ├── KeyboardSettingsTab.swift#   Shortcut recorder + hide behavior
+│       ├── AboutSettingsTab.swift   #   Version info, links, copyright
+│       └── UpdateView.swift        #   Download progress, verify, install UI
+│
+├── Shared/Utils/
+│   ├── L10n.swift                  #   JSON-based i18n runtime
+│   ├── Log.swift                   #   OSLog — 5 categories
+│   └── Debouncer.swift             #   Generic debounce utility
+│
+└── Resources/
+    ├── Editor/                     # CodeMirror 6 bundle
+    │   ├── editor.html             #   WKWebView host page
+    │   ├── editor-bundle.js        #   CM6 + WYSIWYG plugin
+    │   └── styles.css              #   Editor theme
+    └── Locales/                    # i18n strings
+        ├── en.json                 #   English
+        └── zh-Hans.json            #   Simplified Chinese
+```
+
+## Key Patterns
+
+| Pattern | Detail |
+|---------|--------|
+| **@Observable** | `NoteStore`, `AppSettings`, and `UpdateState` use the `@Observable` macro — views read properties directly, no `@Published` needed |
+| **MainActor by default** | `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`. All types are `@MainActor` unless explicitly opted out |
+| **AppKit + SwiftUI hybrid** | `NSHostingView` embeds SwiftUI inside a borderless `NSWindow`. Panel lifecycle managed by `SidePanelController` (AppKit), UI rendered by SwiftUI |
+| **File-based storage** | Notes are plain `.md` files with YAML front matter — no database, readable by any Markdown editor |
+| **Carbon hotkeys** | Global shortcut uses `RegisterEventHotKey` (Carbon API) since `NSEvent.addGlobalMonitorForEvents` can't intercept key events |
+| **JSON i18n** | `L10n` loads locale JSON at runtime. Access: `l10n["key"]` or `l10n.t("key", arg1, arg2)` for interpolation |
+| **OSLog diagnostics** | 5 categorized loggers (app, storage, window, shortcuts, updates). View in Console.app with `subsystem:io.github.ender-wang.EdgeMark` |
+| **DMG auto-update** | `UpdateChecker` queries GitHub Releases API. `UpdateInstaller`: mount DMG → verify bundle ID → copy → replace → restart |
 
 ---
 
@@ -122,6 +217,16 @@ Code style is enforced by [SwiftFormat](https://github.com/nicklockwood/SwiftFor
 # License
 
 EdgeMark is licensed under the [GNU General Public License v3.0](LICENSE).
+
+# Acknowledgments
+
+EdgeMark is built on top of these open-source projects:
+
+| Project | License | Description |
+|---------|---------|-------------|
+| [CodeMirror 6](https://codemirror.net/) | MIT | Extensible code editor — powers the WYSIWYG Markdown editing experience |
+| [Lezer](https://lezer.codemirror.net/) | MIT | Incremental parser system used for live Markdown syntax highlighting |
+| [SwiftFormat](https://github.com/nicklockwood/SwiftFormat) | MIT | Code formatting tool used in the build pipeline |
 
 ---
 
