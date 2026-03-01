@@ -76,7 +76,7 @@ Or download the latest `.dmg` from [Releases](https://github.com/Ender-Wang/Edge
 
 ## M5: Sharing + Export
 
-- [ ] Copy as plain text / Markdown source / image
+- [x] Copy as plain text / Markdown source / ~~Copy as image~~
 - [x] ~~Save as image (configurable margins/background)~~
 - [x] ~~System share sheet~~
 - [x] ~~`edgemark://` URL scheme~~
