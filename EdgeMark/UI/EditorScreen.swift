@@ -3,10 +3,6 @@ import SwiftUI
 struct EditorScreen: View {
     @Environment(NoteStore.self) var noteStore
     @State private var showDeleteConfirm = false
-    /// Cached content passed to the editor — only updates when note ID changes,
-    /// NOT on every save cycle, to prevent WKWebView re-creation.
-    @State private var editorContent: String = ""
-    @State private var editorNoteID: UUID?
 
     private var backLabel: String {
         noteStore.selectedFolder?.name ?? "Home"
@@ -19,16 +15,11 @@ struct EditorScreen: View {
             if let note = noteStore.selectedNote {
                 MarkdownEditorView(
                     noteID: note.id,
-                    initialContent: editorContent,
+                    initialContent: note.content,
                     onContentChanged: { newContent in
                         noteStore.updateContent(for: note.id, content: newContent)
                     },
                 )
-                .onChange(of: note.id, initial: true) {
-                    guard editorNoteID != note.id else { return }
-                    editorNoteID = note.id
-                    editorContent = note.content
-                }
             }
         }
         .alert("Delete Note?", isPresented: $showDeleteConfirm) {
