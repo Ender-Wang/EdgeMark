@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 @Observable
 final class NoteStore {
@@ -89,8 +90,11 @@ final class NoteStore {
             trashedFolders = try FileStorage.loadTrashedFolders()
             autoPurgeExpiredTrash()
             refreshFolders()
+            let noteCount = notes.count
+            let trashCount = trashedNotes.count + trashedFolders.count
+            Log.storage.info("[NoteStore] loaded \(noteCount) notes, \(trashCount) trashed items")
         } catch {
-            print("EdgeMark: failed to load notes — \(error)")
+            Log.storage.error("[NoteStore] loadFromDisk failed — \(error)")
         }
     }
 
@@ -128,7 +132,7 @@ final class NoteStore {
             let savedName = try FileStorage.writeNote(note)
             note.savedFilename = savedName
         } catch {
-            print("EdgeMark: failed to write new note — \(error)")
+            Log.storage.error("[NoteStore] writeNote failed — \(error)")
         }
         notes.append(note)
         refreshFolders()
@@ -178,7 +182,7 @@ final class NoteStore {
         do {
             try FileStorage.deleteNote(note)
         } catch {
-            print("EdgeMark: failed to delete note — \(error)")
+            Log.storage.error("[NoteStore] deleteNote failed — \(error)")
         }
         refreshFolders()
     }
@@ -242,7 +246,7 @@ final class NoteStore {
             notes[index].savedFilename = notes[index].filename
             refreshFolders()
         } catch {
-            print("EdgeMark: failed to move note — \(error)")
+            Log.storage.error("[NoteStore] moveNote failed — \(error)")
         }
     }
 
@@ -259,7 +263,7 @@ final class NoteStore {
             let trashFilename = "\(notes[index].id.uuidString)_\(FileStorage.sanitizeForFilename(notes[index].title)).md"
             notes[index].savedFilename = trashFilename
         } catch {
-            print("EdgeMark: failed to trash note — \(error)")
+            Log.storage.error("[NoteStore] trashNote failed — \(error)")
         }
 
         let trashedNote = notes.remove(at: index)
@@ -284,7 +288,7 @@ final class NoteStore {
         do {
             try FileStorage.trashFolder(name, id: folderID, trashedAt: now)
         } catch {
-            print("EdgeMark: failed to trash folder — \(error)")
+            Log.storage.error("[NoteStore] trashFolder failed — \(error)")
             return
         }
 
@@ -324,7 +328,7 @@ final class NoteStore {
             let newFilename = try FileStorage.restoreNote(trashedNotes[index])
             trashedNotes[index].savedFilename = newFilename
         } catch {
-            print("EdgeMark: failed to restore note — \(error)")
+            Log.storage.error("[NoteStore] restoreNote failed — \(error)")
         }
 
         let restoredNote = trashedNotes.remove(at: index)
@@ -336,7 +340,7 @@ final class NoteStore {
         do {
             try FileStorage.restoreFolder(folder)
         } catch {
-            print("EdgeMark: failed to restore folder — \(error)")
+            Log.storage.error("[NoteStore] restoreFolder failed — \(error)")
             return
         }
 
@@ -352,7 +356,7 @@ final class NoteStore {
         do {
             try FileStorage.deleteTrashedNote(note)
         } catch {
-            print("EdgeMark: failed to permanently delete note — \(error)")
+            Log.storage.error("[NoteStore] permanentlyDeleteNote failed — \(error)")
         }
     }
 
@@ -361,7 +365,7 @@ final class NoteStore {
         do {
             try FileStorage.deleteTrashedFolder(folder)
         } catch {
-            print("EdgeMark: failed to permanently delete folder — \(error)")
+            Log.storage.error("[NoteStore] permanentlyDeleteFolder failed — \(error)")
         }
     }
 
@@ -370,7 +374,7 @@ final class NoteStore {
             do {
                 try FileStorage.deleteTrashedNote(note)
             } catch {
-                print("EdgeMark: failed to delete trashed note \(note.id) — \(error)")
+                Log.storage.error("[NoteStore] emptyTrash note failed — \(error)")
             }
         }
         trashedNotes.removeAll()
@@ -379,7 +383,7 @@ final class NoteStore {
             do {
                 try FileStorage.deleteTrashedFolder(folder)
             } catch {
-                print("EdgeMark: failed to delete trashed folder \(folder.displayName) — \(error)")
+                Log.storage.error("[NoteStore] emptyTrash folder failed — \(error)")
             }
         }
         trashedFolders.removeAll()
@@ -406,6 +410,10 @@ final class NoteStore {
         for folder in expiredFolders {
             permanentlyDeleteFolder(folder)
         }
+        let purgedCount = expiredNotes.count + expiredFolders.count
+        if purgedCount > 0 {
+            Log.storage.info("[NoteStore] auto-purged \(purgedCount) expired trash items")
+        }
     }
 
     // MARK: - Folder CRUD
@@ -418,7 +426,7 @@ final class NoteStore {
             try FileStorage.ensureFolderExists(fullPath)
             refreshFolders()
         } catch {
-            print("EdgeMark: failed to create folder — \(error)")
+            Log.storage.error("[NoteStore] createFolder failed — \(error)")
         }
     }
 
@@ -447,7 +455,7 @@ final class NoteStore {
             }
             refreshFolders()
         } catch {
-            print("EdgeMark: failed to rename folder — \(error)")
+            Log.storage.error("[NoteStore] renameFolder failed — \(error)")
         }
     }
 
@@ -532,7 +540,7 @@ final class NoteStore {
             }
             refreshFolders()
         } catch {
-            print("EdgeMark: failed to move folder — \(error)")
+            Log.storage.error("[NoteStore] moveFolder failed — \(error)")
         }
     }
 
@@ -544,6 +552,10 @@ final class NoteStore {
     // MARK: - Save
 
     func saveDirtyNotes() {
+        if !dirtyNoteIDs.isEmpty {
+            let count = dirtyNoteIDs.count
+            Log.storage.debug("[NoteStore] saving \(count) dirty notes")
+        }
         for noteID in dirtyNoteIDs {
             guard let index = notes.firstIndex(where: { $0.id == noteID }) else { continue }
             do {
@@ -553,7 +565,7 @@ final class NoteStore {
                     selectedNote?.savedFilename = newFilename
                 }
             } catch {
-                print("EdgeMark: failed to save note \(noteID) — \(error)")
+                Log.storage.error("[NoteStore] saveDirtyNotes failed for \(noteID) — \(error)")
             }
         }
         dirtyNoteIDs.removeAll()

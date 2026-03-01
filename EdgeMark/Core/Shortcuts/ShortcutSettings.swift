@@ -171,10 +171,16 @@ final class ShortcutSettings {
     // MARK: - Persistence
 
     private func loadShortcuts() {
-        if let data = UserDefaults.standard.data(forKey: togglePanelKey),
-           let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data)
-        {
-            togglePanelShortcut = shortcut
+        if let data = UserDefaults.standard.data(forKey: togglePanelKey) {
+            do {
+                togglePanelShortcut = try JSONDecoder().decode(KeyboardShortcut.self, from: data)
+            } catch {
+                Log.shortcuts.error("[ShortcutSettings] failed to decode saved shortcut — \(error), using default")
+                togglePanelShortcut = KeyboardShortcut(
+                    keyCode: UInt16(kVK_Space),
+                    modifiers: UInt32(controlKey | shiftKey),
+                )
+            }
         } else {
             // Default: Ctrl+Shift+Space
             togglePanelShortcut = KeyboardShortcut(

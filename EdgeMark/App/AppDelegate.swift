@@ -14,6 +14,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let updateState = UpdateState()
 
     func applicationDidFinishLaunching(_: Notification) {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        Log.app.info("[AppDelegate] launched v\(version, privacy: .public) (build \(build, privacy: .public))")
         setupMenuBar()
         panelController = SidePanelController()
         panelController?.noteStore.loadFromDisk()
@@ -37,6 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_: Notification) {
+        Log.app.info("[AppDelegate] terminating")
         panelController?.noteStore.saveDirtyNotes()
     }
 
@@ -117,12 +121,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.panelController?.noteStore.saveDirtyNotes()
 
             // Move contents from old directory to new directory
+            Log.app.info("[AppDelegate] migrating storage to \(newURL.path, privacy: .public)")
             Self.migrateStorageContents(from: oldURL, to: newURL)
 
             // Update the setting
             ShortcutSettings.shared.storageDirectory = newURL
             // Reload notes from the new location
             self?.panelController?.noteStore.loadFromDisk()
+            Log.app.info("[AppDelegate] migration complete")
         }
     }
 

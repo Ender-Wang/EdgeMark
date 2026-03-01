@@ -1,4 +1,5 @@
 import Cocoa
+import OSLog
 
 /// Detects when the mouse reaches the screen edge and triggers panel activation.
 final class EdgeDetector {
@@ -21,6 +22,7 @@ final class EdgeDetector {
 
     func startMonitoring() {
         guard globalMouseMonitor == nil else { return }
+        Log.window.info("[EdgeDetector] started monitoring")
         // Global monitor: fires for mouse moves in OTHER apps' windows.
         globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
             self?.handleMouseMove()
@@ -39,11 +41,13 @@ final class EdgeDetector {
     func pauseDetection() {
         isPaused = true
         cancelActivation()
+        Log.window.debug("[EdgeDetector] paused")
     }
 
     /// Resume detection after animation completes. Sets `wasAtEdge` based on
     /// current mouse position so the user must leave-and-return to re-trigger.
     func resumeDetection() {
+        Log.window.debug("[EdgeDetector] resumed")
         isPaused = false
         let mouseLocation = NSEvent.mouseLocation
         if let screen = screenForPoint(mouseLocation) {
@@ -54,6 +58,7 @@ final class EdgeDetector {
     }
 
     func stopMonitoring() {
+        Log.window.info("[EdgeDetector] stopped monitoring")
         if let monitor = globalMouseMonitor {
             NSEvent.removeMonitor(monitor)
             globalMouseMonitor = nil
@@ -80,11 +85,14 @@ final class EdgeDetector {
             // Just arrived at edge — start activation delay
             let delay = ShortcutSettings.shared.activationDelay
             if delay <= 0 {
+                Log.window.debug("[EdgeDetector] edge hit — immediate activation")
                 onEdgeActivated?(screen)
             } else {
+                Log.window.debug("[EdgeDetector] edge hit — activation timer (\(delay)s)")
                 startActivation(delay: delay, screen: screen)
             }
         } else if !atEdge, wasAtEdge {
+            Log.window.debug("[EdgeDetector] left edge — cancelled")
             cancelActivation()
         }
 

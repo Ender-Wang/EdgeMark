@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 enum FileStorage {
     /// Storage root — reads from ShortcutSettings so the user can configure a custom directory.
@@ -69,6 +70,8 @@ enum FileStorage {
                 }
             }
         }
+        let count = folders.count
+        Log.storage.debug("[FileStorage] discovered \(count) folders")
         return folders.sorted()
     }
 
@@ -106,7 +109,10 @@ enum FileStorage {
             let folderURL = rootURL.appendingPathComponent(folderName, isDirectory: true)
             notes += try loadNotes(in: folderURL, folder: folderName)
         }
-        return try resolveDuplicateFilenames(notes)
+        let resolved = try resolveDuplicateFilenames(notes)
+        let count = resolved.count
+        Log.storage.info("[FileStorage] loaded \(count) notes from disk")
+        return resolved
     }
 
     /// Writes the note to disk. If the title changed since last save, renames the old file
@@ -127,7 +133,7 @@ enum FileStorage {
            savedFilename != newFilename,
            FileManager.default.fileExists(atPath: newURL.path)
         {
-            print("EdgeMark: filename conflict for \(newFilename), keeping \(savedFilename)")
+            Log.storage.info("[FileStorage] filename conflict: \(newFilename, privacy: .public), keeping \(savedFilename, privacy: .public)")
             let currentRelative = note.folder.isEmpty ? savedFilename : "\(note.folder)/\(savedFilename)"
             let currentURL = rootURL.appendingPathComponent(currentRelative)
             let text = serializeFrontMatter(note: note) + note.content
@@ -141,6 +147,7 @@ enum FileStorage {
             let oldURL = rootURL.appendingPathComponent(oldRelative)
             if FileManager.default.fileExists(atPath: oldURL.path) {
                 try FileManager.default.moveItem(at: oldURL, to: newURL)
+                Log.storage.debug("[FileStorage] renamed \(oldFilename, privacy: .public) → \(newFilename, privacy: .public)")
             }
         }
 
@@ -259,10 +266,13 @@ enum FileStorage {
             includingPropertiesForKeys: nil,
             options: [],
         )
-        return contents.compactMap { url -> Note? in
+        let notes = contents.compactMap { url -> Note? in
             guard url.pathExtension == "md", !url.hasDirectoryPath else { return nil }
             return readNote(at: url, folder: "")
         }
+        let count = notes.count
+        Log.storage.debug("[FileStorage] loaded \(count) trashed notes")
+        return notes
     }
 
     // MARK: - Trash I/O (Folders)
@@ -362,6 +372,8 @@ enum FileStorage {
                 savedDirname: dirname,
             ))
         }
+        let count = folders.count
+        Log.storage.debug("[FileStorage] loaded \(count) trashed folders")
         return folders
     }
 
@@ -538,6 +550,7 @@ enum FileStorage {
                 }
 
                 let oldURL = rootURL.appendingPathComponent(note.relativePath)
+                Log.storage.info("[FileStorage] resolved duplicate: \(baseTitle, privacy: .public) → \(newTitle, privacy: .public)")
                 note.title = newTitle
                 // Update # heading in content
                 var lines = note.content.components(separatedBy: "\n")

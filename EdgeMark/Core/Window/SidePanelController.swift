@@ -1,4 +1,5 @@
 import Cocoa
+import OSLog
 import SwiftUI
 
 // MARK: - KeyableWindow
@@ -137,6 +138,7 @@ final class SidePanelController: NSWindowController {
 
         // Update corner radius for new edge side
         let side = ShortcutSettings.shared.edgeSide
+        Log.window.info("[SidePanelController] settings changed — edge: \(side.rawValue, privacy: .public)")
         hostingView.layer?.maskedCorners = Self.maskedCorners(for: side)
 
         // If panel is visible, hide it — user re-triggers to see it on the new edge
@@ -154,6 +156,7 @@ final class SidePanelController: NSWindowController {
     // MARK: - Space Change
 
     @objc private func handleSpaceChange() {
+        Log.window.debug("[SidePanelController] space changed")
         // Clear previousApp so hidePanel() doesn't activate an app on a
         // different Space and yank the user back.
         previousApp = nil
@@ -210,6 +213,7 @@ final class SidePanelController: NSWindowController {
         if delay == 0 {
             hidePanel()
         } else {
+            Log.window.debug("[SidePanelController] mouseExited — hide timer (\(delay)s)")
             startHideTimer(delay: delay)
         }
     }
@@ -225,6 +229,7 @@ final class SidePanelController: NSWindowController {
         let targetScreen = screen ?? NSScreen.main ?? NSScreen.screens.first!
         let visibleFrame = targetScreen.visibleFrame
         let side = ShortcutSettings.shared.edgeSide
+        Log.window.info("[SidePanelController] showPanel (\(side.rawValue, privacy: .public) edge)")
 
         isShown = true
         let gen = animationGeneration &+ 1
@@ -242,6 +247,7 @@ final class SidePanelController: NSWindowController {
 
         if isAnimating {
             // Interrupt hide animation — snap to shown position
+            Log.window.debug("[SidePanelController] showPanel interrupted hide animation")
             isAnimating = false
             window.setFrame(shownFrame, display: true)
             window.makeKeyAndOrderFront(nil)
@@ -270,6 +276,7 @@ final class SidePanelController: NSWindowController {
 
     func hidePanel() {
         guard let window, isShown else { return }
+        Log.window.info("[SidePanelController] hidePanel")
         noteStore.saveDirtyNotes()
         isShown = false
         let gen = animationGeneration &+ 1
@@ -284,6 +291,7 @@ final class SidePanelController: NSWindowController {
 
         if isAnimating {
             // Interrupt show animation — snap to hidden position
+            Log.window.debug("[SidePanelController] hidePanel interrupted show animation")
             isAnimating = false
             window.setFrame(hiddenFrame, display: false)
             window.alphaValue = 0
@@ -307,6 +315,8 @@ final class SidePanelController: NSWindowController {
     }
 
     func togglePanel() {
+        let state = isShown ? "shown" : "hidden"
+        Log.window.debug("[SidePanelController] togglePanel (currently \(state, privacy: .public))")
         if isShown {
             hidePanel()
         } else {
@@ -355,6 +365,10 @@ final class SidePanelController: NSWindowController {
     private func restorePreviousApp() {
         let hasOtherKeyWindow = NSApp.windows.contains { $0 !== window && $0.isKeyWindow }
         if !hasOtherKeyWindow {
+            if let app = previousApp {
+                let name = app.localizedName ?? "unknown"
+                Log.window.debug("[SidePanelController] restoring focus to \(name, privacy: .public)")
+            }
             previousApp?.activate()
         }
         previousApp = nil

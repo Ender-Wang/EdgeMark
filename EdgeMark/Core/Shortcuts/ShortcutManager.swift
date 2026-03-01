@@ -1,5 +1,6 @@
 import Carbon
 import Foundation
+import OSLog
 
 /// Manages system-wide keyboard shortcuts via the Carbon Event API.
 final class ShortcutManager {
@@ -26,6 +27,7 @@ final class ShortcutManager {
     }
 
     @objc private func shortcutSettingsChanged() {
+        Log.shortcuts.info("[ShortcutManager] re-registering shortcut")
         unregisterShortcuts()
         registerShortcuts()
     }
@@ -33,7 +35,10 @@ final class ShortcutManager {
     // MARK: - Register / Unregister
 
     private func registerShortcuts() {
-        guard let shortcut = ShortcutSettings.shared.togglePanelShortcut else { return }
+        guard let shortcut = ShortcutSettings.shared.togglePanelShortcut else {
+            Log.shortcuts.info("[ShortcutManager] no shortcut configured, skipping registration")
+            return
+        }
 
         // Signature: 'EMRK' (EdgeMark)
         let hotKeyID = EventHotKeyID(signature: OSType(0x454D_524B), id: 1)
@@ -51,6 +56,9 @@ final class ShortcutManager {
         if status == noErr {
             hotKeyRef = ref
             installEventHandler()
+            Log.shortcuts.info("[ShortcutManager] registered hotkey")
+        } else {
+            Log.shortcuts.error("[ShortcutManager] failed to register hotkey (status: \(status))")
         }
     }
 
@@ -76,10 +84,12 @@ final class ShortcutManager {
     }
 
     private func handleHotKeyEvent(_: EventRef?) {
+        Log.shortcuts.debug("[ShortcutManager] hotkey pressed")
         toggleAction?()
     }
 
     private func unregisterShortcuts() {
+        Log.shortcuts.debug("[ShortcutManager] unregistered hotkey")
         if let hotKeyRef {
             UnregisterEventHotKey(hotKeyRef)
             self.hotKeyRef = nil
