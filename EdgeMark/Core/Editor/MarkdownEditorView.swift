@@ -12,6 +12,7 @@ struct MarkdownEditorView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
+        config.websiteDataStore = .nonPersistent()
         config.userContentController.add(context.coordinator, name: "editor")
 
         let webView = WKWebView(frame: .zero, configuration: config)

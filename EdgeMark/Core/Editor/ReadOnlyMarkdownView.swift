@@ -12,6 +12,7 @@ struct ReadOnlyMarkdownView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
+        config.websiteDataStore = .nonPersistent()
         let webView = WKWebView(frame: .zero, configuration: config)
 
         // Full transparency stack

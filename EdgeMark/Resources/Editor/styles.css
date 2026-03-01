@@ -204,6 +204,98 @@ body {
   accent-color: var(--caret-color);
 }
 
+/* ---- Search / Find & Replace panel ---- */
+.cm-panels {
+  background: transparent !important;
+  border: none !important;
+}
+
+.cm-search {
+  background: var(--code-bg);
+  border-radius: 8px;
+  margin: 6px 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 5px;
+  font-size: 13px;
+  color: var(--fg);
+}
+
+.cm-search label {
+  color: var(--fg-secondary);
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.cm-search input[type="checkbox"] {
+  accent-color: var(--caret-color);
+}
+
+.cm-search input[type="text"],
+.cm-search .cm-textfield {
+  background: var(--bg, transparent);
+  border: 1px solid var(--blockquote-border);
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 13px;
+  color: var(--fg);
+  outline: none;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  min-width: 120px;
+}
+
+.cm-search input[type="text"]:focus,
+.cm-search .cm-textfield:focus {
+  border-color: var(--caret-color);
+  box-shadow: 0 0 0 1px var(--caret-color);
+}
+
+.cm-search button,
+.cm-search .cm-button {
+  background: var(--code-bg);
+  border: 1px solid var(--blockquote-border);
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--fg);
+  cursor: pointer;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.cm-search button:hover,
+.cm-search .cm-button:hover {
+  background: var(--selection-bg);
+}
+
+.cm-search button[name="close"] {
+  padding: 4px 8px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* Match highlighting */
+.cm-searchMatch {
+  background: rgba(255, 204, 0, 0.3);
+  border-radius: 2px;
+}
+
+.cm-searchMatch-selected {
+  background: rgba(255, 149, 0, 0.5);
+  border-radius: 2px;
+}
+
+[data-theme="dark"] .cm-searchMatch {
+  background: rgba(255, 214, 10, 0.25);
+}
+
+[data-theme="dark"] .cm-searchMatch-selected {
+  background: rgba(255, 159, 10, 0.45);
+}
+
 /* ---- Placeholder ---- */
 .cm-placeholder {
   color: var(--fg-tertiary);
