@@ -55,16 +55,16 @@ Or download the latest `.dmg` from [Releases](https://github.com/Ender-Wang/Edge
 - [x] 1-second debounced auto-save
 - [x] Trash: `.trash/` directory storage with read-only preview
 
-## M3: Settings + Polish (in progress)
+## M3: Settings + Polish ✅
 
 - [x] Settings window (General, Keyboard, About tabs)
 - [x] Configurable: left/right edge, activation delay, corner exclusion, auto-hide
 - [x] Custom global shortcut recorder
 - [x] Launch at login
 - [x] Auto-update: check, download with progress, SHA256 verify, install & restart
-- [ ] Note card colors, search, drag-and-drop reorder
-- [ ] Find & Replace (Cmd+F)
-- [ ] Localization: JSON-based i18n (English + Simplified Chinese)
+- [x] ~~Note card colors, search, drag-and-drop reorder~~
+- [x] Find & Replace (Cmd+F)
+- [x] Localization: JSON-based i18n (English + Simplified Chinese)
 
 ## M4: CI/CD + Auto-Update ✅
 
@@ -74,7 +74,7 @@ Or download the latest `.dmg` from [Releases](https://github.com/Ender-Wang/Edge
 - [x] Download + install update UI (progress, verify, install, restart)
 - [x] OSLog with categorized loggers
 
-## M5: Sharing + Export
+## M5: Sharing + Export ✅
 
 - [x] Copy as plain text / Markdown source / ~~Copy as image~~
 - [x] ~~Save as image (configurable margins/background)~~
@@ -84,6 +84,26 @@ Or download the latest `.dmg` from [Releases](https://github.com/Ender-Wang/Edge
 ## M6: Advanced Markdown (Typora-style) ✅
 
 - [x] Cursor-aware inline rendering — hide Markdown syntax when cursor isn't on the element (via CodeMirror 6 WYSIWYG plugin)
+
+---
+
+# Localization
+
+EdgeMark uses a custom JSON-based i18n system. Currently supported:
+
+| Language | File | Status |
+|----------|------|--------|
+| English | `Resources/Locales/en.json` | ✅ |
+| Simplified Chinese | `Resources/Locales/zh-Hans.json` | ✅ |
+
+## Contributing a Translation
+
+1. Copy `Resources/Locales/en.json`
+2. Rename to your language code (e.g. `ja.json`, `ko.json`, `fr.json`, `de.json`)
+3. Translate the values (keep the keys as-is)
+4. Submit a PR
+
+No code changes needed — the app picks up new locale files automatically.
 
 ---
 
