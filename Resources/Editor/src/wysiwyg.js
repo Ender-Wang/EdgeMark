@@ -71,6 +71,9 @@ function buildDecorations(view) {
   const { state } = view;
   const tree = syntaxTree(state);
   const decorations = [];
+  // Track replace decorations separately — only these should be atomic.
+  // Mark decorations (styling) must NOT be atomic or backspace deletes whole nodes.
+  const atomicDecorations = [];
 
   // Determine which lines have a cursor so we can reveal markers there
   const cursorLines = new Set();
@@ -119,7 +122,9 @@ function buildDecorations(view) {
             let hideEnd = headerMark.to;
             const text = state.doc.sliceString(headerMark.to, headerMark.to + 1);
             if (text === " ") hideEnd++;
-            decorations.push(hideDecoration.range(headerMark.from, hideEnd));
+            const range = hideDecoration.range(headerMark.from, hideEnd);
+            decorations.push(range);
+            atomicDecorations.push(range);
           }
         }
         return false; // Don't descend into heading children for further processing
@@ -130,7 +135,7 @@ function buildDecorations(view) {
         decorations.push(italicMark.range(from, to));
         if (!isCursorLine) {
           // Hide opening and closing markers (EmphasisMark children)
-          hideChildMarkers(node, "EmphasisMark", state, decorations);
+          hideChildMarkers(node, "EmphasisMark", state, decorations, atomicDecorations);
         }
         return false;
       }
@@ -139,7 +144,7 @@ function buildDecorations(view) {
       if (name === "StrongEmphasis") {
         decorations.push(boldMark.range(from, to));
         if (!isCursorLine) {
-          hideChildMarkers(node, "EmphasisMark", state, decorations);
+          hideChildMarkers(node, "EmphasisMark", state, decorations, atomicDecorations);
         }
         return false;
       }
@@ -148,7 +153,7 @@ function buildDecorations(view) {
       if (name === "Strikethrough") {
         decorations.push(strikeMark.range(from, to));
         if (!isCursorLine) {
-          hideChildMarkers(node, "StrikethroughMark", state, decorations);
+          hideChildMarkers(node, "StrikethroughMark", state, decorations, atomicDecorations);
         }
         return false;
       }
@@ -167,7 +172,9 @@ function buildDecorations(view) {
             child = child.nextSibling;
           }
           for (const cm of codeMarks) {
-            decorations.push(hideDecoration.range(cm.from, cm.to));
+            const range = hideDecoration.range(cm.from, cm.to);
+            decorations.push(range);
+            atomicDecorations.push(range);
           }
         }
         return false;
@@ -193,7 +200,9 @@ function buildDecorations(view) {
           // Style the link text
           // For [text](url): hide [ , ](url)
           if (linkStart) {
-            decorations.push(hideDecoration.range(linkStart.from, linkStart.to));
+            const range = hideDecoration.range(linkStart.from, linkStart.to);
+            decorations.push(range);
+            atomicDecorations.push(range);
           }
           // Hide from ]( to ) inclusive
           if (linkEnd && url) {
@@ -208,12 +217,14 @@ function buildDecorations(view) {
             }
             // marks[0] = [, marks[1] = ], marks[2] = (, marks[3] = )
             if (marks.length >= 4) {
-              decorations.push(
-                hideDecoration.range(marks[1].from, marks[3].to),
-              );
+              const range = hideDecoration.range(marks[1].from, marks[3].to);
+              decorations.push(range);
+              atomicDecorations.push(range);
             } else if (marks.length >= 2) {
               // Fallback: hide from ] to end of node
-              decorations.push(hideDecoration.range(marks[1].from, to));
+              const range = hideDecoration.range(marks[1].from, to);
+              decorations.push(range);
+              atomicDecorations.push(range);
             }
           }
           // Style the visible text as a link
@@ -257,11 +268,11 @@ function buildDecorations(view) {
         const isChecked = /\[[xX]\]/.test(text);
         if (!isCursorLine) {
           // Replace the [ ] / [x] with a checkbox widget
-          decorations.push(
-            Decoration.replace({
-              widget: new CheckboxWidget(isChecked),
-            }).range(from, to),
-          );
+          const cbRange = Decoration.replace({
+            widget: new CheckboxWidget(isChecked),
+          }).range(from, to);
+          decorations.push(cbRange);
+          atomicDecorations.push(cbRange);
         }
       }
 
@@ -285,7 +296,9 @@ function buildDecorations(view) {
           let hideEnd = to;
           const after = state.doc.sliceString(to, to + 1);
           if (after === " ") hideEnd++;
-          decorations.push(hideDecoration.range(from, hideEnd));
+          const range = hideDecoration.range(from, hideEnd);
+          decorations.push(range);
+          atomicDecorations.push(range);
         }
       }
 
@@ -315,7 +328,9 @@ function buildDecorations(view) {
         );
         if (!isCursorLine) {
           // Hide the --- text; style the line with a bottom border via CSS
-          decorations.push(hideDecoration.range(from, to));
+          const range = hideDecoration.range(from, to);
+          decorations.push(range);
+          atomicDecorations.push(range);
         }
         return false;
       }
@@ -324,15 +339,21 @@ function buildDecorations(view) {
 
   // Sort decorations by from position (CM6 requires sorted range sets)
   decorations.sort((a, b) => a.from - b.from || a.startSide - b.startSide);
-  return Decoration.set(decorations, true);
+  atomicDecorations.sort((a, b) => a.from - b.from || a.startSide - b.startSide);
+  return {
+    all: Decoration.set(decorations, true),
+    atomic: Decoration.set(atomicDecorations, true),
+  };
 }
 
 // Helper: hide all child nodes with a given type name
-function hideChildMarkers(node, markerName, state, decorations) {
+function hideChildMarkers(node, markerName, state, decorations, atomicDecorations) {
   let child = node.node.firstChild;
   while (child) {
     if (child.type.name === markerName) {
-      decorations.push(hideDecoration.range(child.from, child.to));
+      const range = hideDecoration.range(child.from, child.to);
+      decorations.push(range);
+      atomicDecorations.push(range);
     }
     child = child.nextSibling;
   }
@@ -345,7 +366,9 @@ function hideChildMarkers(node, markerName, state, decorations) {
 const wysiwygPlugin = ViewPlugin.fromClass(
   class {
     constructor(view) {
-      this.decorations = buildDecorations(view);
+      const result = buildDecorations(view);
+      this.decorations = result.all;
+      this.atomicDecorations = result.atomic;
       this.cursorLineNum = view.state.doc.lineAt(view.state.selection.main.head).number;
     }
 
@@ -353,7 +376,9 @@ const wysiwygPlugin = ViewPlugin.fromClass(
       // Always rebuild on doc or viewport changes
       if (update.docChanged || update.viewportChanged) {
         const t0 = performance.now();
-        this.decorations = buildDecorations(update.view);
+        const result = buildDecorations(update.view);
+        this.decorations = result.all;
+        this.atomicDecorations = result.atomic;
         this.cursorLineNum = update.view.state.doc.lineAt(update.view.state.selection.main.head).number;
         const dt = performance.now() - t0;
         if (dt > 5) console.log(`[Perf] buildDecorations (doc/vp): ${dt.toFixed(1)}ms`);
@@ -365,7 +390,9 @@ const wysiwygPlugin = ViewPlugin.fromClass(
         if (newLine !== this.cursorLineNum) {
           const t0 = performance.now();
           this.cursorLineNum = newLine;
-          this.decorations = buildDecorations(update.view);
+          const result = buildDecorations(update.view);
+          this.decorations = result.all;
+          this.atomicDecorations = result.atomic;
           const dt = performance.now() - t0;
           if (dt > 5) console.log(`[Perf] buildDecorations (line change): ${dt.toFixed(1)}ms`);
         }
@@ -375,10 +402,11 @@ const wysiwygPlugin = ViewPlugin.fromClass(
   {
     decorations: (v) => v.decorations,
 
-    // Make cursor skip over hidden (replaced) ranges
+    // Only make hidden (replaced) ranges atomic — NOT style marks.
+    // This prevents backspace from deleting entire styled nodes (e.g. headings).
     provide: (plugin) =>
       EditorView.atomicRanges.of((view) => {
-        return view.plugin(plugin)?.decorations || Decoration.none;
+        return view.plugin(plugin)?.atomicDecorations || Decoration.none;
       }),
   },
 );
