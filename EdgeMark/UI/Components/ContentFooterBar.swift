@@ -6,6 +6,7 @@ import SwiftUI
 struct ContentFooterBar: View {
     @Environment(AppSettings.self) var settings
     @Environment(NoteStore.self) var noteStore
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         let l10n = L10n.shared
@@ -82,14 +83,9 @@ struct ContentFooterBar: View {
 
         menu.addItem(.separator())
 
-        let settingsItem = NSMenuItem(
-            title: l10n["menu.settings"],
-            action: #selector(AppDelegate.openSettings),
-            keyEquivalent: "",
-        )
-        settingsItem.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: nil)
-        settingsItem.target = delegate
-        menu.addItem(settingsItem)
+        menu.addActionItem(title: l10n["menu.settings"], icon: "gearshape") { [openSettings] in
+            openSettings()
+        }
 
         let updateItem = NSMenuItem(
             title: l10n["menu.checkUpdates"],

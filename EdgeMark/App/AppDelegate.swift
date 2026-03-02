@@ -133,8 +133,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func openSettings() {
-        // Open the SwiftUI Settings scene (same window as Cmd+,)
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        NSApp.activate(ignoringOtherApps: true)
+        EnvironmentValues().openSettings()
     }
 
     @objc func checkForUpdates() {
