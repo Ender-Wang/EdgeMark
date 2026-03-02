@@ -70,9 +70,12 @@ Or download the latest `.dmg` from [Releases](https://github.com/Ender-Wang/Edge
 
 **Quality of Life**
 
+- Appearance override: System, Light, or Dark mode
 - Menu bar resident (no Dock icon)
 - Launch at login
 - Copy note as plain text or Markdown source
+- SF Symbol icons throughout all context menus
+- Smooth directional page transitions
 - English + Simplified Chinese (JSON-based, easy to contribute)
 
 ---
@@ -144,11 +147,14 @@ EdgeMark/
 │   │   ├── NoteListView.swift      #   Note cards with search, sort, context menus
 │   │   └── TrashView.swift         #   Trash browser with restore/delete/empty
 │   ├── Components/                 #   Reusable UI (HeaderIconButton, NoteCardView,
-│   │   └── ...                     #   InlineRenameEditor, EmptyStateView, etc.)
+│   │   ├── NSContextMenuModifier.swift  # NSMenu context menus with SF Symbol icons
+│   │   ├── NoteListMenus.swift     #   Note/folder context menu builders
+│   │   └── ...                     #   InlineRenameEditor, EmptyStateView, etc.
 │   └── Settings/
-│       ├── SettingsView.swift      #   Tab container (General, Keyboard, About)
-│       ├── GeneralSettingsTab.swift #   Edge, activation, auto-hide, storage path
-│       ├── KeyboardSettingsTab.swift#   Shortcut recorder + hide behavior
+│       ├── SettingsView.swift      #   Tab container (General, Behavior, Keyboard, About)
+│       ├── GeneralSettingsTab.swift #   Appearance, language, system, storage
+│       ├── BehaviorSettingsTab.swift#   Panel position, edge activation, auto-hide
+│       ├── KeyboardSettingsTab.swift#   Shortcut recorder + local shortcuts
 │       ├── AboutSettingsTab.swift   #   Version info, links, copyright
 │       └── UpdateView.swift        #   Download progress, verify, install UI
 │
