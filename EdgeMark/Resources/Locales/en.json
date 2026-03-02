@@ -91,6 +91,11 @@
   "settings.tab.keyboard": "Keyboard",
   "settings.tab.about": "About",
 
+  "settings.general.appearance": "Appearance",
+  "settings.appearance.system": "System",
+  "settings.appearance.light": "Light",
+  "settings.appearance.dark": "Dark",
+
   "settings.general.panelPosition": "Panel position",
   "settings.general.edge": "Edge",
   "settings.general.left": "Left",

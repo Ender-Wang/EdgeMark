@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
         Log.app.info("[AppDelegate] launched v\(version, privacy: .public) (build \(build, privacy: .public))")
+        ShortcutSettings.shared.applyAppearance()
         setupMenuBar()
         panelController = SidePanelController()
         panelController?.noteStore.loadFromDisk()

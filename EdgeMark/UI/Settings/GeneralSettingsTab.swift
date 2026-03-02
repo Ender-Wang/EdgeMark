@@ -3,6 +3,7 @@ import SwiftUI
 struct GeneralSettingsTab: View {
     @Environment(L10n.self) var l10n
 
+    @State private var appearanceMode: AppearanceMode
     @State private var edgeSide: EdgeSide
     @State private var edgeActivationEnabled: Bool
     @State private var activationDelay: Double
@@ -17,6 +18,7 @@ struct GeneralSettingsTab: View {
 
     init() {
         let s = ShortcutSettings.shared
+        _appearanceMode = State(initialValue: s.appearanceMode)
         _edgeSide = State(initialValue: s.edgeSide)
         _edgeActivationEnabled = State(initialValue: s.edgeActivationEnabled)
         _activationDelay = State(initialValue: s.activationDelay)
@@ -32,6 +34,20 @@ struct GeneralSettingsTab: View {
 
     var body: some View {
         Form {
+            Section(l10n["settings.general.appearance"]) {
+                Picker(l10n["settings.general.appearance"], selection: $appearanceMode) {
+                    Text(l10n["settings.appearance.system"]).tag(AppearanceMode.system)
+                    Text(l10n["settings.appearance.light"]).tag(AppearanceMode.light)
+                    Text(l10n["settings.appearance.dark"]).tag(AppearanceMode.dark)
+                }
+                .pickerStyle(.segmented)
+                .fixedSize()
+                .labelsHidden()
+                .onChange(of: appearanceMode) { _, newValue in
+                    ShortcutSettings.shared.appearanceMode = newValue
+                }
+            }
+
             Section(l10n["settings.general.panelPosition"]) {
                 Picker(l10n["settings.general.edge"], selection: $edgeSide) {
                     Text(l10n["settings.general.left"]).tag(EdgeSide.left)

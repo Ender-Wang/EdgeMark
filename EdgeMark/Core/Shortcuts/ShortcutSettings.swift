@@ -1,4 +1,5 @@
 import Carbon
+import Cocoa
 import Foundation
 import OSLog
 import ServiceManagement
@@ -27,6 +28,14 @@ struct KeyboardShortcut: Codable, Equatable, Sendable {
 enum EdgeSide: String, Sendable {
     case left
     case right
+}
+
+// MARK: - AppearanceMode
+
+enum AppearanceMode: String, Sendable {
+    case system
+    case light
+    case dark
 }
 
 // MARK: - ShortcutSettings
@@ -89,6 +98,14 @@ final class ShortcutSettings {
         }
     }
 
+    /// Appearance mode: system, light, or dark.
+    var appearanceMode: AppearanceMode {
+        didSet {
+            UserDefaults.standard.set(appearanceMode.rawValue, forKey: appearanceModeKey)
+            applyAppearance()
+        }
+    }
+
     /// Custom storage directory for notes. nil = default (`~/Documents/EdgeMark/`).
     var storageDirectory: URL? {
         didSet {
@@ -123,6 +140,7 @@ final class ShortcutSettings {
     private let autoCheckUpdatesKey = "autoCheckUpdates"
     private let launchAtLoginKey = "launchAtLogin"
     private let storageDirectoryKey = "storageDirectory"
+    private let appearanceModeKey = "appearanceMode"
 
     // MARK: - Init
 
@@ -146,11 +164,33 @@ final class ShortcutSettings {
         autoCheckUpdates = UserDefaults.standard.object(forKey: autoCheckUpdatesKey) as? Bool ?? true
         launchAtLogin = UserDefaults.standard.object(forKey: launchAtLoginKey) as? Bool ?? false
 
+        // Appearance
+        if let raw = UserDefaults.standard.string(forKey: appearanceModeKey),
+           let mode = AppearanceMode(rawValue: raw)
+        {
+            appearanceMode = mode
+        } else {
+            appearanceMode = .system
+        }
+
         // Storage directory
         if let path = UserDefaults.standard.string(forKey: storageDirectoryKey) {
             storageDirectory = URL(fileURLWithPath: path, isDirectory: true)
         }
         loadShortcuts()
+    }
+
+    // MARK: - Appearance
+
+    func applyAppearance() {
+        switch appearanceMode {
+        case .system:
+            NSApp.appearance = nil
+        case .light:
+            NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark:
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
     }
 
     // MARK: - Login Item
