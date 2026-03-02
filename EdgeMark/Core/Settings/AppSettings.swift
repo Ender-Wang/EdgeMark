@@ -30,7 +30,7 @@ final class AppSettings {
     /// Folder date to display based on the current sort setting.
     func folderDate(for folder: Folder) -> Date? {
         switch sortBy {
-        case .name: nil
+        case .name: folder.latestModifiedAt
         case .dateModified: folder.latestModifiedAt
         case .dateCreated: folder.earliestCreatedAt
         }
