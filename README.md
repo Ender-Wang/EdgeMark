@@ -19,6 +19,14 @@
 
 EdgeMark is the open-source alternative: **lightweight, Markdown-first**, and yours to inspect, modify, and extend. Your notes are plain `.md` files on disk — open them in any editor, sync with any service, back them up however you want.
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screenshot-dark.png" />
+    <source media="(prefers-color-scheme: light)" srcset=".github/assets/screenshot-light.png" />
+    <img alt="EdgeMark Screenshots" src=".github/assets/screenshot-light.png" />
+  </picture>
+</p>
+
 # Install
 
 ```bash
