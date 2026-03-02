@@ -241,7 +241,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Footer Menu Actions (reached via responder chain)
 
     @objc func showTrash() {
-        panelController?.noteStore.showTrash = true
+        panelController?.noteStore.openTrash()
     }
 
     @objc func setSortByName() {

@@ -15,24 +15,58 @@ struct ContentView: View {
         !noteStore.showTrash && noteStore.selectedNote != nil
     }
 
+    /// Horizontal page transition based on navigation direction.
+    private var pageTransition: AnyTransition {
+        switch noteStore.navigationDirection {
+        case .forward:
+            .asymmetric(
+                insertion: .move(edge: .trailing),
+                removal: .move(edge: .leading),
+            )
+        case .backward:
+            .asymmetric(
+                insertion: .move(edge: .leading),
+                removal: .move(edge: .trailing),
+            )
+        case .overlay:
+            .opacity
+        case .none:
+            .opacity
+        }
+    }
+
+    /// Trash uses vertical slide (from bottom).
+    private var trashTransition: AnyTransition {
+        .asymmetric(
+            insertion: .move(edge: .bottom),
+            removal: .move(edge: .bottom),
+        )
+    }
+
     var body: some View {
         ZStack {
-            HomeFolderView()
-                .opacity(showHome ? 1 : 0)
-                .allowsHitTesting(showHome)
+            if showHome {
+                HomeFolderView()
+                    .transition(pageTransition)
+            }
 
-            NoteListView()
-                .opacity(showNoteList ? 1 : 0)
-                .allowsHitTesting(showNoteList)
+            if showNoteList {
+                NoteListView()
+                    .id(noteStore.selectedFolder?.name)
+                    .transition(pageTransition)
+            }
 
-            EditorScreen()
-                .opacity(showEditor ? 1 : 0)
-                .allowsHitTesting(showEditor)
+            if showEditor {
+                EditorScreen()
+                    .transition(pageTransition)
+            }
 
-            TrashView()
-                .opacity(noteStore.showTrash ? 1 : 0)
-                .allowsHitTesting(noteStore.showTrash)
+            if noteStore.showTrash {
+                TrashView()
+                    .transition(trashTransition)
+            }
         }
+        .clipped()
     }
 }
 

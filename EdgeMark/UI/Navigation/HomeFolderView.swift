@@ -267,7 +267,7 @@ struct HomeFolderView: View {
                 date: appSettings.folderDate(for: folder),
                 iconWidth: iconWidth,
             ) {
-                noteStore.selectedFolder = folder
+                noteStore.navigateToFolder(folder)
             }
             .contextMenu {
                 NoteListMenus.folderContextMenuItems(
@@ -295,7 +295,7 @@ struct HomeFolderView: View {
                 note: note,
                 iconWidth: iconWidth,
             ) {
-                noteStore.selectedNote = note
+                noteStore.openNote(note)
             }
             .contextMenu {
                 NoteListMenus.noteContextMenuItems(
@@ -510,16 +510,12 @@ struct HomeFolderView: View {
     // MARK: - Actions
 
     private func openNote(_ note: Note) {
-        if !note.folder.isEmpty {
-            noteStore.selectedFolder = Folder(name: note.folder, noteCount: 0)
-        }
-        noteStore.selectedNote = note
         dismissSearch()
+        noteStore.openNoteFromSearch(note)
     }
 
     private func createRootNote() {
-        let note = noteStore.createNote()
-        noteStore.selectedNote = note
+        noteStore.createAndOpenNote()
     }
 
     private func startCreatingFolder() {

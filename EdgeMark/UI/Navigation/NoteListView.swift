@@ -168,7 +168,7 @@ struct NoteListView: View {
                 date: appSettings.folderDate(for: folder),
                 iconWidth: iconWidth,
             ) {
-                noteStore.selectedFolder = folder
+                noteStore.navigateToSubfolder(folder)
             }
             .contextMenu {
                 NoteListMenus.folderContextMenuItems(
@@ -196,7 +196,7 @@ struct NoteListView: View {
                 note: note,
                 iconWidth: iconWidth,
             ) {
-                noteStore.selectedNote = note
+                noteStore.openNote(note)
             }
             .contextMenu {
                 NoteListMenus.noteContextMenuItems(
@@ -296,20 +296,14 @@ struct NoteListView: View {
     // MARK: - Navigation
 
     private func navigateBack() {
-        if let parent = noteStore.selectedFolder?.parentPath, !parent.isEmpty {
-            noteStore.selectedFolder = noteStore.folders.first { $0.name == parent }
-                ?? Folder(name: parent, noteCount: 0)
-        } else {
-            noteStore.selectedFolder = nil
-        }
+        noteStore.navigateBack()
     }
 
     // MARK: - Note Actions
 
     private func createNote() {
         let folder = noteStore.selectedFolder?.name ?? ""
-        let note = noteStore.createNote(in: folder)
-        noteStore.selectedNote = note
+        noteStore.createAndOpenNote(in: folder)
     }
 
     private func startRenamingNote(_ note: Note) {

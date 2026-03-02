@@ -1,5 +1,6 @@
 import Foundation
 import OSLog
+import SwiftUI
 
 @Observable
 final class NoteStore {
@@ -12,6 +13,17 @@ final class NoteStore {
     var selectedFolder: Folder?
     var selectedNote: Note?
     var showTrash = false
+
+    // MARK: - Navigation Direction
+
+    enum NavigationDirection {
+        case forward
+        case backward
+        case overlay
+        case none
+    }
+
+    var navigationDirection: NavigationDirection = .none
 
     /// Pending note move that has a name conflict — UI shows confirmation dialog.
     struct PendingNoteMoveConflict {
@@ -74,6 +86,107 @@ final class NoteStore {
                 }
             }
             return ascending ? result : !result
+        }
+    }
+
+    // MARK: - Animated Navigation
+
+    func navigateToFolder(_ folder: Folder) {
+        let name = folder.name
+        Log.navigation.debug("[NoteStore] navigateToFolder — \(name, privacy: .public)")
+        navigationDirection = .forward
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedFolder = folder
+        }
+    }
+
+    func navigateToSubfolder(_ folder: Folder) {
+        let name = folder.name
+        Log.navigation.debug("[NoteStore] navigateToSubfolder — \(name, privacy: .public)")
+        navigationDirection = .forward
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedFolder = folder
+        }
+    }
+
+    func navigateBack() {
+        let from = selectedNote?.title ?? selectedFolder?.name ?? "home"
+        Log.navigation.debug("[NoteStore] navigateBack from \(from, privacy: .public)")
+        navigationDirection = .backward
+        if selectedNote != nil {
+            saveDirtyNotes()
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedNote = nil
+            }
+        } else if let parent = selectedFolder?.parentPath, !parent.isEmpty {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedFolder = folders.first { $0.name == parent }
+                    ?? Folder(name: parent, noteCount: 0)
+            }
+        } else {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedFolder = nil
+            }
+        }
+    }
+
+    func openNote(_ note: Note) {
+        let title = note.title
+        Log.navigation.debug("[NoteStore] openNote — \(title, privacy: .public)")
+        navigationDirection = .forward
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedNote = note
+        }
+    }
+
+    func openNoteFromSearch(_ note: Note) {
+        let title = note.title
+        let folder = note.folder
+        Log.navigation.debug("[NoteStore] openNoteFromSearch — \(title, privacy: .public) in \(folder, privacy: .public)")
+        if !note.folder.isEmpty {
+            selectedFolder = Folder(name: note.folder, noteCount: 0)
+        }
+        navigationDirection = .forward
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedNote = note
+        }
+    }
+
+    func closeNote() {
+        let title = selectedNote?.title ?? "nil"
+        Log.navigation.debug("[NoteStore] closeNote — \(title, privacy: .public)")
+        navigationDirection = .backward
+        saveDirtyNotes()
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedNote = nil
+        }
+    }
+
+    @discardableResult
+    func createAndOpenNote(in folder: String = "") -> Note {
+        let note = createNote(in: folder)
+        let title = note.title
+        Log.navigation.info("[NoteStore] createAndOpenNote — \(title, privacy: .public) in \(folder, privacy: .public)")
+        navigationDirection = .forward
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedNote = note
+        }
+        return note
+    }
+
+    func openTrash() {
+        Log.navigation.debug("[NoteStore] openTrash")
+        navigationDirection = .overlay
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showTrash = true
+        }
+    }
+
+    func closeTrash() {
+        Log.navigation.debug("[NoteStore] closeTrash")
+        navigationDirection = .overlay
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showTrash = false
         }
     }
 
@@ -270,7 +383,10 @@ final class NoteStore {
         trashedNotes.append(trashedNote)
 
         if selectedNote?.id == note.id {
-            selectedNote = nil
+            navigationDirection = .backward
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedNote = nil
+            }
         }
         refreshFolders()
     }
@@ -308,12 +424,18 @@ final class NoteStore {
 
         // Navigate away if inside this folder or any descendant
         if selectedFolder?.name == name || (selectedFolder?.name.hasPrefix(prefix) ?? false) {
-            selectedFolder = nil
+            navigationDirection = .backward
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedFolder = nil
+            }
         }
 
         // Deselect note if it was in the trashed folder
         if let sel = selectedNote, sel.folder == name || sel.folder.hasPrefix(prefix) {
-            selectedNote = nil
+            navigationDirection = .backward
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedNote = nil
+            }
         }
 
         refreshFolders()

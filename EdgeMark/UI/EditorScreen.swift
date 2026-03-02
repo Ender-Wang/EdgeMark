@@ -27,7 +27,7 @@ struct EditorScreen: View {
         .alert(l10n["alert.deleteNote.title"], isPresented: $showDeleteConfirm) {
             Button(l10n["common.delete"], role: .destructive) {
                 if let note = noteStore.selectedNote {
-                    noteStore.selectedNote = nil
+                    noteStore.closeNote()
                     noteStore.deleteNote(note)
                 }
             }
@@ -87,8 +87,7 @@ struct EditorScreen: View {
     }
 
     private func goBack() {
-        noteStore.saveDirtyNotes()
-        noteStore.selectedNote = nil
+        noteStore.closeNote()
     }
 }
 

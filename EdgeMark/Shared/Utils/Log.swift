@@ -5,5 +5,6 @@ nonisolated enum Log {
     static let storage = Logger(subsystem: "io.github.ender-wang.EdgeMark", category: "storage")
     static let window = Logger(subsystem: "io.github.ender-wang.EdgeMark", category: "window")
     static let shortcuts = Logger(subsystem: "io.github.ender-wang.EdgeMark", category: "shortcuts")
+    static let navigation = Logger(subsystem: "io.github.ender-wang.EdgeMark", category: "navigation")
     static let updates = Logger(subsystem: "io.github.ender-wang.EdgeMark", category: "updates")
 }

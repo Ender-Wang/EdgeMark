@@ -14,8 +14,28 @@ struct TrashView: View {
     @State private var previewingNote: Note?
     /// Current browse path within the selected trashed folder.
     @State private var browsePath: String?
+    /// Direction for internal trash navigation transitions.
+    @State private var internalDirection: NoteStore.NavigationDirection = .none
 
     private let iconWidth: CGFloat = 22
+
+    /// Internal transition based on navigation direction within trash.
+    private var internalTransition: AnyTransition {
+        switch internalDirection {
+        case .forward:
+            .asymmetric(
+                insertion: .move(edge: .trailing),
+                removal: .move(edge: .leading),
+            )
+        case .backward:
+            .asymmetric(
+                insertion: .move(edge: .leading),
+                removal: .move(edge: .trailing),
+            )
+        default:
+            .opacity
+        }
+    }
 
     /// Unified trash item for sorting notes and folders together by trashedAt.
     private enum TrashItem: Identifiable {
@@ -50,21 +70,29 @@ struct TrashView: View {
     }
 
     var body: some View {
-        if previewingNote != nil {
-            notePreview
-        } else if let folder = selectedTrashedFolder {
-            if noteStore.trashedFolders.contains(where: { $0.id == folder.id }) {
-                trashedFolderDetail(folder: folder)
+        ZStack {
+            if previewingNote != nil {
+                notePreview
+                    .transition(internalTransition)
+            } else if let folder = selectedTrashedFolder {
+                if noteStore.trashedFolders.contains(where: { $0.id == folder.id }) {
+                    trashedFolderDetail(folder: folder)
+                        .id(browsePath)
+                        .transition(internalTransition)
+                } else {
+                    trashList
+                        .transition(internalTransition)
+                        .onAppear {
+                            selectedTrashedFolder = nil
+                            browsePath = nil
+                        }
+                }
             } else {
                 trashList
-                    .onAppear {
-                        selectedTrashedFolder = nil
-                        browsePath = nil
-                    }
+                    .transition(internalTransition)
             }
-        } else {
-            trashList
         }
+        .clipped()
     }
 
     // MARK: - Trash List
@@ -76,7 +104,7 @@ struct TrashView: View {
                     systemName: "chevron.left",
                     help: l10n["common.back"],
                 ) {
-                    noteStore.showTrash = false
+                    noteStore.closeTrash()
                 }
 
                 Spacer()
@@ -152,8 +180,7 @@ struct TrashView: View {
                     noteStore.permanentlyDeleteFolder(folder)
                     deletingFolder = nil
                     if selectedTrashedFolder?.id == folder.id {
-                        selectedTrashedFolder = nil
-                        browsePath = nil
+                        closeTrashedFolder()
                     }
                 }
             }
@@ -179,7 +206,7 @@ struct TrashView: View {
                             systemName: "chevron.left",
                             help: l10n["common.back"],
                         ) {
-                            previewingNote = nil
+                            closeNotePreview()
                         }
 
                         Spacer()
@@ -202,7 +229,7 @@ struct TrashView: View {
                                 help: l10n["editor.restoreNote"],
                             ) {
                                 noteStore.restoreNote(note)
-                                previewingNote = nil
+                                closeNotePreview()
                             }
                         }
                     }
@@ -274,8 +301,7 @@ struct TrashView: View {
                     help: l10n["trash.restoreFolder"],
                 ) {
                     noteStore.restoreFolder(folder)
-                    selectedTrashedFolder = nil
-                    browsePath = nil
+                    closeTrashedFolder()
                 }
 
                 HeaderIconButton(
@@ -322,7 +348,10 @@ struct TrashView: View {
                                     date: subfolder.latestModifiedAt,
                                     iconWidth: iconWidth,
                                 ) {
-                                    browsePath = currentPath + "/" + subfolder.name
+                                    internalDirection = .forward
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        browsePath = currentPath + "/" + subfolder.name
+                                    }
                                 }
                             }
 
@@ -337,7 +366,7 @@ struct TrashView: View {
                                     note: note,
                                     iconWidth: iconWidth,
                                 ) {
-                                    previewingNote = note
+                                    openNotePreview(note)
                                 }
                             }
                         }
@@ -357,8 +386,7 @@ struct TrashView: View {
                 if let folder = deletingFolder {
                     noteStore.permanentlyDeleteFolder(folder)
                     deletingFolder = nil
-                    selectedTrashedFolder = nil
-                    browsePath = nil
+                    closeTrashedFolder()
                 }
             }
             Button(l10n["common.cancel"], role: .cancel) {
@@ -398,10 +426,12 @@ struct TrashView: View {
     private func navigateBackInFolder(folder: TrashedFolder) {
         let currentPath = browsePath ?? folder.originalPath
         if currentPath == folder.originalPath {
-            selectedTrashedFolder = nil
-            browsePath = nil
+            closeTrashedFolder()
         } else {
-            browsePath = (currentPath as NSString).deletingLastPathComponent
+            internalDirection = .backward
+            withAnimation(.easeInOut(duration: 0.2)) {
+                browsePath = (currentPath as NSString).deletingLastPathComponent
+            }
         }
     }
 
@@ -409,7 +439,7 @@ struct TrashView: View {
 
     private func trashedNoteRow(note: Note) -> some View {
         TrashedNoteRowView(note: note, iconWidth: iconWidth) {
-            previewingNote = note
+            openNotePreview(note)
         }
         .contextMenu {
             Button(l10n["common.restore"]) {
@@ -427,13 +457,11 @@ struct TrashView: View {
 
     private func trashedFolderRow(folder: TrashedFolder) -> some View {
         TrashedFolderRowView(folder: folder, iconWidth: iconWidth) {
-            selectedTrashedFolder = folder
-            browsePath = folder.originalPath
+            openTrashedFolder(folder)
         }
         .contextMenu {
             Button(l10n["common.open"]) {
-                selectedTrashedFolder = folder
-                browsePath = folder.originalPath
+                openTrashedFolder(folder)
             }
 
             Button(l10n["common.restore"]) {
@@ -446,6 +474,38 @@ struct TrashView: View {
                 deletingFolder = folder
                 showDeleteFolderConfirm = true
             }
+        }
+    }
+
+    // MARK: - Internal Navigation Helpers
+
+    private func openTrashedFolder(_ folder: TrashedFolder) {
+        internalDirection = .forward
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedTrashedFolder = folder
+            browsePath = folder.originalPath
+        }
+    }
+
+    private func closeTrashedFolder() {
+        internalDirection = .backward
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedTrashedFolder = nil
+            browsePath = nil
+        }
+    }
+
+    private func openNotePreview(_ note: Note) {
+        internalDirection = .forward
+        withAnimation(.easeInOut(duration: 0.2)) {
+            previewingNote = note
+        }
+    }
+
+    private func closeNotePreview() {
+        internalDirection = .backward
+        withAnimation(.easeInOut(duration: 0.2)) {
+            previewingNote = nil
         }
     }
 
