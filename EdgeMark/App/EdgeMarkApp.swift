@@ -5,6 +5,9 @@ struct EdgeMarkApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        Settings { EmptyView() }
+        Settings {
+            SettingsView()
+                .environment(L10n.shared)
+        }
     }
 }

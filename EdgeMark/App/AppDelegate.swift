@@ -5,7 +5,6 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var panelController: SidePanelController?
     var statusItem: NSStatusItem?
-    private var settingsWindowController: SettingsWindowController?
     private var updateWindowController: UpdateWindowController?
     private var localeObserver: Any?
 
@@ -73,7 +72,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let settingsItem = NSMenuItem(
             title: l10n["menu.settings"],
             action: #selector(openSettings),
-            keyEquivalent: ",",
+            keyEquivalent: "",
         )
         menu.addItem(settingsItem)
 
@@ -133,10 +132,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func openSettings() {
-        if settingsWindowController == nil {
-            settingsWindowController = SettingsWindowController()
-        }
-        settingsWindowController?.show()
+        // Open the SwiftUI Settings scene (same window as Cmd+,)
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
     }
 
     @objc func checkForUpdates() {
