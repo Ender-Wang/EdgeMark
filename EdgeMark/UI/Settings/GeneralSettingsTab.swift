@@ -34,7 +34,7 @@ struct GeneralSettingsTab: View {
 
     var body: some View {
         Form {
-            Section(l10n["settings.general.appearance"]) {
+            Section {
                 Picker(l10n["settings.general.appearance"], selection: $appearanceMode) {
                     Text(l10n["settings.appearance.system"]).tag(AppearanceMode.system)
                     Text(l10n["settings.appearance.light"]).tag(AppearanceMode.light)
@@ -46,9 +46,11 @@ struct GeneralSettingsTab: View {
                 .onChange(of: appearanceMode) { _, newValue in
                     ShortcutSettings.shared.appearanceMode = newValue
                 }
+            } header: {
+                Label(l10n["settings.general.appearance"], systemImage: "circle.lefthalf.filled")
             }
 
-            Section(l10n["settings.general.panelPosition"]) {
+            Section {
                 Picker(l10n["settings.general.edge"], selection: $edgeSide) {
                     Text(l10n["settings.general.left"]).tag(EdgeSide.left)
                     Text(l10n["settings.general.right"]).tag(EdgeSide.right)
@@ -58,9 +60,11 @@ struct GeneralSettingsTab: View {
                 .onChange(of: edgeSide) { _, newValue in
                     ShortcutSettings.shared.edgeSide = newValue
                 }
+            } header: {
+                Label(l10n["settings.general.panelPosition"], systemImage: "sidebar.right")
             }
 
-            Section(l10n["settings.general.edgeActivation"]) {
+            Section {
                 Toggle(l10n["settings.general.enableEdgeActivation"], isOn: $edgeActivationEnabled)
                     .onChange(of: edgeActivationEnabled) { _, v in
                         ShortcutSettings.shared.edgeActivationEnabled = v
@@ -83,9 +87,11 @@ struct GeneralSettingsTab: View {
                             ShortcutSettings.shared.excludeCorners = v
                         }
                 }
+            } header: {
+                Label(l10n["settings.general.edgeActivation"], systemImage: "cursorarrow.motionlines")
             }
 
-            Section(l10n["settings.general.autoHide"]) {
+            Section {
                 Toggle(l10n["settings.general.autoHideOnExit"], isOn: $autoHideOnMouseExit)
                     .onChange(of: autoHideOnMouseExit) { _, v in
                         ShortcutSettings.shared.autoHideOnMouseExit = v
@@ -108,9 +114,11 @@ struct GeneralSettingsTab: View {
                     .onChange(of: hideOnClickOutside) { _, v in
                         ShortcutSettings.shared.hideOnClickOutside = v
                     }
+            } header: {
+                Label(l10n["settings.general.autoHide"], systemImage: "eye.slash")
             }
 
-            Section(l10n["settings.general.system"]) {
+            Section {
                 Toggle(l10n["settings.general.autoCheckUpdates"], isOn: $autoCheckUpdates)
                     .onChange(of: autoCheckUpdates) { _, v in
                         ShortcutSettings.shared.autoCheckUpdates = v
@@ -120,9 +128,11 @@ struct GeneralSettingsTab: View {
                     .onChange(of: launchAtLogin) { _, v in
                         ShortcutSettings.shared.launchAtLogin = v
                     }
+            } header: {
+                Label(l10n["settings.general.system"], systemImage: "gearshape.2")
             }
 
-            Section(l10n["settings.general.language"]) {
+            Section {
                 Picker(l10n["settings.general.language"], selection: $selectedLocale) {
                     Text(l10n["settings.language.system"]).tag("system")
                     Text(l10n["settings.language.en"]).tag("en")
@@ -132,9 +142,11 @@ struct GeneralSettingsTab: View {
                 .onChange(of: selectedLocale) { _, newValue in
                     L10n.shared.locale = newValue
                 }
+            } header: {
+                Label(l10n["settings.general.language"], systemImage: "globe")
             }
 
-            Section(l10n["settings.general.storage"]) {
+            Section {
                 LabeledContent(l10n["settings.general.location"]) {
                     Text(storagePath)
                         .font(.system(.caption, design: .monospaced))
@@ -153,6 +165,8 @@ struct GeneralSettingsTab: View {
                         NSApp.sendAction(#selector(AppDelegate.changeNotesFolder), to: nil, from: nil)
                     }
                 }
+            } header: {
+                Label(l10n["settings.general.storage"], systemImage: "folder")
             }
         }
         .formStyle(.grouped)

@@ -35,7 +35,13 @@ struct ContentFooterBar: View {
             case .dateModified: #selector(AppDelegate.setSortByDateModified)
             case .dateCreated: #selector(AppDelegate.setSortByDateCreated)
             }
+            let iconName = switch option {
+            case .name: "textformat"
+            case .dateModified: "clock"
+            case .dateCreated: "calendar"
+            }
             let item = NSMenuItem(title: option.displayName(l10n), action: action, keyEquivalent: "")
+            item.image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
             item.target = delegate
             item.state = settings.sortBy == option ? .on : .off
             menu.addItem(item)
@@ -81,6 +87,7 @@ struct ContentFooterBar: View {
             action: #selector(AppDelegate.openSettings),
             keyEquivalent: "",
         )
+        settingsItem.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: nil)
         settingsItem.target = delegate
         menu.addItem(settingsItem)
 
@@ -89,6 +96,7 @@ struct ContentFooterBar: View {
             action: #selector(AppDelegate.checkForUpdates),
             keyEquivalent: "",
         )
+        updateItem.image = NSImage(systemSymbolName: "arrow.triangle.2.circlepath", accessibilityDescription: nil)
         updateItem.target = delegate
         menu.addItem(updateItem)
 
@@ -99,6 +107,7 @@ struct ContentFooterBar: View {
             action: #selector(AppDelegate.quitApp),
             keyEquivalent: "",
         )
+        quitItem.image = NSImage(systemSymbolName: "power", accessibilityDescription: nil)
         quitItem.target = delegate
         menu.addItem(quitItem)
 

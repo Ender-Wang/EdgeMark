@@ -441,17 +441,17 @@ struct TrashView: View {
         TrashedNoteRowView(note: note, iconWidth: iconWidth) {
             openNotePreview(note)
         }
-        .contextMenu {
-            Button(l10n["common.restore"]) {
+        .nsContextMenu { [noteStore, l10n] in
+            let menu = NSMenu()
+            menu.addActionItem(title: l10n["common.restore"], icon: "arrow.uturn.backward") {
                 noteStore.restoreNote(note)
             }
-
-            Divider()
-
-            Button(l10n["common.deletePermanently"], role: .destructive) {
+            menu.addItem(.separator())
+            menu.addActionItem(title: l10n["common.deletePermanently"], icon: "trash.slash") {
                 deletingNote = note
                 showDeleteNoteConfirm = true
             }
+            return menu
         }
     }
 
@@ -459,21 +459,20 @@ struct TrashView: View {
         TrashedFolderRowView(folder: folder, iconWidth: iconWidth) {
             openTrashedFolder(folder)
         }
-        .contextMenu {
-            Button(l10n["common.open"]) {
+        .nsContextMenu { [noteStore, l10n] in
+            let menu = NSMenu()
+            menu.addActionItem(title: l10n["common.open"], icon: "folder") {
                 openTrashedFolder(folder)
             }
-
-            Button(l10n["common.restore"]) {
+            menu.addActionItem(title: l10n["common.restore"], icon: "arrow.uturn.backward") {
                 noteStore.restoreFolder(folder)
             }
-
-            Divider()
-
-            Button(l10n["common.deletePermanently"], role: .destructive) {
+            menu.addItem(.separator())
+            menu.addActionItem(title: l10n["common.deletePermanently"], icon: "trash.slash") {
                 deletingFolder = folder
                 showDeleteFolderConfirm = true
             }
+            return menu
         }
     }
 

@@ -1,180 +1,210 @@
 import Cocoa
 import SwiftUI
 
-/// Shared menu builders for note and folder context menus and move-to submenus.
+/// Shared NSMenu builders for note and folder context menus.
+/// Uses NSMenu instead of SwiftUI `.contextMenu` so SF Symbol icons render reliably on macOS.
 enum NoteListMenus {
-    // MARK: - Context Menu Items
+    // MARK: - Note Context Menu
 
-    /// Context menu items for a note row.
-    @ViewBuilder
-    static func noteContextMenuItems(
+    /// Build an NSMenu for a note row context menu.
+    static func noteMenu(
         note: Note,
         noteStore: NoteStore,
         l10n: L10n,
         onRename: @escaping () -> Void,
-    ) -> some View {
-        Button(l10n["common.rename"], action: onRename)
+    ) -> NSMenu {
+        let menu = NSMenu()
 
-        noteMoveMenu(for: note, noteStore: noteStore, l10n: l10n)
+        menu.addActionItem(title: l10n["common.rename"], icon: "pencil", action: onRename)
 
-        Divider()
+        // Move To submenu
+        if let moveSubmenu = noteMoveSubmenu(for: note, noteStore: noteStore, l10n: l10n) {
+            let moveItem = NSMenuItem(title: l10n["common.moveTo"], action: nil, keyEquivalent: "")
+            moveItem.image = NSImage(systemSymbolName: "folder.badge.arrow.forward", accessibilityDescription: nil)
+            moveItem.submenu = moveSubmenu
+            menu.addItem(moveItem)
+        }
 
-        Button(l10n["common.copyPlainText"]) {
+        menu.addItem(.separator())
+
+        menu.addActionItem(title: l10n["common.copyPlainText"], icon: "doc.on.doc") {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(note.plainText, forType: .string)
         }
 
-        Button(l10n["common.copyMarkdown"]) {
+        menu.addActionItem(title: l10n["common.copyMarkdown"], icon: "doc.richtext") {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(note.content, forType: .string)
         }
 
-        Divider()
+        menu.addItem(.separator())
 
-        Button(l10n["common.showInFinder"]) {
+        menu.addActionItem(title: l10n["common.showInFinder"], icon: "folder") {
             NSWorkspace.shared.activateFileViewerSelecting([
                 FileStorage.urlForNote(note),
             ])
         }
 
-        Divider()
+        menu.addItem(.separator())
 
-        Button(l10n["common.delete"], role: .destructive) {
+        menu.addActionItem(title: l10n["common.delete"], icon: "trash") {
             noteStore.trashNote(note)
         }
+
+        return menu
     }
 
-    /// Context menu items for a folder row.
-    @ViewBuilder
-    static func folderContextMenuItems(
+    // MARK: - Folder Context Menu
+
+    /// Build an NSMenu for a folder row context menu.
+    static func folderMenu(
         folder: Folder,
         noteStore: NoteStore,
         l10n: L10n,
         onRename: @escaping () -> Void,
         onDelete: @escaping () -> Void,
-    ) -> some View {
-        Button(l10n["common.rename"], action: onRename)
+    ) -> NSMenu {
+        let menu = NSMenu()
 
-        folderMoveMenu(for: folder, noteStore: noteStore, l10n: l10n)
+        menu.addActionItem(title: l10n["common.rename"], icon: "pencil", action: onRename)
 
-        Button(l10n["common.showInFinder"]) {
+        // Move To submenu
+        if let moveSubmenu = folderMoveSubmenu(for: folder, noteStore: noteStore, l10n: l10n) {
+            let moveItem = NSMenuItem(title: l10n["common.moveTo"], action: nil, keyEquivalent: "")
+            moveItem.image = NSImage(systemSymbolName: "folder.badge.arrow.forward", accessibilityDescription: nil)
+            moveItem.submenu = moveSubmenu
+            menu.addItem(moveItem)
+        }
+
+        menu.addActionItem(title: l10n["common.showInFinder"], icon: "folder") {
             NSWorkspace.shared.activateFileViewerSelecting([
                 FileStorage.urlForFolder(folder.name),
             ])
         }
 
-        Divider()
+        menu.addItem(.separator())
 
-        Button(l10n["common.delete"], role: .destructive, action: onDelete)
+        menu.addActionItem(title: l10n["common.delete"], icon: "trash", action: onDelete)
+
+        return menu
     }
 
-    // MARK: - Note Move Menu
+    // MARK: - Note Move Submenu
 
-    /// "Move to" submenu for a note — lists all available folders as a tree.
-    @ViewBuilder
-    static func noteMoveMenu(for note: Note, noteStore: NoteStore, l10n: L10n) -> some View {
+    private static func noteMoveSubmenu(for note: Note, noteStore: NoteStore, l10n: L10n) -> NSMenu? {
         let topLevel = noteStore.folders.filter(\.isTopLevel)
         let canMoveToRoot = !note.folder.isEmpty
-        if canMoveToRoot || !topLevel.isEmpty {
-            Menu(l10n["common.moveTo"]) {
-                if canMoveToRoot {
-                    Button(l10n["common.root"]) {
-                        noteStore.moveNote(note, to: "")
-                    }
-                }
-                ForEach(topLevel) { folder in
-                    if folder.name != note.folder {
-                        noteMoveTreeItem(folder: folder, note: note, noteStore: noteStore, l10n: l10n)
-                    }
-                }
+        guard canMoveToRoot || !topLevel.isEmpty else { return nil }
+
+        let submenu = NSMenu()
+
+        if canMoveToRoot {
+            submenu.addActionItem(title: l10n["common.root"], icon: "house") {
+                noteStore.moveNote(note, to: "")
             }
         }
+
+        for folder in topLevel where folder.name != note.folder {
+            noteMoveTreeItem(folder: folder, note: note, noteStore: noteStore, l10n: l10n, menu: submenu)
+        }
+
+        return submenu
     }
 
-    /// Recursive folder tree menu item for note move destinations.
-    static func noteMoveTreeItem(folder: Folder, note: Note, noteStore: NoteStore, l10n: L10n) -> AnyView {
+    private static func noteMoveTreeItem(
+        folder: Folder,
+        note: Note,
+        noteStore: NoteStore,
+        l10n: L10n,
+        menu: NSMenu,
+    ) {
         let children = noteStore.childFolders(of: folder.name)
             .filter { $0.name != note.folder }
+
         if children.isEmpty {
-            return AnyView(
-                Button(folder.displayName) {
-                    noteStore.moveNote(note, to: folder.name)
-                },
-            )
+            menu.addActionItem(title: folder.displayName, icon: "folder") {
+                noteStore.moveNote(note, to: folder.name)
+            }
         } else {
-            return AnyView(
-                Menu(folder.displayName) {
-                    Button(l10n["common.moveHere"]) {
-                        noteStore.moveNote(note, to: folder.name)
-                    }
-                    Divider()
-                    ForEach(children) { child in
-                        noteMoveTreeItem(folder: child, note: note, noteStore: noteStore, l10n: l10n)
-                    }
-                },
-            )
+            let item = NSMenuItem(title: folder.displayName, action: nil, keyEquivalent: "")
+            item.image = NSImage(systemSymbolName: "folder", accessibilityDescription: nil)
+            let sub = NSMenu()
+            sub.addActionItem(title: l10n["common.moveHere"], icon: "arrow.right") {
+                noteStore.moveNote(note, to: folder.name)
+            }
+            sub.addItem(.separator())
+            for child in children {
+                noteMoveTreeItem(folder: child, note: note, noteStore: noteStore, l10n: l10n, menu: sub)
+            }
+            item.submenu = sub
+            menu.addItem(item)
         }
     }
 
-    // MARK: - Folder Move Menu
+    // MARK: - Folder Move Submenu
 
-    /// "Move to" submenu for a folder — lists valid target locations as a tree.
-    @ViewBuilder
-    static func folderMoveMenu(for folder: Folder, noteStore: NoteStore, l10n: L10n) -> some View {
+    private static func folderMoveSubmenu(for folder: Folder, noteStore: NoteStore, l10n: L10n) -> NSMenu? {
         let topLevel = noteStore.folders.filter(\.isTopLevel)
             .filter { $0.name != folder.name && !$0.name.hasPrefix(folder.name + "/") }
         let canMoveToRoot = !folder.isTopLevel
-        if canMoveToRoot || !topLevel.isEmpty {
-            Menu(l10n["common.moveTo"]) {
-                if canMoveToRoot {
-                    Button(l10n["common.root"]) {
-                        noteStore.moveFolder(folder.name, toParent: "")
-                    }
-                }
-                ForEach(topLevel) { target in
-                    folderMoveTreeItem(target: target, movingFolder: folder, noteStore: noteStore, l10n: l10n)
-                }
+        guard canMoveToRoot || !topLevel.isEmpty else { return nil }
+
+        let submenu = NSMenu()
+
+        if canMoveToRoot {
+            submenu.addActionItem(title: l10n["common.root"], icon: "house") {
+                noteStore.moveFolder(folder.name, toParent: "")
             }
         }
+
+        for target in topLevel {
+            folderMoveTreeItem(target: target, movingFolder: folder, noteStore: noteStore, l10n: l10n, menu: submenu)
+        }
+
+        return submenu
     }
 
-    /// Recursive tree menu item for folder move destinations.
-    static func folderMoveTreeItem(target: Folder, movingFolder: Folder, noteStore: NoteStore, l10n: L10n) -> AnyView {
+    private static func folderMoveTreeItem(
+        target: Folder,
+        movingFolder: Folder,
+        noteStore: NoteStore,
+        l10n: L10n,
+        menu: NSMenu,
+    ) {
         let isCurrentParent = target.name == movingFolder.parentPath
         let children = noteStore.childFolders(of: target.name)
             .filter { $0.name != movingFolder.name && !$0.name.hasPrefix(movingFolder.name + "/") }
 
         if isCurrentParent {
-            if children.isEmpty {
-                return AnyView(EmptyView())
+            guard !children.isEmpty else { return }
+            let item = NSMenuItem(title: target.displayName, action: nil, keyEquivalent: "")
+            item.image = NSImage(systemSymbolName: "folder", accessibilityDescription: nil)
+            let sub = NSMenu()
+            for child in children {
+                folderMoveTreeItem(target: child, movingFolder: movingFolder, noteStore: noteStore, l10n: l10n, menu: sub)
             }
-            return AnyView(
-                Menu(target.displayName) {
-                    ForEach(children) { child in
-                        folderMoveTreeItem(target: child, movingFolder: movingFolder, noteStore: noteStore, l10n: l10n)
-                    }
-                },
-            )
+            item.submenu = sub
+            menu.addItem(item)
+            return
         }
 
         if children.isEmpty {
-            return AnyView(
-                Button(target.displayName) {
-                    noteStore.moveFolder(movingFolder.name, toParent: target.name)
-                },
-            )
+            menu.addActionItem(title: target.displayName, icon: "folder") {
+                noteStore.moveFolder(movingFolder.name, toParent: target.name)
+            }
+        } else {
+            let item = NSMenuItem(title: target.displayName, action: nil, keyEquivalent: "")
+            item.image = NSImage(systemSymbolName: "folder", accessibilityDescription: nil)
+            let sub = NSMenu()
+            sub.addActionItem(title: l10n["common.moveHere"], icon: "arrow.right") {
+                noteStore.moveFolder(movingFolder.name, toParent: target.name)
+            }
+            sub.addItem(.separator())
+            for child in children {
+                folderMoveTreeItem(target: child, movingFolder: movingFolder, noteStore: noteStore, l10n: l10n, menu: sub)
+            }
+            item.submenu = sub
+            menu.addItem(item)
         }
-
-        return AnyView(
-            Menu(target.displayName) {
-                Button(l10n["common.moveHere"]) {
-                    noteStore.moveFolder(movingFolder.name, toParent: target.name)
-                }
-                Divider()
-                ForEach(children) { child in
-                    folderMoveTreeItem(target: child, movingFolder: movingFolder, noteStore: noteStore, l10n: l10n)
-                }
-            },
-        )
     }
 }

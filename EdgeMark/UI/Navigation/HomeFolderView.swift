@@ -269,8 +269,8 @@ struct HomeFolderView: View {
             ) {
                 noteStore.navigateToFolder(folder)
             }
-            .contextMenu {
-                NoteListMenus.folderContextMenuItems(
+            .nsContextMenu {
+                NoteListMenus.folderMenu(
                     folder: folder,
                     noteStore: noteStore,
                     l10n: l10n,
@@ -297,8 +297,8 @@ struct HomeFolderView: View {
             ) {
                 noteStore.openNote(note)
             }
-            .contextMenu {
-                NoteListMenus.noteContextMenuItems(
+            .nsContextMenu {
+                NoteListMenus.noteMenu(
                     note: note,
                     noteStore: noteStore,
                     l10n: l10n,

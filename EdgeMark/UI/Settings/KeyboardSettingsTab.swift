@@ -25,14 +25,16 @@ struct KeyboardSettingsTab: View {
                     ShortcutSettings.shared.togglePanelShortcut = newValue
                 }
             } header: {
-                Text(l10n["settings.keyboard.globalShortcuts"])
+                Label(l10n["settings.keyboard.globalShortcuts"], systemImage: "globe")
             }
 
-            Section(l10n["settings.keyboard.localShortcuts"]) {
+            Section {
                 localShortcutRow("Escape", l10n["settings.keyboard.hidePanel"])
                 localShortcutRow("/ (at line start)", l10n["settings.keyboard.slashCommand"])
                 localShortcutRow("\u{2318}Z", l10n["settings.keyboard.undo"])
                 localShortcutRow("\u{21E7}\u{2318}Z", l10n["settings.keyboard.redo"])
+            } header: {
+                Label(l10n["settings.keyboard.localShortcuts"], systemImage: "keyboard")
             }
         }
         .formStyle(.grouped)
