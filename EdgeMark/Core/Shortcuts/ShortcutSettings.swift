@@ -6,7 +6,7 @@ import ServiceManagement
 
 // MARK: - KeyboardShortcut
 
-struct KeyboardShortcut: Codable, Equatable, Sendable {
+struct KeyboardShortcut: Codable, Equatable {
     let keyCode: UInt16
     let modifiers: UInt32
 
@@ -25,14 +25,14 @@ struct KeyboardShortcut: Codable, Equatable, Sendable {
 
 // MARK: - EdgeSide
 
-enum EdgeSide: String, Sendable {
+enum EdgeSide: String {
     case left
     case right
 }
 
 // MARK: - AppearanceMode
 
-enum AppearanceMode: String, Sendable {
+enum AppearanceMode: String {
     case system
     case light
     case dark

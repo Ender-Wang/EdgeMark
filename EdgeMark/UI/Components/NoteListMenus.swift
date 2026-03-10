@@ -20,7 +20,7 @@ enum NoteListMenus {
         // Move To submenu
         if let moveSubmenu = noteMoveSubmenu(for: note, noteStore: noteStore, l10n: l10n) {
             let moveItem = NSMenuItem(title: l10n["common.moveTo"], action: nil, keyEquivalent: "")
-            moveItem.image = NSImage(systemSymbolName: "folder.badge.arrow.forward", accessibilityDescription: nil)
+            moveItem.image = NSImage(systemSymbolName: "tray.and.arrow.down", accessibilityDescription: nil)
             moveItem.submenu = moveSubmenu
             menu.addItem(moveItem)
         }
@@ -71,7 +71,7 @@ enum NoteListMenus {
         // Move To submenu
         if let moveSubmenu = folderMoveSubmenu(for: folder, noteStore: noteStore, l10n: l10n) {
             let moveItem = NSMenuItem(title: l10n["common.moveTo"], action: nil, keyEquivalent: "")
-            moveItem.image = NSImage(systemSymbolName: "folder.badge.arrow.forward", accessibilityDescription: nil)
+            moveItem.image = NSImage(systemSymbolName: "tray.and.arrow.down", accessibilityDescription: nil)
             moveItem.submenu = moveSubmenu
             menu.addItem(moveItem)
         }

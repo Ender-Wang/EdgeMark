@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - GitHub Release
 
-nonisolated struct GitHubRelease: Codable, Sendable {
+nonisolated struct GitHubRelease: Codable {
     let tagName: String
     let name: String
     let body: String
@@ -10,7 +10,7 @@ nonisolated struct GitHubRelease: Codable, Sendable {
     let publishedAt: String
     let assets: [Asset]
 
-    struct Asset: Codable, Sendable {
+    struct Asset: Codable {
         let name: String
         let browserDownloadURL: String
         let size: Int
@@ -60,7 +60,7 @@ nonisolated struct GitHubRelease: Codable, Sendable {
 
 // MARK: - Update Status
 
-nonisolated enum UpdateStatus: Sendable {
+nonisolated enum UpdateStatus {
     case idle
     case checking
     case available(GitHubRelease)
@@ -73,7 +73,7 @@ nonisolated enum UpdateStatus: Sendable {
 
 // MARK: - Update Progress
 
-nonisolated struct UpdateProgress: Sendable {
+nonisolated struct UpdateProgress {
     let bytesDownloaded: Int64
     let totalBytes: Int64
     let speedBytesPerSecond: Double
@@ -89,7 +89,7 @@ nonisolated struct UpdateProgress: Sendable {
 
 // MARK: - Update Error
 
-nonisolated enum UpdateError: LocalizedError, Sendable {
+nonisolated enum UpdateError: LocalizedError {
     case networkError(String)
     case invalidResponse
     case rateLimited
