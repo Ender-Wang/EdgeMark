@@ -2,9 +2,21 @@ import SwiftUI
 
 /// Shared two-section card layout used across all screens.
 /// Header and content are each wrapped in a rounded VisualEffectView card.
+/// Pass `onSwipeBack` to enable two-finger trackpad right-swipe to go back on the header.
 struct PageLayout<Header: View, Content: View>: View {
+    var onSwipeBack: (() -> Void)?
     @ViewBuilder let header: Header
     @ViewBuilder let content: Content
+
+    init(
+        onSwipeBack: (() -> Void)? = nil,
+        @ViewBuilder header: () -> Header,
+        @ViewBuilder content: () -> Content,
+    ) {
+        self.onSwipeBack = onSwipeBack
+        self.header = header()
+        self.content = content()
+    }
 
     var body: some View {
         VStack(spacing: 8) {
@@ -13,6 +25,11 @@ struct PageLayout<Header: View, Content: View>: View {
                 .padding(.vertical, 12)
                 .background { VisualEffectView() }
                 .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay {
+                    if let onSwipeBack {
+                        SwipeDetectorView(onSwipeBack: onSwipeBack)
+                    }
+                }
 
             content
                 .background { VisualEffectView() }

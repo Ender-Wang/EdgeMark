@@ -10,6 +10,8 @@ struct BehaviorSettingsTab: View {
     @State private var autoHideOnMouseExit: Bool
     @State private var hideDelay: Double
     @State private var hideOnClickOutside: Bool
+    @State private var swipeToNavigateEnabled: Bool
+    @State private var swipeGestureSensitivity: Double
 
     init() {
         let s = ShortcutSettings.shared
@@ -20,6 +22,8 @@ struct BehaviorSettingsTab: View {
         _autoHideOnMouseExit = State(initialValue: s.autoHideOnMouseExit)
         _hideDelay = State(initialValue: s.hideDelay)
         _hideOnClickOutside = State(initialValue: s.hideOnClickOutside)
+        _swipeToNavigateEnabled = State(initialValue: s.swipeToNavigateEnabled)
+        _swipeGestureSensitivity = State(initialValue: s.swipeGestureSensitivity)
     }
 
     var body: some View {
@@ -36,6 +40,29 @@ struct BehaviorSettingsTab: View {
                 }
             } header: {
                 Label(l10n["settings.general.panelPosition"], systemImage: "sidebar.right")
+            }
+
+            Section {
+                Toggle(l10n["settings.gesture.enableSwipe"], isOn: $swipeToNavigateEnabled)
+                    .onChange(of: swipeToNavigateEnabled) { _, v in
+                        ShortcutSettings.shared.swipeToNavigateEnabled = v
+                    }
+
+                if swipeToNavigateEnabled {
+                    HStack {
+                        Text(l10n["settings.gesture.sensitivity"])
+                        Slider(value: $swipeGestureSensitivity, in: 0 ... 1, step: 0.1)
+                            .onChange(of: swipeGestureSensitivity) { _, v in
+                                ShortcutSettings.shared.swipeGestureSensitivity = v
+                            }
+                        Text(String(format: "%.0f%%", swipeGestureSensitivity * 100))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .frame(width: 48, alignment: .trailing)
+                    }
+                }
+            } header: {
+                Label(l10n["settings.gesture.swipeNavigation"], systemImage: "hand.draw")
             }
 
             Section {
@@ -95,5 +122,6 @@ struct BehaviorSettingsTab: View {
         .formStyle(.grouped)
         .animation(.easeInOut(duration: 0.2), value: edgeActivationEnabled)
         .animation(.easeInOut(duration: 0.2), value: autoHideOnMouseExit)
+        .animation(.easeInOut(duration: 0.2), value: swipeToNavigateEnabled)
     }
 }

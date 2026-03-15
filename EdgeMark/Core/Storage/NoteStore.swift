@@ -41,6 +41,12 @@ final class NoteStore {
 
     var pendingFolderMoveConflict: PendingFolderMoveConflict?
 
+    /// Set to true to trigger the search bar on HomeFolderView after navigating back.
+    var pendingSearchOnHome = false
+
+    /// Folder to return to when the user dismisses search (set when search is triggered from a subfolder).
+    var searchReturnFolder: Folder?
+
     /// Notes filtered by selected folder (unsorted — views apply sort via `sortedNotes`).
     var filteredNotes: [Note] {
         if let folder = selectedFolder {
@@ -90,6 +96,15 @@ final class NoteStore {
     }
 
     // MARK: - Animated Navigation
+
+    func navigateToHome() {
+        Log.navigation.debug("[NoteStore] navigateToHome")
+        navigationDirection = .backward
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedNote = nil
+            selectedFolder = nil
+        }
+    }
 
     func navigateToFolder(_ folder: Folder) {
         let name = folder.name

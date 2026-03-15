@@ -54,7 +54,7 @@ struct NoteListView: View {
     }
 
     var body: some View {
-        PageLayout {
+        PageLayout(onSwipeBack: { navigateBack() }) {
             HStack {
                 HeaderIconButton(
                     systemName: "chevron.left",
@@ -66,11 +66,22 @@ struct NoteListView: View {
                 Spacer()
 
                 HeaderIconButton(
+                    systemName: "magnifyingglass",
+                    help: l10n["common.search"],
+                ) {
+                    noteStore.searchReturnFolder = noteStore.selectedFolder
+                    noteStore.pendingSearchOnHome = true
+                    noteStore.navigateToHome()
+                }
+                .keyboardShortcut("f", modifiers: .command)
+
+                HeaderIconButton(
                     systemName: "folder.badge.plus",
                     help: l10n["common.newFolder"],
                 ) {
                     startCreatingFolder()
                 }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
 
                 HeaderIconButton(
                     systemName: "square.and.pencil",
@@ -78,6 +89,7 @@ struct NoteListView: View {
                 ) {
                     createNote()
                 }
+                .keyboardShortcut("n", modifiers: .command)
             }
             .overlay {
                 HStack(spacing: 4) {

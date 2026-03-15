@@ -29,6 +29,9 @@ struct KeyboardSettingsTab: View {
             }
 
             Section {
+                localShortcutRow("\u{2318}N", l10n["settings.keyboard.newNote"])
+                localShortcutRow("\u{21E7}\u{2318}N", l10n["settings.keyboard.newFolder"])
+                localShortcutRow("\u{2318}F", l10n["settings.keyboard.search"])
                 localShortcutRow("Escape", l10n["settings.keyboard.hidePanel"])
                 localShortcutRow("/ (at line start)", l10n["settings.keyboard.slashCommand"])
                 localShortcutRow("\u{2318}Z", l10n["settings.keyboard.undo"])

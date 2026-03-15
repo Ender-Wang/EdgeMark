@@ -85,6 +85,16 @@ final class ShortcutSettings {
         didSet { UserDefaults.standard.set(hideOnClickOutside, forKey: hideOnClickOutsideKey) }
     }
 
+    /// Whether swipe-right in header navigates back.
+    var swipeToNavigateEnabled: Bool {
+        didSet { UserDefaults.standard.set(swipeToNavigateEnabled, forKey: swipeToNavigateEnabledKey) }
+    }
+
+    /// Swipe sensitivity (0–1). Higher = smaller required swipe distance.
+    var swipeGestureSensitivity: Double {
+        didSet { UserDefaults.standard.set(swipeGestureSensitivity, forKey: swipeGestureSensitivityKey) }
+    }
+
     /// Whether to automatically check for updates on launch (24h throttle).
     var autoCheckUpdates: Bool {
         didSet { UserDefaults.standard.set(autoCheckUpdates, forKey: autoCheckUpdatesKey) }
@@ -137,6 +147,8 @@ final class ShortcutSettings {
     private let edgeActivationEnabledKey = "edgeActivationEnabled"
     private let excludeCornersKey = "excludeCorners"
     private let hideOnClickOutsideKey = "hideOnClickOutside"
+    private let swipeToNavigateEnabledKey = "swipeToNavigateEnabled"
+    private let swipeGestureSensitivityKey = "swipeGestureSensitivity"
     private let autoCheckUpdatesKey = "autoCheckUpdates"
     private let launchAtLoginKey = "launchAtLogin"
     private let storageDirectoryKey = "storageDirectory"
@@ -161,6 +173,8 @@ final class ShortcutSettings {
         edgeActivationEnabled = UserDefaults.standard.object(forKey: edgeActivationEnabledKey) as? Bool ?? true
         excludeCorners = UserDefaults.standard.object(forKey: excludeCornersKey) as? Bool ?? true
         hideOnClickOutside = UserDefaults.standard.object(forKey: hideOnClickOutsideKey) as? Bool ?? true
+        swipeToNavigateEnabled = UserDefaults.standard.object(forKey: swipeToNavigateEnabledKey) as? Bool ?? true
+        swipeGestureSensitivity = UserDefaults.standard.object(forKey: swipeGestureSensitivityKey) as? Double ?? 0.5
         autoCheckUpdates = UserDefaults.standard.object(forKey: autoCheckUpdatesKey) as? Bool ?? true
         launchAtLogin = UserDefaults.standard.object(forKey: launchAtLoginKey) as? Bool ?? false
 

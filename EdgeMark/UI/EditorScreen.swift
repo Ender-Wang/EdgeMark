@@ -11,7 +11,7 @@ struct EditorScreen: View {
     }
 
     var body: some View {
-        PageLayout {
+        PageLayout(onSwipeBack: { goBack() }) {
             headerContent
         } content: {
             if let note = noteStore.selectedNote {

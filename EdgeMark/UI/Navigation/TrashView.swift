@@ -98,7 +98,7 @@ struct TrashView: View {
     // MARK: - Trash List
 
     private var trashList: some View {
-        PageLayout {
+        PageLayout(onSwipeBack: { noteStore.closeTrash() }) {
             HStack {
                 HeaderIconButton(
                     systemName: "chevron.left",
@@ -285,7 +285,7 @@ struct TrashView: View {
         let directNotes = folder.notes.filter { $0.folder == currentPath }
         let isEmpty = childSubfolders.isEmpty && directNotes.isEmpty
 
-        return PageLayout {
+        return PageLayout(onSwipeBack: { navigateBackInFolder(folder: folder) }) {
             HStack {
                 HeaderIconButton(
                     systemName: "chevron.left",

@@ -106,6 +106,15 @@ struct HomeFolderView: View {
             }
         }
         .moveConflictAlerts(noteStore: noteStore, l10n: l10n)
+        .onAppear {
+            if noteStore.pendingSearchOnHome {
+                noteStore.pendingSearchOnHome = false
+                isSearching = true
+                DispatchQueue.main.async {
+                    isSearchFieldFocused = true
+                }
+            }
+        }
     }
 
     // MARK: - Header
@@ -146,6 +155,7 @@ struct HomeFolderView: View {
                     isSearching = true
                     isSearchFieldFocused = true
                 }
+                .keyboardShortcut("f", modifiers: .command)
 
                 HeaderIconButton(
                     systemName: "folder.badge.plus",
@@ -153,6 +163,7 @@ struct HomeFolderView: View {
                 ) {
                     startCreatingFolder()
                 }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
 
                 HeaderIconButton(
                     systemName: "square.and.pencil",
@@ -160,6 +171,7 @@ struct HomeFolderView: View {
                 ) {
                     createRootNote()
                 }
+                .keyboardShortcut("n", modifiers: .command)
             }
             .opacity(isSearching ? 0 : 1)
             .allowsHitTesting(!isSearching)
@@ -552,6 +564,10 @@ struct HomeFolderView: View {
         isSearchFieldFocused = false
         isSearching = false
         searchQuery = ""
+        if let returnFolder = noteStore.searchReturnFolder {
+            noteStore.searchReturnFolder = nil
+            noteStore.navigateToFolder(returnFolder)
+        }
     }
 
     // MARK: - Note Rename Actions

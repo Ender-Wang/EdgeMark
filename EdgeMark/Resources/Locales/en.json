@@ -127,10 +127,17 @@
   "settings.keyboard.globalDescription": "These keyboard shortcuts work system-wide, even when EdgeMark is in the background.",
   "settings.keyboard.togglePanel": "Toggle EdgeMark",
   "settings.keyboard.localShortcuts": "Local shortcuts",
+  "settings.keyboard.newNote": "New note",
+  "settings.keyboard.newFolder": "New folder",
+  "settings.keyboard.search": "Search (or find in note when editor is focused)",
   "settings.keyboard.hidePanel": "Hide panel or go back",
   "settings.keyboard.slashCommand": "Open slash command menu",
   "settings.keyboard.undo": "Undo",
   "settings.keyboard.redo": "Redo",
+
+  "settings.gesture.swipeNavigation": "Swipe navigation",
+  "settings.gesture.enableSwipe": "Enable swipe to navigate back",
+  "settings.gesture.sensitivity": "Sensitivity",
 
   "settings.about.version": "Version {0} (Build {1})",
   "settings.about.viewOnGitHub": "View on GitHub",
