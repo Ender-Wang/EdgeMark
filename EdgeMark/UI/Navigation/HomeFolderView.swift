@@ -1,4 +1,5 @@
 import Cocoa
+import OSLog
 import SwiftUI
 
 struct HomeFolderView: View {
@@ -108,6 +109,7 @@ struct HomeFolderView: View {
         .moveConflictAlerts(noteStore: noteStore, l10n: l10n)
         .onAppear {
             if noteStore.pendingSearchOnHome {
+                Log.navigation.debug("[HomeFolderView] consuming pendingSearchOnHome")
                 noteStore.pendingSearchOnHome = false
                 isSearching = true
                 DispatchQueue.main.async {
@@ -565,6 +567,8 @@ struct HomeFolderView: View {
         isSearching = false
         searchQuery = ""
         if let returnFolder = noteStore.searchReturnFolder {
+            let name = returnFolder.name
+            Log.navigation.debug("[HomeFolderView] dismissSearch — restoring to \(name, privacy: .public)")
             noteStore.searchReturnFolder = nil
             noteStore.navigateToFolder(returnFolder)
         }

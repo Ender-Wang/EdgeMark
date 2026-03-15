@@ -1,4 +1,5 @@
 import AppKit
+import OSLog
 import SwiftUI
 
 /// Transparent overlay that detects two-finger trackpad right-swipe (back navigation)
@@ -39,6 +40,7 @@ final class SwipeDetectorNSView: NSView {
 
     private func startMonitoring() {
         guard monitor == nil else { return }
+        Log.navigation.debug("[SwipeDetector] monitoring started")
         monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
             self?.handleScroll(event)
             return event
@@ -49,6 +51,7 @@ final class SwipeDetectorNSView: NSView {
         if let m = monitor {
             NSEvent.removeMonitor(m)
             monitor = nil
+            Log.navigation.debug("[SwipeDetector] monitoring stopped")
         }
     }
 
@@ -70,8 +73,10 @@ final class SwipeDetectorNSView: NSView {
 
         if event.phase == .ended {
             let threshold = CGFloat(80 - 65 * settings.swipeGestureSensitivity)
+            let delta = accumulatedDeltaX
             // Positive deltaX = right swipe (natural scrolling, macOS default)
-            if accumulatedDeltaX > threshold {
+            if delta > threshold {
+                Log.navigation.debug("[SwipeDetector] swipe-back fired (delta: \(delta, privacy: .public), threshold: \(threshold, privacy: .public))")
                 DispatchQueue.main.async { onSwipeBack() }
             }
             accumulatedDeltaX = 0
