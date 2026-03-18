@@ -108,6 +108,11 @@ final class ShortcutSettings {
         }
     }
 
+    /// Width of the side panel in points. 400 = default minimum.
+    var panelWidth: CGFloat {
+        didSet { UserDefaults.standard.set(Double(panelWidth), forKey: panelWidthKey) }
+    }
+
     /// Appearance mode: system, light, or dark.
     var appearanceMode: AppearanceMode {
         didSet {
@@ -153,6 +158,7 @@ final class ShortcutSettings {
     private let launchAtLoginKey = "launchAtLogin"
     private let storageDirectoryKey = "storageDirectory"
     private let appearanceModeKey = "appearanceMode"
+    private let panelWidthKey = "panelWidth"
 
     // MARK: - Init
 
@@ -191,6 +197,11 @@ final class ShortcutSettings {
         if let path = UserDefaults.standard.string(forKey: storageDirectoryKey) {
             storageDirectory = URL(fileURLWithPath: path, isDirectory: true)
         }
+
+        // Panel width (stored as Double since UserDefaults doesn't have CGFloat)
+        let savedWidth = UserDefaults.standard.object(forKey: panelWidthKey) as? Double
+        panelWidth = savedWidth.map { CGFloat($0) } ?? 400
+
         loadShortcuts()
     }
 
