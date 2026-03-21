@@ -145,6 +145,14 @@ final class SidePanelController: NSWindowController {
             object: nil,
         )
 
+        // Update previousApp when user switches apps while panel is shown
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(handleAppActivation(_:)),
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+        )
+
         // Listen for settings changes (e.g. edge side) to reconfigure the panel
         NotificationCenter.default.addObserver(
             self,
@@ -204,6 +212,22 @@ final class SidePanelController: NSWindowController {
             let delay = max(ShortcutSettings.shared.hideDelay, 0.5)
             startHideTimer(delay: delay)
         }
+    }
+
+    // MARK: - App Activation
+
+    @objc private func handleAppActivation(_ notification: Notification) {
+        guard isShown else { return }
+        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
+            as? NSRunningApplication
+        else { return }
+        guard app.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
+
+        let name = app.localizedName ?? "unknown"
+        Log.window.debug(
+            "[SidePanelController] app activated while panel shown — updating previousApp to \(name, privacy: .public)",
+        )
+        previousApp = app
     }
 
     // MARK: - Dummy Window
@@ -450,6 +474,8 @@ final class SidePanelController: NSWindowController {
             if let app = previousApp {
                 let name = app.localizedName ?? "unknown"
                 Log.window.debug("[SidePanelController] restoring focus to \(name, privacy: .public)")
+            } else {
+                Log.window.debug("[SidePanelController] no previousApp to restore")
             }
             previousApp?.activate()
         }
