@@ -167,16 +167,13 @@ final class SlashCommandHandler {
     private func showPopup() {
         guard let webView else { return }
 
-        // Convert WKWebView's JS screen coords to macOS screen coords
-        // JS coords are relative to the screen with Y=0 at top
-        // We need to convert to NSScreen coordinates (Y=0 at bottom)
-        let screenPoint: NSPoint
-        if let screen = webView.window?.screen ?? NSScreen.main {
-            let screenHeight = screen.frame.height
-            screenPoint = NSPoint(x: lastCursorX, y: screenHeight - lastCursorY)
-        } else {
-            screenPoint = NSPoint(x: lastCursorX, y: lastCursorY)
-        }
+        // JS cursor coords (from coordsAtPos) are CSS viewport-relative with Y=0 at top.
+        // WKWebView is a flipped view (isFlipped=true, Y=0 at top), so its local coordinate
+        // system already matches CSS coords — no manual Y-flip needed.
+        // webView.convert(_:to:nil) handles the flipped→window transformation automatically.
+        let localPoint = NSPoint(x: lastCursorX, y: lastCursorY)
+        let windowPoint = webView.convert(localPoint, to: nil)
+        let screenPoint = webView.window?.convertPoint(toScreen: windowPoint) ?? windowPoint
 
         popup = SlashCommandPopup(
             commands: Self.commands,

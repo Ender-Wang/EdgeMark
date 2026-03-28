@@ -12,6 +12,7 @@ final class SlashCommandPopup: NSObject, NSTableViewDataSource, NSTableViewDeleg
     private let rowHeight: CGFloat = 32
     private let panelWidth: CGFloat = 220
     private let maxVisibleRows = 6
+    private var isAboveCursor = false
 
     var selectedCommand: SlashCommand? {
         guard selectedIndex >= 0, selectedIndex < commands.count else { return nil }
@@ -34,10 +35,17 @@ final class SlashCommandPopup: NSObject, NSTableViewDataSource, NSTableViewDeleg
     func show(attachedTo parentWindow: NSWindow?) {
         let panelHeight = min(CGFloat(commands.count) * rowHeight + 8, CGFloat(maxVisibleRows) * rowHeight + 8)
 
+        // Position below cursor if space allows, otherwise flip above
+        let screen = parentWindow?.screen ?? NSScreen.main
+        let screenMinY = screen?.visibleFrame.minY ?? 0
+        let yBelow = screenOrigin.y - panelHeight - 4
+        isAboveCursor = yBelow < screenMinY
+        let frameY: CGFloat = isAboveCursor ? screenOrigin.y + 22 + 4 : yBelow
+
         let panel = NSPanel(
             contentRect: NSRect(
                 x: screenOrigin.x,
-                y: screenOrigin.y - panelHeight - 4,
+                y: frameY,
                 width: panelWidth,
                 height: panelHeight,
             ),
@@ -139,7 +147,11 @@ final class SlashCommandPopup: NSObject, NSTableViewDataSource, NSTableViewDeleg
             var frame = panel.frame
             let oldHeight = frame.height
             frame.size.height = panelHeight
-            frame.origin.y += oldHeight - panelHeight
+            if !isAboveCursor {
+                // Below cursor: keep top edge fixed (origin rises as height shrinks)
+                frame.origin.y += oldHeight - panelHeight
+            }
+            // Above cursor: keep bottom edge fixed (origin.y stays, popup grows upward)
             panel.setFrame(frame, display: true)
             panel.contentView?.frame = NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight)
         }
