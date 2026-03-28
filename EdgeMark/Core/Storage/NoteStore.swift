@@ -271,7 +271,14 @@ final class NoteStore {
         guard let index = notes.firstIndex(where: { $0.id == noteID }) else { return }
         notes[index].content = content
         notes[index].modifiedAt = Date()
-        notes[index].title = Self.extractTitle(from: content)
+        // Only derive title from content when an explicit # heading is present.
+        // Without this guard, a rename on a headingless note reverts within ~150ms
+        // because the editor fires contentChanged on load and extractTitle returns
+        // the raw first line, overwriting the manually-set title.
+        let firstLine = content.split(separator: "\n", maxSplits: 1).first.map(String.init) ?? ""
+        if firstLine.hasPrefix("#") {
+            notes[index].title = Self.extractTitle(from: content)
+        }
         dirtyNoteIDs.insert(noteID)
 
         // Also update selectedNote if it matches
