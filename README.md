@@ -33,7 +33,10 @@ EdgeMark is the open-source alternative: **lightweight, Markdown-first**, and yo
 brew install --cask ender-wang/tap/edgemark
 ```
 
-Or download the latest `.dmg` from [Releases](https://github.com/Ender-Wang/EdgeMark/releases).
+Or download the latest `.dmg` from [Releases](https://github.com/Ender-Wang/EdgeMark/releases), install it, and then run this command in Terminal:
+```bash
+xattr -cr /Applications/EdgeMark.app
+```
 
 ---
 
