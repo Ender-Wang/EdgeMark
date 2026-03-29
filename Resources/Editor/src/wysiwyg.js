@@ -40,26 +40,53 @@ const headingMarks = [null, h1Mark, h2Mark, h3Mark, h4Mark, h5Mark, h6Mark];
 
 // Checkbox widget for task lists
 class CheckboxWidget extends WidgetType {
-  constructor(checked) {
+  constructor(checked, pos) {
     super();
     this.checked = checked;
+    this.pos = pos;
   }
 
-  toDOM() {
+  toDOM(view) {
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.checked = this.checked;
     cb.classList.add("cm-task-checkbox");
     cb.setAttribute("aria-label", this.checked ? "checked" : "unchecked");
+    cb.dataset.pos = this.pos;
+
+    cb.addEventListener("mousedown", (e) => {
+      e.preventDefault();   // prevent browser from toggling checked or moving focus
+      e.stopPropagation();  // prevent CM6 from seeing the event and moving cursor
+      const pos = parseInt(cb.dataset.pos, 10);
+      const line = view.state.doc.lineAt(pos);
+      const text = line.text;
+      const uncheckedMatch = text.match(/\[ \]/);
+      const checkedMatch = text.match(/\[[xX]\]/);
+      if (uncheckedMatch) {
+        const idx = line.from + uncheckedMatch.index;
+        view.dispatch({ changes: { from: idx, to: idx + 3, insert: "[x]" } });
+      } else if (checkedMatch) {
+        const idx = line.from + checkedMatch.index;
+        view.dispatch({ changes: { from: idx, to: idx + 3, insert: "[ ]" } });
+      }
+    });
+
     return cb;
   }
 
+  updateDOM(dom) {
+    dom.checked = this.checked;
+    dom.dataset.pos = this.pos;
+    dom.setAttribute("aria-label", this.checked ? "checked" : "unchecked");
+    return true;
+  }
+
   eq(other) {
-    return this.checked === other.checked;
+    return this.checked === other.checked && this.pos === other.pos;
   }
 
   ignoreEvent() {
-    return false;
+    return true;
   }
 }
 
@@ -269,7 +296,7 @@ function buildDecorations(view) {
         if (!isCursorLine) {
           // Replace the [ ] / [x] with a checkbox widget
           const cbRange = Decoration.replace({
-            widget: new CheckboxWidget(isChecked),
+            widget: new CheckboxWidget(isChecked, from),
           }).range(from, to);
           decorations.push(cbRange);
           atomicDecorations.push(cbRange);
@@ -412,45 +439,9 @@ const wysiwygPlugin = ViewPlugin.fromClass(
 );
 
 // ---------------------------------------------------------------------------
-// Handle checkbox clicks — toggle [x] / [ ] in the document
-// ---------------------------------------------------------------------------
-
-const checkboxClickHandler = EditorView.domEventHandlers({
-  click(event, view) {
-    const target = event.target;
-    if (
-      target instanceof HTMLInputElement &&
-      target.classList.contains("cm-task-checkbox")
-    ) {
-      event.preventDefault();
-      // Find the position of this checkbox in the document
-      const pos = view.posAtDOM(target);
-      const line = view.state.doc.lineAt(pos);
-      const text = line.text;
-      // Find [ ] or [x] in the line
-      const uncheckedMatch = text.match(/\[ \]/);
-      const checkedMatch = text.match(/\[[xX]\]/);
-      if (uncheckedMatch) {
-        const idx = line.from + uncheckedMatch.index;
-        view.dispatch({
-          changes: { from: idx, to: idx + 3, insert: "[x]" },
-        });
-      } else if (checkedMatch) {
-        const idx = line.from + checkedMatch.index;
-        view.dispatch({
-          changes: { from: idx, to: idx + 3, insert: "[ ]" },
-        });
-      }
-      return true;
-    }
-    return false;
-  },
-});
-
-// ---------------------------------------------------------------------------
 // Export
 // ---------------------------------------------------------------------------
 
 export function wysiwyg() {
-  return [wysiwygPlugin, checkboxClickHandler];
+  return [wysiwygPlugin];
 }

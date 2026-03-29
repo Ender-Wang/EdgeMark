@@ -213,6 +213,7 @@ body {
   margin-right: 4px;
   vertical-align: middle;
   accent-color: var(--caret-color);
+  pointer-events: auto; /* CM6 replacement widgets may be in a pointer-events:none container */
 }
 
 /* ---- Search / Find & Replace panel ---- */
