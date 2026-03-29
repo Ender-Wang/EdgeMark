@@ -15,6 +15,7 @@ final class SlashCommandHandler {
     private weak var webView: WKWebView?
     private var popup: SlashCommandPopup?
     private var triggerLocation: Int?
+    private var keyMonitor: Any?
     /// Last known cursor screen coordinates (from JS bridge).
     private var lastCursorX: Double = 0
     private var lastCursorY: Double = 0
@@ -139,6 +140,10 @@ final class SlashCommandHandler {
     }
 
     func dismiss() {
+        if let monitor = keyMonitor {
+            NSEvent.removeMonitor(monitor)
+            keyMonitor = nil
+        }
         popup?.close()
         popup = nil
         triggerLocation = nil
@@ -183,6 +188,26 @@ final class SlashCommandHandler {
             },
         )
         popup?.show(attachedTo: webView.window)
+
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, popup != nil else { return event }
+            switch event.keyCode {
+            case 36: // Return
+                _ = handleReturn()
+                return nil
+            case 125: // Arrow Down
+                _ = handleArrowDown()
+                return nil
+            case 126: // Arrow Up
+                _ = handleArrowUp()
+                return nil
+            case 53: // Escape
+                dismiss()
+                return nil
+            default:
+                return event
+            }
+        }
     }
 
     private func updateFilter(_ filter: String) {
