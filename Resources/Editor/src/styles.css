@@ -196,6 +196,17 @@ body {
   min-height: 1px;
 }
 
+/* ---- Cursor & selection ---- */
+/* CM6 base theme sets border-left: 1.2px solid black on .cm-cursor with higher
+   DOM specificity than EditorView.theme() selectors. Override here instead. */
+.cm-cursor {
+  border-left-color: var(--caret-color) !important;
+}
+
+.cm-editor.cm-focused .cm-selectionBackground {
+  background-color: var(--selection-bg) !important;
+}
+
 /* ---- Task checkbox ---- */
 .cm-task-checkbox {
   cursor: pointer;

@@ -198,7 +198,7 @@ const editorTheme = EditorView.theme({
     padding: "12px",
     caretColor: "var(--caret-color)",
   },
-  ".cm-focused .cm-cursor": {
+  "&.cm-focused .cm-cursor": {
     borderLeftColor: "var(--caret-color)",
     borderLeftWidth: "1.5px",
   },
@@ -221,7 +221,7 @@ const editorTheme = EditorView.theme({
   ".cm-selectionBackground, ::selection": {
     backgroundColor: "var(--selection-bg) !important",
   },
-  ".cm-focused .cm-selectionBackground": {
+  "&.cm-focused .cm-selectionBackground": {
     backgroundColor: "var(--selection-bg) !important",
   },
 });

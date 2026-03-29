@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "esbuild src/editor.js --bundle --outfile=dist/editor-bundle.js --format=iife --target=es2020 --minify"
+    "build": "esbuild src/editor.js --bundle --outfile=../../EdgeMark/Resources/Editor/editor-bundle.js --format=iife --target=es2020 --minify"
   },
   "dependencies": {
     "@codemirror/commands": "^6.8.1",
