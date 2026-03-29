@@ -101,6 +101,20 @@ private struct NSContextMenuOverlay: NSViewRepresentable {
 // MARK: - NSMenu Builder Helpers
 
 extension NSMenu {
+    /// Pop up this menu (built with addActionItem) at a point in a view without an NSEvent.
+    /// Blocks until dismissed, then clears MenuDispatch closures.
+    func popUpAtPoint(_ point: NSPoint, in view: NSView) {
+        popUp(positioning: nil, at: point, in: view)
+        MenuDispatch.shared.clear()
+    }
+
+    /// Pop up this menu at a screen-coordinate point.
+    /// AppKit automatically flips the menu above the cursor when near the bottom of the screen.
+    func popUpAtScreenPoint(_ screenPoint: NSPoint) {
+        popUp(positioning: nil, at: screenPoint, in: nil)
+        MenuDispatch.shared.clear()
+    }
+
     /// Add a menu item with an SF Symbol icon and a closure action.
     @discardableResult
     func addActionItem(

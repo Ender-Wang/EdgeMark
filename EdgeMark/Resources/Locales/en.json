@@ -27,6 +27,7 @@
   "common.nameTaken": "Name taken",
   "common.copyPlainText": "Copy as Plain Text",
   "common.copyMarkdown": "Copy as Markdown",
+  "common.copyRTF": "Copy as Rich Text",
   "common.deletePermanently": "Delete Permanently",
   "common.folderNamePlaceholder": "Folder name",
   "common.noteTitlePlaceholder": "Note title",

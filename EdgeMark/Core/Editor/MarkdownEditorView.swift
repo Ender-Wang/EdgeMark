@@ -5,6 +5,7 @@ struct MarkdownEditorView: NSViewRepresentable {
     let noteID: UUID
     let initialContent: String
     let onContentChanged: (String) -> Void
+    var onCoordinatorReady: ((Coordinator) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -27,6 +28,7 @@ struct MarkdownEditorView: NSViewRepresentable {
         webView.navigationDelegate = context.coordinator
         context.coordinator.webView = webView
         context.coordinator.currentNoteID = noteID
+        onCoordinatorReady?(context.coordinator)
 
         // Load editor.html from app bundle
         if let htmlURL = Bundle.main.url(forResource: "editor", withExtension: "html") {
@@ -142,6 +144,13 @@ struct MarkdownEditorView: NSViewRepresentable {
                     self?.parent.onContentChanged(content)
                 }
 
+            case "contextMenu":
+                guard let x = body["x"] as? Double,
+                      let y = body["y"] as? Double,
+                      let selectedText = body["selectedText"] as? String
+                else { return }
+                showContextMenu(selectedText: selectedText, x: CGFloat(x), y: CGFloat(y))
+
             case "cursorPosition":
                 guard let x = body["x"] as? Double,
                       let y = body["y"] as? Double,
@@ -208,6 +217,46 @@ struct MarkdownEditorView: NSViewRepresentable {
             let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             let theme = isDark ? "dark" : "light"
             webView.evaluateJavaScript("window.editorAPI.setTheme('\(theme)')")
+        }
+
+        func getSelectedText() async -> String {
+            guard let webView, isEditorReady else { return "" }
+            let result = try? await webView.evaluateJavaScript("window.editorAPI.getSelectedText()")
+            return (result as? String) ?? ""
+        }
+
+        // MARK: - Context Menu
+
+        private func showContextMenu(selectedText: String, x: CGFloat, y: CGFloat) {
+            guard let webView else { return }
+            let l10n = L10n.shared
+            let menu = NSMenu()
+
+            menu.addActionItem(title: l10n["common.copyPlainText"], icon: "doc.on.doc") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(Note.plainText(from: selectedText), forType: .string)
+            }
+            menu.addActionItem(title: l10n["common.copyMarkdown"], icon: "doc.richtext") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(selectedText, forType: .string)
+            }
+            menu.addActionItem(title: l10n["common.copyRTF"], icon: "textformat") {
+                let pb = NSPasteboard.general
+                pb.clearContents()
+                if let rtf = Note.rtfData(from: selectedText) {
+                    pb.setData(rtf, forType: .rtf)
+                } else {
+                    pb.setString(selectedText, forType: .string)
+                }
+            }
+
+            // WKWebView is flipped (isFlipped = true), so CSS clientY matches local Y directly.
+            // Convert to screen coords so AppKit can flip the menu above the cursor when near
+            // the bottom of the screen — same pattern as SlashCommandHandler.
+            let localPoint = NSPoint(x: x, y: y)
+            let windowPoint = webView.convert(localPoint, to: nil)
+            let screenPoint = webView.window?.convertPoint(toScreen: windowPoint) ?? windowPoint
+            menu.popUpAtScreenPoint(screenPoint)
         }
 
         // MARK: - Navigation Delegate

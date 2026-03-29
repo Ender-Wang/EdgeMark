@@ -25,6 +25,7 @@
   "common.nameTaken": "名称已存在",
   "common.copyPlainText": "复制为纯文本",
   "common.copyMarkdown": "复制为 Markdown",
+  "common.copyRTF": "复制为富文本",
   "common.deletePermanently": "永久删除",
   "common.folderNamePlaceholder": "文件夹名称",
   "common.noteTitlePlaceholder": "笔记标题",

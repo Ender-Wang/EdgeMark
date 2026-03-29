@@ -37,6 +37,16 @@ enum NoteListMenus {
             NSPasteboard.general.setString(note.content, forType: .string)
         }
 
+        menu.addActionItem(title: l10n["common.copyRTF"], icon: "textformat") {
+            let pb = NSPasteboard.general
+            pb.clearContents()
+            if let rtf = note.rtfData {
+                pb.setData(rtf, forType: .rtf)
+            } else {
+                pb.setString(note.plainText, forType: .string)
+            }
+        }
+
         menu.addItem(.separator())
 
         menu.addActionItem(title: l10n["common.showInFinder"], icon: "folder") {

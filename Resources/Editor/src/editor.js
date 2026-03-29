@@ -375,6 +375,12 @@ window.editorAPI = {
     const anchor = cursorPos !== undefined ? cursorPos : from + text.length;
     view.dispatch({ changes, selection: { anchor } });
   },
+
+  getSelectedText() {
+    if (!view) return "";
+    const { from, to } = view.state.selection.main;
+    return from === to ? "" : view.state.sliceDoc(from, to);
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -386,3 +392,17 @@ const params = new URLSearchParams(window.location.search);
 const isReadOnly = params.get("readOnly") === "true";
 
 createEditor(isReadOnly);
+
+// Right-click context menu: only intercept when text is selected
+document.addEventListener("contextmenu", (e) => {
+  if (!view) return;
+  const { from, to } = view.state.selection.main;
+  if (from === to) return; // no selection — let the system menu appear
+  e.preventDefault();
+  window.webkit?.messageHandlers?.editor?.postMessage({
+    action: "contextMenu",
+    selectedText: view.state.sliceDoc(from, to),
+    x: e.clientX,
+    y: e.clientY,
+  });
+});

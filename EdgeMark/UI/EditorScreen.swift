@@ -5,6 +5,7 @@ struct EditorScreen: View {
     @Environment(NoteStore.self) var noteStore
     @Environment(L10n.self) var l10n
     @State private var showDeleteConfirm = false
+    @State private var editorCoordinator: MarkdownEditorView.Coordinator?
 
     private var backLabel: String {
         noteStore.selectedFolder?.name ?? l10n["common.home"]
@@ -20,6 +21,9 @@ struct EditorScreen: View {
                     initialContent: note.content,
                     onContentChanged: { newContent in
                         noteStore.updateContent(for: note.id, content: newContent)
+                    },
+                    onCoordinatorReady: { coordinator in
+                        editorCoordinator = coordinator
                     },
                 )
             }
@@ -62,7 +66,7 @@ struct EditorScreen: View {
 
                     Spacer()
 
-                    CopyMenuButton(note: note)
+                    CopyMenuButton(note: note, coordinator: editorCoordinator)
 
                     DeleteIconButton {
                         showDeleteConfirm = true
@@ -94,8 +98,10 @@ struct EditorScreen: View {
 // MARK: - Copy Menu Button
 
 /// Copy icon that opens a menu with plain text and Markdown copy options.
+/// If text is selected in the editor, copies the selection; otherwise copies the whole document.
 private struct CopyMenuButton: View {
     let note: Note
+    let coordinator: MarkdownEditorView.Coordinator?
 
     @State private var isHovered = false
 
@@ -103,12 +109,33 @@ private struct CopyMenuButton: View {
         let l10n = L10n.shared
         Menu {
             Button(l10n["common.copyPlainText"]) {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(note.plainText, forType: .string)
+                Task {
+                    let selected = await coordinator?.getSelectedText() ?? ""
+                    let source = selected.isEmpty ? note.content : selected
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(Note.plainText(from: source), forType: .string)
+                }
             }
             Button(l10n["common.copyMarkdown"]) {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(note.content, forType: .string)
+                Task {
+                    let selected = await coordinator?.getSelectedText() ?? ""
+                    let text = selected.isEmpty ? note.content : selected
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(text, forType: .string)
+                }
+            }
+            Button(l10n["common.copyRTF"]) {
+                Task {
+                    let selected = await coordinator?.getSelectedText() ?? ""
+                    let source = selected.isEmpty ? note.content : selected
+                    let pb = NSPasteboard.general
+                    pb.clearContents()
+                    if let rtf = Note.rtfData(from: source) {
+                        pb.setData(rtf, forType: .rtf)
+                    } else {
+                        pb.setString(Note.plainText(from: source), forType: .string)
+                    }
+                }
             }
         } label: {
             Image(systemName: "doc.on.doc")
