@@ -20,20 +20,22 @@ struct TrashView: View {
     private let iconWidth: CGFloat = 22
 
     /// Internal transition based on navigation direction within trash.
+    /// Falls back to opacity when the user has chosen Fade animation style.
     private var internalTransition: AnyTransition {
+        guard ShortcutSettings.shared.animationStyle == .slide else { return .opacity }
         switch internalDirection {
         case .forward:
-            .asymmetric(
+            return .asymmetric(
                 insertion: .move(edge: .trailing),
                 removal: .move(edge: .leading),
             )
         case .backward:
-            .asymmetric(
+            return .asymmetric(
                 insertion: .move(edge: .leading),
                 removal: .move(edge: .trailing),
             )
         default:
-            .opacity
+            return .opacity
         }
     }
 

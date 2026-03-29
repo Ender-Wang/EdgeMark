@@ -41,11 +41,9 @@ final class SidePanelController: NSWindowController {
         let panelWidth = ShortcutSettings.shared.panelWidth
         let side = ShortcutSettings.shared.edgeSide
 
-        // Start off-screen on the configured edge
-        let startX: CGFloat = switch side {
-        case .right: visibleFrame.maxX
-        case .left: visibleFrame.minX - panelWidth
-        }
+        // Park the window far off-screen so it can't overlap any monitor.
+        // Using a large negative coordinate is guaranteed to miss all monitor arrangements.
+        let startX: CGFloat = -panelWidth - 1000
 
         let window = KeyableWindow(
             contentRect: NSRect(
@@ -62,7 +60,7 @@ final class SidePanelController: NSWindowController {
         window.backgroundColor = .clear
         window.level = .floating
         window.hasShadow = true
-        window.ignoresMouseEvents = false
+        window.ignoresMouseEvents = true
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         window.isMovableByWindowBackground = false
 
@@ -108,6 +106,11 @@ final class SidePanelController: NSWindowController {
         // We never orderOut — the window stays ordered (off-screen when hidden)
         // to maintain its .canJoinAllSpaces membership across desktop switches.
         window.orderBack(nil)
+        // Start invisible and non-interactive. The parking position for a right-edge panel
+        // on screen A lands inside an adjacent screen B's coordinate space — both alpha=0
+        // (no visual ghost) and ignoresMouseEvents=true (no click swallowing) are needed.
+        window.alphaValue = 0
+        window.ignoresMouseEvents = true
 
         setupDummyWindow()
         setupTrackingArea()
@@ -187,11 +190,8 @@ final class SidePanelController: NSWindowController {
         if isShown {
             hidePanel()
         } else {
-            // Reposition off-screen on the new edge
-            let targetScreen = window.screen ?? NSScreen.main ?? NSScreen.screens.first!
-            let visibleFrame = targetScreen.visibleFrame
-            let (_, hidden) = panelFrames(visibleFrame: visibleFrame, side: side)
-            window.setFrame(hidden, display: false)
+            // Reposition to safe parked location (edge may have changed so old position is stale)
+            window.setFrame(parkedFrame(panelWidth: panelWidth), display: false)
         }
     }
 
@@ -293,7 +293,7 @@ final class SidePanelController: NSWindowController {
         let gen = animationGeneration &+ 1
         animationGeneration = gen
 
-        let (shownFrame, startFrame) = panelFrames(visibleFrame: visibleFrame, side: side)
+        let (shownFrame, _) = panelFrames(visibleFrame: visibleFrame, side: side)
 
         // Save the frontmost app so we can restore focus when hiding
         let frontmost = NSWorkspace.shared.frontmostApplication
@@ -301,33 +301,53 @@ final class SidePanelController: NSWindowController {
             previousApp = frontmost
         }
 
-        window.alphaValue = 1
-
         if isAnimating {
-            // Interrupt hide animation — snap to shown position
+            // Interrupt hide animation — snap to shown position instantly
             Log.window.debug("[SidePanelController] showPanel interrupted hide animation")
             isAnimating = false
             window.setFrame(shownFrame, display: true)
+            window.alphaValue = 1
+            window.ignoresMouseEvents = false
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
         } else {
-            // Normal animated show
             isAnimating = true
-            // Pre-render at start position so SwiftUI layout is done before animation
-            window.setFrame(startFrame, display: true)
+            window.ignoresMouseEvents = false
             window.makeKeyAndOrderFront(nil)
 
-            // Slide in without forcing redisplay on each frame (content doesn't change, only position)
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.2
-                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                window.animator().setFrame(shownFrame, display: false)
-            } completionHandler: { [weak self] in
-                guard let self, animationGeneration == gen else { return }
-                isAnimating = false
+            if ShortcutSettings.shared.animationStyle == .slide {
+                // Slide: teleport to the off-screen start position, then animate the frame inward.
+                // Note: on multi-monitor setups the start position may overlap the adjacent display,
+                // causing a brief ghost during the 0.2s travel. Use Fade in Settings to avoid this.
+                let (_, startFrame) = panelFrames(visibleFrame: visibleFrame, side: side)
+                window.setFrame(startFrame, display: true)
+                window.alphaValue = 1
+
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.2
+                    context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                    window.animator().setFrame(shownFrame, display: false)
+                } completionHandler: { [weak self] in
+                    guard let self, animationGeneration == gen else { return }
+                    isAnimating = false
+                }
+            } else {
+                // Fade: position at the final frame while invisible, then animate alpha 0 → 1.
+                // The window never moves off the triggering screen — no adjacent monitor bleed.
+                window.setFrame(shownFrame, display: true)
+                window.alphaValue = 0
+
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.2
+                    context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                    window.animator().alphaValue = 1
+                } completionHandler: { [weak self] in
+                    guard let self, animationGeneration == gen else { return }
+                    isAnimating = false
+                }
             }
 
-            // Activate after animation is submitted to Core Animation — avoids blocking the slide
+            // Activate after animation is submitted to Core Animation
             NSApp.activate(ignoringOtherApps: true)
         }
     }
@@ -342,32 +362,52 @@ final class SidePanelController: NSWindowController {
         cancelHideTimer()
         edgeDetector.pauseDetection()
 
+        let panelWidth = window.frame.width
         let targetScreen = window.screen ?? NSScreen.main ?? NSScreen.screens.first!
         let visibleFrame = targetScreen.visibleFrame
         let side = ShortcutSettings.shared.edgeSide
         let (_, hiddenFrame) = panelFrames(visibleFrame: visibleFrame, side: side)
 
         if isAnimating {
-            // Interrupt show animation — snap to hidden position
+            // Interrupt show animation — snap to parked position instantly
             Log.window.debug("[SidePanelController] hidePanel interrupted show animation")
             isAnimating = false
-            window.setFrame(hiddenFrame, display: false)
             window.alphaValue = 0
+            window.ignoresMouseEvents = true
+            window.setFrame(parkedFrame(panelWidth: panelWidth), display: false)
             restorePreviousApp()
             edgeDetector.resumeDetection()
         } else {
             isAnimating = true
+            window.ignoresMouseEvents = true
 
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.2
-                context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-                window.animator().setFrame(hiddenFrame, display: false)
-            } completionHandler: { [weak self] in
-                guard let self, animationGeneration == gen else { return }
-                window.alphaValue = 0
-                isAnimating = false
-                restorePreviousApp()
-                edgeDetector.resumeDetection()
+            if ShortcutSettings.shared.animationStyle == .slide {
+                // Slide out, then park far off-screen so the invisible window can't block clicks.
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.2
+                    context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+                    window.animator().setFrame(hiddenFrame, display: false)
+                } completionHandler: { [weak self] in
+                    guard let self, animationGeneration == gen else { return }
+                    window.alphaValue = 0
+                    window.setFrame(parkedFrame(panelWidth: panelWidth), display: false)
+                    isAnimating = false
+                    restorePreviousApp()
+                    edgeDetector.resumeDetection()
+                }
+            } else {
+                // Fade out in place, then park. Window never moves off the current screen.
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.2
+                    context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+                    window.animator().alphaValue = 0
+                } completionHandler: { [weak self] in
+                    guard let self, animationGeneration == gen else { return }
+                    window.setFrame(parkedFrame(panelWidth: panelWidth), display: false)
+                    isAnimating = false
+                    restorePreviousApp()
+                    edgeDetector.resumeDetection()
+                }
             }
         }
     }
@@ -407,6 +447,12 @@ final class SidePanelController: NSWindowController {
     }
 
     // MARK: - Frame Calculation
+
+    /// A safe off-screen parking position that can't overlap any monitor in any arrangement.
+    /// The window is invisible (alphaValue = 0) and ignoresMouseEvents when parked here.
+    private func parkedFrame(panelWidth: CGFloat) -> NSRect {
+        NSRect(x: -panelWidth - 1000, y: -10000, width: panelWidth, height: 100)
+    }
 
     /// Returns (shown, hidden) frames for the given edge side using the persisted panel width.
     private func panelFrames(visibleFrame: NSRect, side: EdgeSide) -> (shown: NSRect, hidden: NSRect) {

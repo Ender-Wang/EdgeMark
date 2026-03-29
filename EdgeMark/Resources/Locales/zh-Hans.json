@@ -121,6 +121,12 @@
   "settings.keyboard.undo": "撤销",
   "settings.keyboard.redo": "重做",
 
+  "settings.animation.section": "动画",
+  "settings.animation.style": "显示/隐藏方式",
+  "settings.animation.slide": "滑动",
+  "settings.animation.fade": "渐变",
+  "settings.animation.note": "滑动为经典效果。在多显示器下，动画期间面板可能短暂出现在相邻屏幕上。选择渐变可避免此问题。",
+
   "settings.gesture.swipeNavigation": "手势导航",
   "settings.gesture.enableSwipe": "启用右滑返回",
   "settings.gesture.sensitivity": "灵敏度",

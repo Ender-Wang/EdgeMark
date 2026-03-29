@@ -38,6 +38,16 @@ enum AppearanceMode: String {
     case dark
 }
 
+// MARK: - AnimationStyle
+
+enum AnimationStyle: String {
+    /// Panel slides in/out from the screen edge (classic effect).
+    /// On multi-monitor setups the slide travel may briefly appear on the adjacent display.
+    case slide
+    /// Panel fades in/out without any frame movement, so nothing ever appears on adjacent monitors.
+    case fade
+}
+
 // MARK: - ShortcutSettings
 
 final class ShortcutSettings {
@@ -113,6 +123,11 @@ final class ShortcutSettings {
         didSet { UserDefaults.standard.set(Double(panelWidth), forKey: panelWidthKey) }
     }
 
+    /// Panel show/hide animation style.
+    var animationStyle: AnimationStyle {
+        didSet { UserDefaults.standard.set(animationStyle.rawValue, forKey: animationStyleKey) }
+    }
+
     /// Appearance mode: system, light, or dark.
     var appearanceMode: AppearanceMode {
         didSet {
@@ -158,6 +173,7 @@ final class ShortcutSettings {
     private let launchAtLoginKey = "launchAtLogin"
     private let storageDirectoryKey = "storageDirectory"
     private let appearanceModeKey = "appearanceMode"
+    private let animationStyleKey = "animationStyle"
     private let panelWidthKey = "panelWidth"
 
     // MARK: - Init
@@ -183,6 +199,15 @@ final class ShortcutSettings {
         swipeGestureSensitivity = UserDefaults.standard.object(forKey: swipeGestureSensitivityKey) as? Double ?? 0.5
         autoCheckUpdates = UserDefaults.standard.object(forKey: autoCheckUpdatesKey) as? Bool ?? true
         launchAtLogin = UserDefaults.standard.object(forKey: launchAtLoginKey) as? Bool ?? false
+
+        // Animation style
+        if let raw = UserDefaults.standard.string(forKey: animationStyleKey),
+           let style = AnimationStyle(rawValue: raw)
+        {
+            animationStyle = style
+        } else {
+            animationStyle = .slide
+        }
 
         // Appearance
         if let raw = UserDefaults.standard.string(forKey: appearanceModeKey),

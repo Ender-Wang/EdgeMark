@@ -135,6 +135,12 @@
   "settings.keyboard.undo": "Undo",
   "settings.keyboard.redo": "Redo",
 
+  "settings.animation.section": "Animation",
+  "settings.animation.style": "Show and hide style",
+  "settings.animation.slide": "Slide",
+  "settings.animation.fade": "Fade",
+  "settings.animation.note": "Slide is the classic effect. On multi-monitor setups, the panel may briefly appear on the adjacent display during animation. Choose Fade to avoid this.",
+
   "settings.gesture.swipeNavigation": "Swipe navigation",
   "settings.gesture.enableSwipe": "Enable swipe to navigate back",
   "settings.gesture.sensitivity": "Sensitivity",

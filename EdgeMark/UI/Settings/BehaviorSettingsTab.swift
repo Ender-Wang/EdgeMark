@@ -12,6 +12,7 @@ struct BehaviorSettingsTab: View {
     @State private var hideOnClickOutside: Bool
     @State private var swipeToNavigateEnabled: Bool
     @State private var swipeGestureSensitivity: Double
+    @State private var animationStyle: AnimationStyle
 
     init() {
         let s = ShortcutSettings.shared
@@ -24,10 +25,29 @@ struct BehaviorSettingsTab: View {
         _hideOnClickOutside = State(initialValue: s.hideOnClickOutside)
         _swipeToNavigateEnabled = State(initialValue: s.swipeToNavigateEnabled)
         _swipeGestureSensitivity = State(initialValue: s.swipeGestureSensitivity)
+        _animationStyle = State(initialValue: s.animationStyle)
     }
 
     var body: some View {
         Form {
+            Section {
+                Picker(l10n["settings.animation.style"], selection: $animationStyle) {
+                    Text(l10n["settings.animation.slide"]).tag(AnimationStyle.slide)
+                    Text(l10n["settings.animation.fade"]).tag(AnimationStyle.fade)
+                }
+                .pickerStyle(.segmented)
+                .fixedSize()
+                .onChange(of: animationStyle) { _, v in
+                    ShortcutSettings.shared.animationStyle = v
+                }
+
+                Text(l10n["settings.animation.note"])
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Label(l10n["settings.animation.section"], systemImage: "sparkles")
+            }
+
             Section {
                 Picker(l10n["settings.general.edge"], selection: $edgeSide) {
                     Text(l10n["settings.general.left"]).tag(EdgeSide.left)
