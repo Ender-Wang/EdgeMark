@@ -34,6 +34,7 @@ brew install --cask ender-wang/tap/edgemark
 ```
 
 Or download the latest `.dmg` from [Releases](https://github.com/Ender-Wang/EdgeMark/releases), install it, and then run this command in Terminal:
+
 ```bash
 xattr -cr /Applications/EdgeMark.app
 ```
@@ -46,7 +47,7 @@ xattr -cr /Applications/EdgeMark.app
 
 - 🔲 Borderless floating panel, full-height, always on top
 - 🖥️ Works on every virtual Desktop and alongside fullscreen apps
-- ✨ Smooth slide-in/out animation with edge activation — move mouse to screen edge to reveal
+- ✨ Smooth slide-in/out or fade animation (configurable) with edge activation — move mouse to screen edge to reveal
 - 🖱️ Click outside, Escape, or auto-hide dismissal
 - 📐 Multi-monitor support with configurable left or right edge
 - ↔️ Adjustable width — drag the inner edge to resize, saved across restarts
@@ -87,7 +88,7 @@ xattr -cr /Applications/EdgeMark.app
 - 🌗 Appearance override: System, Light, or Dark mode
 - 📌 Menu bar resident (no Dock icon)
 - 🚀 Launch at login
-- 📋 Copy note as plain text or Markdown source
+- 📋 Copy as Plain Text, Markdown, or Rich Text — selection-aware in editor with right-click context menu
 - 🎨 SF Symbol icons throughout all context menus
 - 🔀 Smooth directional page transitions
 - 🌍 English + Simplified Chinese (JSON-based, easy to contribute)
