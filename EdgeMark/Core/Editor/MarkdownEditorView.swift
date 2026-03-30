@@ -4,6 +4,7 @@ import WebKit
 struct MarkdownEditorView: NSViewRepresentable {
     let noteID: UUID
     let initialContent: String
+    let colorScheme: ColorScheme
     let onContentChanged: (String) -> Void
     var onCoordinatorReady: ((Coordinator) -> Void)?
 
@@ -56,6 +57,9 @@ struct MarkdownEditorView: NSViewRepresentable {
 
     func updateNSView(_: WKWebView, context: Context) {
         context.coordinator.parent = self
+
+        // Re-sync theme whenever SwiftUI re-evaluates (colorScheme change triggers this)
+        context.coordinator.syncTheme()
 
         // Only update content when the note ID changes (user switched notes)
         guard context.coordinator.currentNoteID != noteID else { return }

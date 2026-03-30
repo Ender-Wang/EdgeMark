@@ -4,6 +4,7 @@ import SwiftUI
 struct EditorScreen: View {
     @Environment(NoteStore.self) var noteStore
     @Environment(L10n.self) var l10n
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showDeleteConfirm = false
     @State private var editorCoordinator: MarkdownEditorView.Coordinator?
 
@@ -19,6 +20,7 @@ struct EditorScreen: View {
                 MarkdownEditorView(
                     noteID: note.id,
                     initialContent: note.content,
+                    colorScheme: colorScheme,
                     onContentChanged: { newContent in
                         noteStore.updateContent(for: note.id, content: newContent)
                     },
