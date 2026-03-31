@@ -154,6 +154,7 @@
 
   "updates.windowTitle": "Software Update",
   "updates.available.title": "EdgeMark \u2014 Update Available",
+  "updates.available.notification": "Version {0} is available. Click to view details.",
   "updates.current": "Current",
   "updates.releaseNotes": "Release Notes",
   "updates.viewOnGitHub": "View on GitHub",

@@ -138,6 +138,7 @@
   "settings.about.copyright": "© {0} Ender Wang。基于 GPLv3 许可证。",
   "updates.windowTitle": "软件更新",
   "updates.available.title": "EdgeMark — 有可用更新",
+  "updates.available.notification": "版本 {0} 已可用，点击查看详情。",
   "updates.current": "当前版本",
   "updates.releaseNotes": "更新日志",
   "updates.viewOnGitHub": "在 GitHub 上查看",

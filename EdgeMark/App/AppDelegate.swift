@@ -1,12 +1,14 @@
 import Cocoa
 import OSLog
 import SwiftUI
+import UserNotifications
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var panelController: SidePanelController?
     var statusItem: NSStatusItem?
     private var updateWindowController: UpdateWindowController?
     private var localeObserver: Any?
+    private var updateTimer: Timer?
 
     // MARK: - Updates
 
@@ -36,7 +38,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task {
                 await checkForUpdatesOnLaunch()
             }
+            scheduleBackgroundUpdateCheck()
         }
+
+        // Request notification permission for background update alerts
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        UNUserNotificationCenter.current().delegate = self
     }
 
     func applicationWillTerminate(_: Notification) {
@@ -158,6 +165,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         await performUpdateCheck(source: .launch)
     }
 
+    /// Schedule a repeating background update check. Uses a random initial delay (1–6 hours)
+    /// so the check time naturally varies day-to-day for users with fixed routines.
+    private func scheduleBackgroundUpdateCheck() {
+        let initialDelay = Double.random(in: 3600 ... 21600) // 1–6 hours
+        Log.updates.debug("[AppDelegate] background update check scheduled in \(Int(initialDelay / 60))m")
+        updateTimer = Timer.scheduledTimer(withTimeInterval: initialDelay, repeats: false) { [weak self] _ in
+            self?.fireBackgroundCheck()
+            // After first fire, repeat every 24 hours
+            self?.updateTimer = Timer.scheduledTimer(withTimeInterval: 86400, repeats: true) { [weak self] _ in
+                self?.fireBackgroundCheck()
+            }
+        }
+    }
+
+    private func fireBackgroundCheck() {
+        guard ShortcutSettings.shared.autoCheckUpdates else { return }
+        Task {
+            await updateState.check(source: .launch)
+            if case let .available(release) = updateState.status {
+                sendUpdateNotification(version: release.version)
+            }
+        }
+    }
+
+    private func sendUpdateNotification(version: String) {
+        let content = UNMutableNotificationContent()
+        content.title = L10n.shared["updates.available.title"]
+        content.body = L10n.shared.t("updates.available.notification", version)
+        content.sound = .default
+
+        let request = UNNotificationRequest(identifier: "edgemark-update", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
+    }
+
     func performUpdateCheck(source: UpdateState.Source) async {
         await updateState.check(source: source)
 
@@ -256,5 +297,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func toggleSortDirection() {
         panelController?.appSettings.sortAscending.toggle()
+    }
+}
+
+// MARK: - Notification Delegate
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    /// Show notification even when app is in foreground (menu bar app is always "foreground").
+    func userNotificationCenter(
+        _: UNUserNotificationCenter,
+        willPresent _: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void,
+    ) {
+        completionHandler([.banner, .sound])
+    }
+
+    /// User tapped the notification — open the update window.
+    func userNotificationCenter(
+        _: UNUserNotificationCenter,
+        didReceive _: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void,
+    ) {
+        showUpdateWindow()
+        completionHandler()
     }
 }

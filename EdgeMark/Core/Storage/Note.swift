@@ -117,7 +117,7 @@ extension Note {
                   documentAttributes: nil,
               )
         else { return nil }
-        return try? attrStr.rtf(
+        return attrStr.rtf(
             from: NSRange(location: 0, length: attrStr.length),
             documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf],
         )

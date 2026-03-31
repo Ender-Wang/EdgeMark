@@ -37,14 +37,24 @@ nonisolated struct GitHubRelease: Codable {
         tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
     }
 
-    /// The first `.dmg` asset, if any.
+    /// The `.dmg` asset matching the current CPU architecture.
     var dmgAsset: Asset? {
-        assets.first { $0.name.hasSuffix(".dmg") }
+        let archSuffix = Self.isArm64 ? "-arm64.dmg" : "-x86_64.dmg"
+        return assets.first { $0.name.hasSuffix(archSuffix) }
     }
 
-    /// The `.sha256` checksum asset, if any.
+    /// The `.sha256` checksum matching the current CPU architecture's DMG.
     var checksumAsset: Asset? {
-        assets.first { $0.name.hasSuffix(".sha256") }
+        let archSuffix = Self.isArm64 ? "-arm64.dmg.sha256" : "-x86_64.dmg.sha256"
+        return assets.first { $0.name.hasSuffix(archSuffix) }
+    }
+
+    private static var isArm64: Bool {
+        #if arch(arm64)
+            return true
+        #else
+            return false
+        #endif
     }
 
     /// Whether this is a prerelease (beta/develop channel).
