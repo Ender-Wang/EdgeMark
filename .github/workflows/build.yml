@@ -80,23 +80,27 @@ jobs:
       - name: Install SwiftFormat
         run: command -v swiftformat || brew install swiftformat
 
-      - name: Build
+      - name: Build (arm64 + x86_64)
         run: |
-          xcodebuild -project EdgeMark.xcodeproj -scheme EdgeMark -configuration Release \
-            -derivedDataPath build CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO build
-          strip build/Build/Products/Release/EdgeMark.app/Contents/MacOS/EdgeMark || true
+          for ARCH in arm64 x86_64; do
+            xcodebuild -project EdgeMark.xcodeproj -scheme EdgeMark -configuration Release \
+              -derivedDataPath "build_${ARCH}" \
+              ARCHS="${ARCH}" ONLY_ACTIVE_ARCH=NO \
+              CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO build
+            strip "build_${ARCH}/Build/Products/Release/EdgeMark.app/Contents/MacOS/EdgeMark" || true
+          done
 
-      - name: Create DMG
-        id: dmg
+      - name: Create DMGs
         run: |
-          mkdir -p dmg_contents
-          cp -R build/Build/Products/Release/EdgeMark.app dmg_contents/
-          ln -s /Applications dmg_contents/Applications
-          DMG_NAME="EdgeMark-${{ needs.check-version.outputs.tag }}.dmg"
-          hdiutil create -volname "EdgeMark" -srcfolder dmg_contents -ov -format UDZO "$DMG_NAME"
-          shasum -a 256 "$DMG_NAME" > "$DMG_NAME.sha256"
-          echo "dmg_name=$DMG_NAME" >> $GITHUB_OUTPUT
-          echo "sha_name=$DMG_NAME.sha256" >> $GITHUB_OUTPUT
+          TAG="${{ needs.check-version.outputs.tag }}"
+          for ARCH in arm64 x86_64; do
+            mkdir -p "dmg_${ARCH}"
+            cp -R "build_${ARCH}/Build/Products/Release/EdgeMark.app" "dmg_${ARCH}/"
+            ln -s /Applications "dmg_${ARCH}/Applications"
+            DMG="EdgeMark-${TAG}-${ARCH}.dmg"
+            hdiutil create -volname "EdgeMark" -srcfolder "dmg_${ARCH}" -ov -format UDZO "$DMG"
+            shasum -a 256 "$DMG" > "${DMG}.sha256"
+          done
 
       - name: Release
         uses: softprops/action-gh-release@v1
@@ -106,8 +110,10 @@ jobs:
           body: ${{ needs.check-version.outputs.commit_message }}
           prerelease: ${{ needs.check-version.outputs.prerelease == 'true' }}
           files: |
-            ${{ steps.dmg.outputs.dmg_name }}
-            ${{ steps.dmg.outputs.sha_name }}
+            EdgeMark-${{ needs.check-version.outputs.tag }}-arm64.dmg
+            EdgeMark-${{ needs.check-version.outputs.tag }}-arm64.dmg.sha256
+            EdgeMark-${{ needs.check-version.outputs.tag }}-x86_64.dmg
+            EdgeMark-${{ needs.check-version.outputs.tag }}-x86_64.dmg.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -116,20 +122,23 @@ jobs:
     if: needs.check-version.outputs.prerelease == 'false'
     runs-on: ubuntu-latest
     steps:
-      - name: Download SHA256 from release
+      - name: Download SHA256 files from release
         id: sha
         run: |
-          DMG_NAME="EdgeMark-${{ needs.check-version.outputs.tag }}.dmg"
-          gh release download "${{ needs.check-version.outputs.tag }}" --pattern "$DMG_NAME.sha256" --repo "${{ github.repository }}"
-          SHA=$(awk '{print $1}' "$DMG_NAME.sha256")
-          echo "sha256=$SHA" >> $GITHUB_OUTPUT
+          TAG="${{ needs.check-version.outputs.tag }}"
+          for ARCH in arm64 x86_64; do
+            gh release download "$TAG" --pattern "EdgeMark-${TAG}-${ARCH}.dmg.sha256" --repo "${{ github.repository }}"
+          done
+          echo "arm64=$(awk '{print $1}' EdgeMark-${TAG}-arm64.dmg.sha256)" >> $GITHUB_OUTPUT
+          echo "x86_64=$(awk '{print $1}' EdgeMark-${TAG}-x86_64.dmg.sha256)" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update Homebrew tap
         run: |
           VERSION="${{ needs.check-version.outputs.version }}"
-          SHA="${{ steps.sha.outputs.sha256 }}"
+          SHA_ARM64="${{ steps.sha.outputs.arm64 }}"
+          SHA_X86_64="${{ steps.sha.outputs.x86_64 }}"
 
           git clone https://x-access-token:${{ secrets.TAP_GITHUB_TOKEN }}@github.com/Ender-Wang/homebrew-tap.git tap
           cd tap
@@ -138,9 +147,17 @@ jobs:
           cat > Casks/edgemark.rb <<CASK
           cask "edgemark" do
             version "$VERSION"
-            sha256 "$SHA"
 
-            url "https://github.com/Ender-Wang/EdgeMark/releases/download/v#{version}/EdgeMark-v#{version}.dmg"
+            on_arm do
+              sha256 "$SHA_ARM64"
+              url "https://github.com/Ender-Wang/EdgeMark/releases/download/v#{version}/EdgeMark-v#{version}-arm64.dmg"
+            end
+
+            on_intel do
+              sha256 "$SHA_X86_64"
+              url "https://github.com/Ender-Wang/EdgeMark/releases/download/v#{version}/EdgeMark-v#{version}-x86_64.dmg"
+            end
+
             name "EdgeMark"
             desc "Native macOS side-panel Markdown notes app"
             homepage "https://github.com/Ender-Wang/EdgeMark"
