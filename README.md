@@ -75,6 +75,7 @@ xattr -cr /Applications/EdgeMark.app
 - ⏱️ Configurable activation delay and corner exclusion zones
 - 🔑 Panel shortcuts: `⌘N` new note, `⇧⌘N` new folder, `⌘F` search (when panel is focused)
 - 👆 Two-finger trackpad swipe right on the header to navigate back (configurable toggle and sensitivity)
+- 👆 Two-finger swipe left/right on the editor or `⌘←`/`⌘→` to navigate between notes in the current folder
 
 🔄 **Auto-Update & CI/CD**
 
