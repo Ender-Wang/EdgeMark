@@ -100,6 +100,11 @@ final class ShortcutSettings {
         didSet { UserDefaults.standard.set(swipeToNavigateEnabled, forKey: swipeToNavigateEnabledKey) }
     }
 
+    /// Whether swipe left/right on editor navigates between notes.
+    var editorSwipeToNavigateEnabled: Bool {
+        didSet { UserDefaults.standard.set(editorSwipeToNavigateEnabled, forKey: editorSwipeToNavigateEnabledKey) }
+    }
+
     /// Swipe sensitivity (0–1). Higher = smaller required swipe distance.
     var swipeGestureSensitivity: Double {
         didSet { UserDefaults.standard.set(swipeGestureSensitivity, forKey: swipeGestureSensitivityKey) }
@@ -168,6 +173,7 @@ final class ShortcutSettings {
     private let excludeCornersKey = "excludeCorners"
     private let hideOnClickOutsideKey = "hideOnClickOutside"
     private let swipeToNavigateEnabledKey = "swipeToNavigateEnabled"
+    private let editorSwipeToNavigateEnabledKey = "editorSwipeToNavigateEnabled"
     private let swipeGestureSensitivityKey = "swipeGestureSensitivity"
     private let autoCheckUpdatesKey = "autoCheckUpdates"
     private let launchAtLoginKey = "launchAtLogin"
@@ -196,6 +202,7 @@ final class ShortcutSettings {
         excludeCorners = UserDefaults.standard.object(forKey: excludeCornersKey) as? Bool ?? true
         hideOnClickOutside = UserDefaults.standard.object(forKey: hideOnClickOutsideKey) as? Bool ?? true
         swipeToNavigateEnabled = UserDefaults.standard.object(forKey: swipeToNavigateEnabledKey) as? Bool ?? true
+        editorSwipeToNavigateEnabled = UserDefaults.standard.object(forKey: editorSwipeToNavigateEnabledKey) as? Bool ?? true
         swipeGestureSensitivity = UserDefaults.standard.object(forKey: swipeGestureSensitivityKey) as? Double ?? 0.5
         autoCheckUpdates = UserDefaults.standard.object(forKey: autoCheckUpdatesKey) as? Bool ?? true
         launchAtLogin = UserDefaults.standard.object(forKey: launchAtLoginKey) as? Bool ?? false

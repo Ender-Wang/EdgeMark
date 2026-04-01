@@ -3,6 +3,7 @@ import SwiftUI
 
 struct EditorScreen: View {
     @Environment(NoteStore.self) var noteStore
+    @Environment(AppSettings.self) var appSettings
     @Environment(L10n.self) var l10n
     @Environment(\.colorScheme) private var colorScheme
     @State private var showDeleteConfirm = false
@@ -13,7 +14,13 @@ struct EditorScreen: View {
     }
 
     var body: some View {
-        PageLayout(onSwipeBack: { goBack() }) {
+        PageLayout(
+            onSwipeBack: { goBack() },
+            onContentSwipeRight: ShortcutSettings.shared.editorSwipeToNavigateEnabled
+                ? { noteStore.navigateToPreviousNote(sortedBy: appSettings) } : nil,
+            onContentSwipeLeft: ShortcutSettings.shared.editorSwipeToNavigateEnabled
+                ? { noteStore.navigateToNextNote(sortedBy: appSettings) } : nil,
+        ) {
             headerContent
         } content: {
             if let note = noteStore.selectedNote {
@@ -27,6 +34,8 @@ struct EditorScreen: View {
                     onCoordinatorReady: { coordinator in
                         editorCoordinator = coordinator
                     },
+                    onNavigateNext: { noteStore.navigateToNextNote(sortedBy: appSettings) },
+                    onNavigatePrevious: { noteStore.navigateToPreviousNote(sortedBy: appSettings) },
                 )
             }
         }

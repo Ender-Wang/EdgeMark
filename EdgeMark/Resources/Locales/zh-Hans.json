@@ -121,6 +121,8 @@
   "settings.keyboard.slashCommand": "打开斜杠命令菜单",
   "settings.keyboard.undo": "撤销",
   "settings.keyboard.redo": "重做",
+  "settings.keyboard.previousNote": "上一篇笔记",
+  "settings.keyboard.nextNote": "下一篇笔记",
 
   "settings.animation.section": "动画",
   "settings.animation.style": "显示/隐藏方式",
@@ -130,6 +132,7 @@
 
   "settings.gesture.swipeNavigation": "手势导航",
   "settings.gesture.enableSwipe": "启用右滑返回",
+  "settings.gesture.enableEditorSwipe": "启用编辑器左右滑动切换笔记",
   "settings.gesture.sensitivity": "灵敏度",
   "settings.about.version": "版本 {0}（构建 {1}）",
   "settings.about.viewOnGitHub": "在 GitHub 上查看",

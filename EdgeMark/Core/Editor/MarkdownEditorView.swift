@@ -7,6 +7,8 @@ struct MarkdownEditorView: NSViewRepresentable {
     let colorScheme: ColorScheme
     let onContentChanged: (String) -> Void
     var onCoordinatorReady: ((Coordinator) -> Void)?
+    var onNavigateNext: (() -> Void)?
+    var onNavigatePrevious: (() -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -51,11 +53,18 @@ struct MarkdownEditorView: NSViewRepresentable {
 
     static func dismantleNSView(_: WKWebView, coordinator: Coordinator) {
         coordinator.flushPendingContent()
+        coordinator.removeNoteNavMonitor()
         // Remove message handler to break retain cycle
         coordinator.webView?.configuration.userContentController.removeScriptMessageHandler(forName: "editor")
     }
 
     func updateNSView(_: WKWebView, context: Context) {
+        // When switching notes, flush pending save for the OLD note before updating parent.
+        // parent.onContentChanged still points to the old note's callback at this point.
+        if context.coordinator.currentNoteID != noteID {
+            context.coordinator.flushPendingContent()
+        }
+
         context.coordinator.parent = self
 
         // Re-sync theme whenever SwiftUI re-evaluates (colorScheme change triggers this)
@@ -86,6 +95,7 @@ struct MarkdownEditorView: NSViewRepresentable {
         private let saveDebouncer = Debouncer(delay: 1.0)
         /// Most recently known content, used for flush on dismantle.
         private var latestContent: String?
+        private var noteNavMonitor: Any?
 
         init(_ parent: MarkdownEditorView) {
             self.parent = parent
@@ -135,6 +145,7 @@ struct MarkdownEditorView: NSViewRepresentable {
 
                 // Initialize slash handler with WKWebView bridge
                 slashHandler = SlashCommandHandler(webView: webView)
+                installNoteNavMonitor()
 
             case "contentChanged":
                 guard let content = body["content"] as? String else { return }
@@ -143,9 +154,11 @@ struct MarkdownEditorView: NSViewRepresentable {
                 // Check for slash command trigger
                 slashHandler?.contentDidChange(content: content)
 
-                // Debounced save
+                // Debounced save — capture noteID so stale saves from a previous note are dropped
+                let noteID = currentNoteID
                 saveDebouncer.call { [weak self] in
-                    self?.parent.onContentChanged(content)
+                    guard let self, currentNoteID == noteID else { return }
+                    parent.onContentChanged(content)
                 }
 
             case "contextMenu":
@@ -221,6 +234,36 @@ struct MarkdownEditorView: NSViewRepresentable {
             let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             let theme = isDark ? "dark" : "light"
             webView.evaluateJavaScript("window.editorAPI.setTheme('\(theme)')")
+        }
+
+        // MARK: - Note Navigation Shortcut (Cmd+Left/Right)
+
+        func installNoteNavMonitor() {
+            guard noteNavMonitor == nil else { return }
+            noteNavMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self,
+                      event.modifierFlags.contains(.command),
+                      !event.modifierFlags.contains(.shift)
+                else { return event }
+                // Cmd+Left arrow = previous note
+                if event.keyCode == 123 {
+                    parent.onNavigatePrevious?()
+                    return nil
+                }
+                // Cmd+Right arrow = next note
+                if event.keyCode == 124 {
+                    parent.onNavigateNext?()
+                    return nil
+                }
+                return event
+            }
+        }
+
+        func removeNoteNavMonitor() {
+            if let m = noteNavMonitor {
+                NSEvent.removeMonitor(m)
+                noteNavMonitor = nil
+            }
         }
 
         func getSelectedText() async -> String {

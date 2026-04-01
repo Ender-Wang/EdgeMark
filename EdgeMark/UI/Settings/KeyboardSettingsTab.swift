@@ -36,6 +36,8 @@ struct KeyboardSettingsTab: View {
                 localShortcutRow("/ (at line start)", l10n["settings.keyboard.slashCommand"])
                 localShortcutRow("\u{2318}Z", l10n["settings.keyboard.undo"])
                 localShortcutRow("\u{21E7}\u{2318}Z", l10n["settings.keyboard.redo"])
+                localShortcutRow("\u{2318}\u{2190}", l10n["settings.keyboard.previousNote"])
+                localShortcutRow("\u{2318}\u{2192}", l10n["settings.keyboard.nextNote"])
             } header: {
                 Label(l10n["settings.keyboard.localShortcuts"], systemImage: "keyboard")
             }

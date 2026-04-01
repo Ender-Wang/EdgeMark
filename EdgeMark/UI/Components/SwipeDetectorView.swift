@@ -2,25 +2,29 @@ import AppKit
 import OSLog
 import SwiftUI
 
-/// Transparent overlay that detects two-finger trackpad right-swipe (back navigation)
+/// Transparent overlay that detects two-finger trackpad horizontal swipes
 /// via NSEvent scroll monitoring. Only fires when the cursor is inside this view's bounds.
 /// Mouse clicks pass through (hitTest returns nil).
 struct SwipeDetectorView: NSViewRepresentable {
-    let onSwipeBack: () -> Void
+    var onSwipeBack: (() -> Void)?
+    var onSwipeForward: (() -> Void)?
 
     func makeNSView(context _: Context) -> SwipeDetectorNSView {
         let view = SwipeDetectorNSView()
         view.onSwipeBack = onSwipeBack
+        view.onSwipeForward = onSwipeForward
         return view
     }
 
     func updateNSView(_ nsView: SwipeDetectorNSView, context _: Context) {
         nsView.onSwipeBack = onSwipeBack
+        nsView.onSwipeForward = onSwipeForward
     }
 }
 
 final class SwipeDetectorNSView: NSView {
     var onSwipeBack: (() -> Void)?
+    var onSwipeForward: (() -> Void)?
 
     private var monitor: Any?
     private var accumulatedDeltaX: CGFloat = 0
@@ -63,7 +67,9 @@ final class SwipeDetectorNSView: NSView {
         guard bounds.contains(locationInSelf) else { return }
 
         let settings = ShortcutSettings.shared
-        guard let onSwipeBack, settings.swipeToNavigateEnabled else { return }
+        guard settings.swipeToNavigateEnabled,
+              onSwipeBack != nil || onSwipeForward != nil
+        else { return }
 
         if event.phase == .began {
             accumulatedDeltaX = 0
@@ -75,9 +81,14 @@ final class SwipeDetectorNSView: NSView {
             let threshold = CGFloat(80 - 65 * settings.swipeGestureSensitivity)
             let delta = accumulatedDeltaX
             // Positive deltaX = right swipe (natural scrolling, macOS default)
-            if delta > threshold {
+            if delta > threshold, let onSwipeBack {
                 Log.navigation.debug("[SwipeDetector] swipe-back fired (delta: \(delta, privacy: .public), threshold: \(threshold, privacy: .public))")
                 DispatchQueue.main.async { onSwipeBack() }
+            }
+            // Negative deltaX = left swipe = forward
+            if delta < -threshold, let onSwipeForward {
+                Log.navigation.debug("[SwipeDetector] swipe-forward fired (delta: \(delta, privacy: .public), threshold: \(threshold, privacy: .public))")
+                DispatchQueue.main.async { onSwipeForward() }
             }
             accumulatedDeltaX = 0
         }

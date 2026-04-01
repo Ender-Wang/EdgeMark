@@ -11,6 +11,7 @@ struct BehaviorSettingsTab: View {
     @State private var hideDelay: Double
     @State private var hideOnClickOutside: Bool
     @State private var swipeToNavigateEnabled: Bool
+    @State private var editorSwipeToNavigateEnabled: Bool
     @State private var swipeGestureSensitivity: Double
     @State private var animationStyle: AnimationStyle
 
@@ -24,6 +25,7 @@ struct BehaviorSettingsTab: View {
         _hideDelay = State(initialValue: s.hideDelay)
         _hideOnClickOutside = State(initialValue: s.hideOnClickOutside)
         _swipeToNavigateEnabled = State(initialValue: s.swipeToNavigateEnabled)
+        _editorSwipeToNavigateEnabled = State(initialValue: s.editorSwipeToNavigateEnabled)
         _swipeGestureSensitivity = State(initialValue: s.swipeGestureSensitivity)
         _animationStyle = State(initialValue: s.animationStyle)
     }
@@ -68,7 +70,12 @@ struct BehaviorSettingsTab: View {
                         ShortcutSettings.shared.swipeToNavigateEnabled = v
                     }
 
-                if swipeToNavigateEnabled {
+                Toggle(l10n["settings.gesture.enableEditorSwipe"], isOn: $editorSwipeToNavigateEnabled)
+                    .onChange(of: editorSwipeToNavigateEnabled) { _, v in
+                        ShortcutSettings.shared.editorSwipeToNavigateEnabled = v
+                    }
+
+                if swipeToNavigateEnabled || editorSwipeToNavigateEnabled {
                     HStack {
                         Text(l10n["settings.gesture.sensitivity"])
                         Slider(value: $swipeGestureSensitivity, in: 0 ... 1, step: 0.1)
@@ -143,5 +150,6 @@ struct BehaviorSettingsTab: View {
         .animation(.easeInOut(duration: 0.2), value: edgeActivationEnabled)
         .animation(.easeInOut(duration: 0.2), value: autoHideOnMouseExit)
         .animation(.easeInOut(duration: 0.2), value: swipeToNavigateEnabled)
+        .animation(.easeInOut(duration: 0.2), value: editorSwipeToNavigateEnabled)
     }
 }

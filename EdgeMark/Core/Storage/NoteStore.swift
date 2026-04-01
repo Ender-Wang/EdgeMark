@@ -189,6 +189,47 @@ final class NoteStore {
         return note
     }
 
+    /// Notes in the current folder only (not descendants). Root = notes with empty folder.
+    private var currentFolderNotes: [Note] {
+        if let folder = selectedFolder {
+            notes.filter { $0.folder == folder.name }
+        } else {
+            notes.filter(\.folder.isEmpty)
+        }
+    }
+
+    func navigateToNextNote(sortedBy appSettings: AppSettings) {
+        guard let current = selectedNote else { return }
+        let sorted = sortedNotes(currentFolderNotes, by: appSettings.sortBy, ascending: appSettings.sortAscending)
+        guard let index = sorted.firstIndex(where: { $0.id == current.id }),
+              index + 1 < sorted.count
+        else { return }
+        let next = sorted[index + 1]
+        let title = next.title
+        Log.navigation.debug("[NoteStore] navigateToNextNote — \(title, privacy: .public)")
+        saveDirtyNotes()
+        navigationDirection = .forward
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedNote = next
+        }
+    }
+
+    func navigateToPreviousNote(sortedBy appSettings: AppSettings) {
+        guard let current = selectedNote else { return }
+        let sorted = sortedNotes(currentFolderNotes, by: appSettings.sortBy, ascending: appSettings.sortAscending)
+        guard let index = sorted.firstIndex(where: { $0.id == current.id }),
+              index > 0
+        else { return }
+        let prev = sorted[index - 1]
+        let title = prev.title
+        Log.navigation.debug("[NoteStore] navigateToPreviousNote — \(title, privacy: .public)")
+        saveDirtyNotes()
+        navigationDirection = .backward
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedNote = prev
+        }
+    }
+
     func openTrash() {
         Log.navigation.debug("[NoteStore] openTrash")
         navigationDirection = .overlay
@@ -269,6 +310,7 @@ final class NoteStore {
 
     func updateContent(for noteID: UUID, content: String) {
         guard let index = notes.firstIndex(where: { $0.id == noteID }) else { return }
+        guard notes[index].content != content else { return }
         notes[index].content = content
         notes[index].modifiedAt = Date()
         // Only derive title from content when an explicit # heading is present.

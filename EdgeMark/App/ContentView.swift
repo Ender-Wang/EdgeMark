@@ -59,6 +59,7 @@ struct ContentView: View {
 
             if showEditor {
                 EditorScreen()
+                    .id(noteStore.selectedNote?.id)
                     .transition(pageTransition)
             }
 

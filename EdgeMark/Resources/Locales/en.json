@@ -135,6 +135,8 @@
   "settings.keyboard.slashCommand": "Open slash command menu",
   "settings.keyboard.undo": "Undo",
   "settings.keyboard.redo": "Redo",
+  "settings.keyboard.previousNote": "Previous note",
+  "settings.keyboard.nextNote": "Next note",
 
   "settings.animation.section": "Animation",
   "settings.animation.style": "Show and hide style",
@@ -144,6 +146,7 @@
 
   "settings.gesture.swipeNavigation": "Swipe navigation",
   "settings.gesture.enableSwipe": "Enable swipe to navigate back",
+  "settings.gesture.enableEditorSwipe": "Enable swipe to switch notes in editor",
   "settings.gesture.sensitivity": "Sensitivity",
 
   "settings.about.version": "Version {0} (Build {1})",
