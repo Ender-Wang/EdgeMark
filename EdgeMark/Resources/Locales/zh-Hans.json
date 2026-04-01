@@ -134,6 +134,9 @@
   "settings.gesture.enableSwipe": "启用右滑返回",
   "settings.gesture.enableEditorSwipe": "启用编辑器左右滑动切换笔记",
   "settings.gesture.sensitivity": "灵敏度",
+
+  "settings.desc.swipeBack": "在标题栏右滑返回笔记列表",
+  "settings.desc.editorSwipe": "在编辑器中左右滑动切换当前文件夹中的笔记",
   "settings.about.version": "版本 {0}（构建 {1}）",
   "settings.about.viewOnGitHub": "在 GitHub 上查看",
   "settings.about.reportBug": "报告错误",

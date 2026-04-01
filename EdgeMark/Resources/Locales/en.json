@@ -149,6 +149,9 @@
   "settings.gesture.enableEditorSwipe": "Enable swipe to switch notes in editor",
   "settings.gesture.sensitivity": "Sensitivity",
 
+  "settings.desc.swipeBack": "Swipe right on the header area to go back to the note list",
+  "settings.desc.editorSwipe": "Swipe left or right on the editor to switch between notes in the current folder",
+
   "settings.about.version": "Version {0} (Build {1})",
   "settings.about.viewOnGitHub": "View on GitHub",
   "settings.about.reportBug": "Report a Bug",

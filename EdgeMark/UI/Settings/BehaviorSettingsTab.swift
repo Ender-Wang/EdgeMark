@@ -38,7 +38,7 @@ struct BehaviorSettingsTab: View {
                     Text(l10n["settings.animation.fade"]).tag(AnimationStyle.fade)
                 }
                 .pickerStyle(.segmented)
-                .fixedSize()
+                .labelsHidden()
                 .onChange(of: animationStyle) { _, v in
                     ShortcutSettings.shared.animationStyle = v
                 }
@@ -56,7 +56,7 @@ struct BehaviorSettingsTab: View {
                     Text(l10n["settings.general.right"]).tag(EdgeSide.right)
                 }
                 .pickerStyle(.segmented)
-                .fixedSize()
+                .labelsHidden()
                 .onChange(of: edgeSide) { _, newValue in
                     ShortcutSettings.shared.edgeSide = newValue
                 }
@@ -70,10 +70,18 @@ struct BehaviorSettingsTab: View {
                         ShortcutSettings.shared.swipeToNavigateEnabled = v
                     }
 
+                Text(l10n["settings.desc.swipeBack"])
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
                 Toggle(l10n["settings.gesture.enableEditorSwipe"], isOn: $editorSwipeToNavigateEnabled)
                     .onChange(of: editorSwipeToNavigateEnabled) { _, v in
                         ShortcutSettings.shared.editorSwipeToNavigateEnabled = v
                     }
+
+                Text(l10n["settings.desc.editorSwipe"])
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                 if swipeToNavigateEnabled || editorSwipeToNavigateEnabled {
                     HStack {

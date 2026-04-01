@@ -42,7 +42,6 @@ struct GeneralSettingsTab: View {
                     Text(l10n["settings.language.en"]).tag("en")
                     Text(l10n["settings.language.zh"]).tag("zh-Hans")
                 }
-                .fixedSize()
                 .onChange(of: selectedLocale) { _, newValue in
                     L10n.shared.locale = newValue
                 }
