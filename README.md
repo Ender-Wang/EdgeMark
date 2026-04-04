@@ -56,8 +56,9 @@ xattr -cr /Applications/EdgeMark.app
 
 - 👁️ CodeMirror 6 WYSIWYG editor with cursor-aware live preview (hides syntax, reveals on cursor line)
 - 📝 Full Markdown: headings, bold, italic, code, lists, task lists, blockquotes, links, tables
-- ⚡ Slash commands (`/h1`, `/todo`, `/code`, `/quote`, `/table`, and more)
-- ⌨️ Formatting shortcuts (Cmd+B/I/E/K, Shift+X for strikethrough)
+- ⚡ Slash commands (`/h1`, `/todo`, `/code`, `/quote`, `/table`, `/divider`, and more)
+- ⌨️ Formatting shortcuts: `⌘B` bold, `⌘I` italic, `⌘E` inline code, `⌘K` link, `⇧⌘X` strikethrough
+- 🔗 `⌘Click` a rendered link to open it in the browser
 - 🔍 Find & Replace (Cmd+F)
 
 🗂️ **Notes & Storage**
