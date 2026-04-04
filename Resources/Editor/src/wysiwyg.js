@@ -31,9 +31,9 @@ const boldMark = Decoration.mark({ class: "cm-strong" });
 const italicMark = Decoration.mark({ class: "cm-emphasis" });
 const strikeMark = Decoration.mark({ class: "cm-strikethrough" });
 const inlineCodeMark = Decoration.mark({ class: "cm-inline-code" });
-const linkTextMark = Decoration.mark({ class: "cm-link-text" });
-const linkUrlMark = Decoration.mark({ class: "cm-link-url" });
-const blockquoteMark = Decoration.mark({ class: "cm-blockquote-line" });
+function linkTextMark(url) {
+  return Decoration.mark({ class: "cm-link-text", attributes: { "data-url": url, style: "cursor: pointer" } });
+}
 
 // Heading marks indexed by level (1-based)
 const headingMarks = [null, h1Mark, h2Mark, h3Mark, h4Mark, h5Mark, h6Mark];
@@ -211,7 +211,6 @@ function buildDecorations(view) {
       if (name === "Link") {
         if (!isCursorLine) {
           // Find the child nodes
-          let linkMark = null;
           let url = null;
           let linkStart = null;
           let linkEnd = null;
@@ -224,9 +223,8 @@ function buildDecorations(view) {
             if (child.type.name === "URL") url = child;
             child = child.nextSibling;
           }
-          // Style the link text
-          // For [text](url): hide [ , ](url)
-          if (linkStart) {
+          // Only hide markup for proper [text](url) links — bare [text] passes through
+          if (linkStart && url) {
             const range = hideDecoration.range(linkStart.from, linkStart.to);
             decorations.push(range);
             atomicDecorations.push(range);
@@ -254,27 +252,31 @@ function buildDecorations(view) {
               atomicDecorations.push(range);
             }
           }
-          // Style the visible text as a link
-          if (linkStart && linkEnd) {
+          // Style the visible text as a link (only when URL exists — bare [text] is not a link)
+          if (linkStart && linkEnd && url) {
+            const urlText = view.state.doc.sliceString(url.from, url.to);
             decorations.push(
-              linkTextMark.range(linkStart.to, linkEnd.from),
+              linkTextMark(urlText).range(linkStart.to, linkEnd.from),
             );
           }
         } else {
-          // Cursor on line — show everything, just style the text part
+          // Cursor on line — show raw markdown, style the text part only if it's a proper link
           let firstMark = null;
           let secondMark = null;
+          let urlNode = null;
           let child = node.node.firstChild;
           while (child) {
             if (child.type.name === "LinkMark") {
               if (!firstMark) firstMark = child;
               else if (!secondMark) secondMark = child;
             }
+            if (child.type.name === "URL") urlNode = child;
             child = child.nextSibling;
           }
-          if (firstMark && secondMark) {
+          if (firstMark && secondMark && urlNode) {
+            const urlText = view.state.doc.sliceString(urlNode.from, urlNode.to);
             decorations.push(
-              linkTextMark.range(firstMark.to, secondMark.from),
+              linkTextMark(urlText).range(firstMark.to, secondMark.from),
             );
           }
         }
@@ -374,7 +376,7 @@ function buildDecorations(view) {
 }
 
 // Helper: hide all child nodes with a given type name
-function hideChildMarkers(node, markerName, state, decorations, atomicDecorations) {
+function hideChildMarkers(node, markerName, _state, decorations, atomicDecorations) {
   let child = node.node.firstChild;
   while (child) {
     if (child.type.name === markerName) {
@@ -435,6 +437,20 @@ const wysiwygPlugin = ViewPlugin.fromClass(
       EditorView.atomicRanges.of((view) => {
         return view.plugin(plugin)?.atomicDecorations || Decoration.none;
       }),
+
+    // Cmd+Click on a rendered link → open URL in browser
+    eventHandlers: {
+      mousedown(e) {
+        if (!e.metaKey) return false;
+        const target = e.target.closest(".cm-link-text");
+        if (!target) return false;
+        const url = target.dataset.url;
+        if (!url) return false;
+        e.preventDefault();
+        window.webkit?.messageHandlers?.editor?.postMessage({ action: "openLink", url });
+        return true;
+      },
+    },
   },
 );
 

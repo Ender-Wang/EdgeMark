@@ -157,14 +157,14 @@ function wrapSelection(marker) {
 function insertLink({ state, dispatch }) {
   const { from, to } = state.selection.main;
   if (from === to) {
-    // Empty selection: insert [text](url) template
+    // Empty selection: insert [](url) and select "url" so user types the URL immediately
     const insert = "[](url)";
     dispatch({
       changes: { from, to, insert },
-      selection: { anchor: from + 1 }, // cursor inside []
+      selection: { anchor: from + 3, head: from + 6 }, // select "url"
     });
   } else {
-    // Wrap selection as link text
+    // Wrap selection as link text, pre-select "url" so user types the URL immediately
     const text = state.doc.sliceString(from, to);
     const insert = `[${text}](url)`;
     dispatch({

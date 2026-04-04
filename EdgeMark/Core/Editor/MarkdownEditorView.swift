@@ -161,6 +161,13 @@ struct MarkdownEditorView: NSViewRepresentable {
                     parent.onContentChanged(content)
                 }
 
+            case "openLink":
+                guard let urlString = body["url"] as? String, !urlString.isEmpty else { return }
+                // Prepend https:// if no scheme present
+                let normalized = urlString.contains("://") ? urlString : "https://\(urlString)"
+                guard let url = URL(string: normalized) else { return }
+                NSWorkspace.shared.open(url)
+
             case "contextMenu":
                 guard let x = body["x"] as? Double,
                       let y = body["y"] as? Double,
