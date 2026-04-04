@@ -123,6 +123,13 @@
   "settings.keyboard.redo": "重做",
   "settings.keyboard.previousNote": "上一篇笔记",
   "settings.keyboard.nextNote": "下一篇笔记",
+  "settings.keyboard.formatting": "编辑器格式化",
+  "settings.keyboard.bold": "粗体",
+  "settings.keyboard.italic": "斜体",
+  "settings.keyboard.inlineCode": "行内代码",
+  "settings.keyboard.link": "插入或转换为链接",
+  "settings.keyboard.strikethrough": "删除线",
+  "settings.keyboard.openLink": "在浏览器中打开链接",
 
   "settings.animation.section": "动画",
   "settings.animation.style": "显示/隐藏方式",

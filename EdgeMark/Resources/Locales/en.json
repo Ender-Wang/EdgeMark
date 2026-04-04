@@ -137,6 +137,13 @@
   "settings.keyboard.redo": "Redo",
   "settings.keyboard.previousNote": "Previous note",
   "settings.keyboard.nextNote": "Next note",
+  "settings.keyboard.formatting": "Editor formatting",
+  "settings.keyboard.bold": "Bold",
+  "settings.keyboard.italic": "Italic",
+  "settings.keyboard.inlineCode": "Inline code",
+  "settings.keyboard.link": "Insert or wrap link",
+  "settings.keyboard.strikethrough": "Strikethrough",
+  "settings.keyboard.openLink": "Open link in browser",
 
   "settings.animation.section": "Animation",
   "settings.animation.style": "Show and hide style",

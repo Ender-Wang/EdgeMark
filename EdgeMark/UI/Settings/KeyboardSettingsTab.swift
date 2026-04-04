@@ -33,13 +33,24 @@ struct KeyboardSettingsTab: View {
                 localShortcutRow("\u{21E7}\u{2318}N", l10n["settings.keyboard.newFolder"])
                 localShortcutRow("\u{2318}F", l10n["settings.keyboard.search"])
                 localShortcutRow("Escape", l10n["settings.keyboard.hidePanel"])
-                localShortcutRow("/ (at line start)", l10n["settings.keyboard.slashCommand"])
                 localShortcutRow("\u{2318}Z", l10n["settings.keyboard.undo"])
                 localShortcutRow("\u{21E7}\u{2318}Z", l10n["settings.keyboard.redo"])
                 localShortcutRow("\u{2318}\u{2190}", l10n["settings.keyboard.previousNote"])
                 localShortcutRow("\u{2318}\u{2192}", l10n["settings.keyboard.nextNote"])
             } header: {
                 Label(l10n["settings.keyboard.localShortcuts"], systemImage: "keyboard")
+            }
+
+            Section {
+                localShortcutRow("\u{2318}B", l10n["settings.keyboard.bold"])
+                localShortcutRow("\u{2318}I", l10n["settings.keyboard.italic"])
+                localShortcutRow("\u{2318}E", l10n["settings.keyboard.inlineCode"])
+                localShortcutRow("\u{2318}K", l10n["settings.keyboard.link"])
+                localShortcutRow("\u{21E7}\u{2318}X", l10n["settings.keyboard.strikethrough"])
+                localShortcutRow("/ (at line start)", l10n["settings.keyboard.slashCommand"])
+                localShortcutRow("\u{2318} Click", l10n["settings.keyboard.openLink"])
+            } header: {
+                Label(l10n["settings.keyboard.formatting"], systemImage: "textformat")
             }
         }
         .formStyle(.grouped)
