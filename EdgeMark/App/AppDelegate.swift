@@ -100,6 +100,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             keyEquivalent: "q",
         ))
 
+        menu.delegate = self
         statusItem?.menu = menu
     }
 
@@ -297,6 +298,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func toggleSortDirection() {
         panelController?.appSettings.sortAscending.toggle()
+    }
+}
+
+// MARK: - Menu Delegate
+
+extension AppDelegate: NSMenuDelegate {
+    /// Pause edge detection while the status menu is open so the global mouseMoved
+    /// monitor doesn't compete with menu hover events on slower hardware.
+    func menuWillOpen(_: NSMenu) {
+        Log.app.debug("[MenuBar] menu opened — pausing edge detector")
+        panelController?.edgeDetector.pauseDetection()
+    }
+
+    func menuDidClose(_: NSMenu) {
+        Log.app.debug("[MenuBar] menu closed — resuming edge detector")
+        panelController?.edgeDetector.resumeDetection()
     }
 }
 

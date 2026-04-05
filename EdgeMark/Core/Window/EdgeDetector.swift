@@ -74,6 +74,7 @@ final class EdgeDetector {
 
     private func handleMouseMove() {
         guard !isPaused else { return }
+        let t0 = CACurrentMediaTime()
         let mouseLocation = NSEvent.mouseLocation
 
         guard let screen = screenForPoint(mouseLocation) else { return }
@@ -97,6 +98,11 @@ final class EdgeDetector {
         }
 
         wasAtEdge = atEdge
+
+        let elapsed = (CACurrentMediaTime() - t0) * 1000
+        if elapsed > 2 {
+            Log.window.warning("[EdgeDetector] handleMouseMove took \(String(format: "%.1f", elapsed))ms")
+        }
     }
 
     /// Find the screen containing the point. Uses inclusive bounds (`<=` for
