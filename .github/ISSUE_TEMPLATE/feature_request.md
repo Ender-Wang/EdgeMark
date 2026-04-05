@@ -3,8 +3,6 @@ name: Feature request
 about: Suggest an idea for this project
 title: "✨ Feature request: "
 labels: enhancement
-assignees: Ender-Wang
-
 ---
 
 **Is your feature request related to a problem?**
@@ -18,6 +16,7 @@ A clear and concise description of what you want to happen.
 **Use case**
 
 Describe the workflow or scenario where this feature would be useful. For example:
+
 - What kind of notes do you typically store? (quick thoughts, code snippets, meeting notes)
 - How do you organize your notes? (folders, single list)
 
