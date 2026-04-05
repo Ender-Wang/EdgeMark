@@ -34,7 +34,7 @@
 
   "search.placeholder": "Search notes",
   "search.close": "Close Search",
-  "search.hint": "Search by title or content",
+  "search.recentNotes": "Recent",
   "search.noResults": "No results",
   "search.titles": "Titles",
   "search.content": "Content",

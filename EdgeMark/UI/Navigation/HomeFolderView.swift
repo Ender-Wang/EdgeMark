@@ -68,6 +68,11 @@ struct HomeFolderView: View {
         !titleMatches.isEmpty || !contentMatches.isEmpty
     }
 
+    /// All notes sorted by most recently modified — shown as a feed when search query is empty.
+    private var allNotesSorted: [Note] {
+        noteStore.notes.sorted { $0.modifiedAt > $1.modifiedAt }
+    }
+
     /// Root-level notes (no folder), sorted by current sort setting.
     private var rootNotes: [Note] {
         let filtered = noteStore.notes.filter(\.folder.isEmpty)
@@ -360,10 +365,12 @@ struct HomeFolderView: View {
     private var searchResultsList: some View {
         ScrollView {
             if trimmedQuery.isEmpty {
-                emptySearchPlaceholder(
-                    icon: "magnifyingglass",
-                    message: l10n["search.hint"],
-                )
+                VStack(alignment: .leading, spacing: 0) {
+                    sectionHeader(l10n["search.recentNotes"])
+                    ForEach(allNotesSorted) { note in
+                        recentNoteRow(note: note)
+                    }
+                }
             } else if !hasAnyResults {
                 emptySearchPlaceholder(
                     icon: "doc.questionmark",
@@ -513,6 +520,40 @@ struct HomeFolderView: View {
                 }
 
                 Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func recentNoteRow(note: Note) -> some View {
+        Button {
+            openNote(note)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "doc.text")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .frame(width: iconWidth)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(note.title.isEmpty ? l10n["common.untitled"] : note.title)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    Text(note.folder.isEmpty ? l10n["common.root"] : note.folder)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+
+                Spacer()
+
+                Text(note.modifiedAt.homeDisplayFormat)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)

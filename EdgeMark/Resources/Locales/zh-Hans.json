@@ -31,7 +31,7 @@
   "common.noteTitlePlaceholder": "笔记标题",
   "search.placeholder": "搜索笔记",
   "search.close": "关闭搜索",
-  "search.hint": "按标题或内容搜索",
+  "search.recentNotes": "最近",
   "search.noResults": "无结果",
   "search.titles": "标题",
   "search.content": "内容",
