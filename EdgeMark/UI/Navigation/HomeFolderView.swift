@@ -370,7 +370,7 @@ struct HomeFolderView: View {
                     message: l10n["search.noResults"],
                 )
             } else {
-                LazyVStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 0) {
                     if !titleMatches.isEmpty {
                         sectionHeader(l10n["search.titles"])
                         ForEach(titleMatches) { note in
