@@ -36,6 +36,15 @@ function listContinuation({ state, dispatch }) {
   const line = state.doc.lineAt(from);
   const text = line.text;
 
+  // Horizontal rule: Enter on --- line moves cursor below
+  if (/^[-*_]{3,}$/.test(text.trim())) {
+    dispatch({
+      changes: { from: line.to, to: line.to, insert: "\n" },
+      selection: { anchor: line.to + 1 },
+    });
+    return true;
+  }
+
   // Task list: "  - [ ] content" or "  - [x] content"
   const taskMatch = text.match(/^(\s*[-*+]\s+)\[([xX ])\]\s?(.*)/);
   if (taskMatch) {

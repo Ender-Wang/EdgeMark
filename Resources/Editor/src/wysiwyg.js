@@ -294,10 +294,20 @@ function buildDecorations(view) {
 
       // ---- Task list items: - [ ] or - [x] ----
       if (name === "TaskMarker") {
-        const text = state.doc.sliceString(from, to);
-        const isChecked = /\[[xX]\]/.test(text);
+        const taskText = state.doc.sliceString(from, to);
+        const isChecked = /\[[xX]\]/.test(taskText);
         if (!isCursorLine) {
-          // Replace the [ ] / [x] with a checkbox widget
+          // Hide the leading "- " with a non-atomic mark (keeps text in layout flow)
+          const line = state.doc.lineAt(from);
+          const markerMatch = line.text.match(/^(\s*[-*+]\s+)/);
+          if (markerMatch) {
+            decorations.push(
+              Decoration.mark({ class: "cm-task-list-marker" }).range(
+                line.from, line.from + markerMatch[0].length,
+              ),
+            );
+          }
+          // Replace [ ] / [x] with checkbox widget
           const cbRange = Decoration.replace({
             widget: new CheckboxWidget(isChecked, from),
           }).range(from, to);
@@ -332,19 +342,39 @@ function buildDecorations(view) {
         }
       }
 
-      // ---- FencedCode ---- (don't hide fences, just style)
+      // ---- FencedCode ---- (hide fence marks off cursor, style interior)
       if (name === "FencedCode") {
         decorations.push(
           Decoration.mark({ class: "cm-fenced-code" }).range(from, to),
         );
-        // Apply line decorations for the code block
         const startLine = state.doc.lineAt(from).number;
         const endLine = state.doc.lineAt(to).number;
         for (let ln = startLine; ln <= endLine; ln++) {
           const line = state.doc.line(ln);
+          const isFirst = ln === startLine;
+          const isLast = ln === endLine;
+          const cls = ["cm-code-line", isFirst ? "cm-code-line-first" : "", isLast ? "cm-code-line-last" : ""]
+            .filter(Boolean).join(" ");
           decorations.push(
-            Decoration.line({ class: "cm-code-line" }).range(line.from),
+            Decoration.line({ class: cls }).range(line.from),
           );
+        }
+        // Hide ``` fence lines when cursor is not anywhere inside this code block
+        const cursorInBlock = Array.from(
+          { length: endLine - startLine + 1 },
+          (_, i) => startLine + i,
+        ).some((ln) => cursorLines.has(ln));
+        if (!cursorInBlock) {
+          let child = node.node.firstChild;
+          while (child) {
+            if (child.type.name === "CodeMark") {
+              const fenceLine = state.doc.line(state.doc.lineAt(child.from).number);
+              decorations.push(
+                Decoration.mark({ class: "cm-fence-hidden" }).range(fenceLine.from, fenceLine.to),
+              );
+            }
+            child = child.nextSibling;
+          }
         }
         return false;
       }
@@ -357,10 +387,11 @@ function buildDecorations(view) {
           ),
         );
         if (!isCursorLine) {
-          // Hide the --- text; style the line with a bottom border via CSS
-          const range = hideDecoration.range(from, to);
-          decorations.push(range);
-          atomicDecorations.push(range);
+          // Hide the --- text with a non-atomic mark so it stays in layout flow
+          // (atomic replace shifts CM6's line coordinate cache for all lines below)
+          decorations.push(
+            Decoration.mark({ class: "cm-hr-text" }).range(from, to),
+          );
         }
         return false;
       }

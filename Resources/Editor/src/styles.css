@@ -184,6 +184,19 @@ body {
   background: var(--code-bg);
 }
 
+/* Keep code block background on the active (cursor) line */
+.cm-code-line.cm-activeLine {
+  background: var(--code-bg) !important;
+}
+
+.cm-code-line-first {
+  border-radius: 6px 6px 0 0;
+}
+
+.cm-code-line-last {
+  border-radius: 0 0 6px 6px;
+}
+
 .cm-fenced-code {
   font-family: "SF Mono", "Menlo", "Monaco", monospace;
   font-size: 0.9em;
@@ -191,9 +204,9 @@ body {
 
 /* ---- Horizontal rule ---- */
 .cm-hr {
-  text-align: center;
   border-bottom: 1px solid var(--hr-color);
   min-height: 1px;
+  padding: 8px 0;
 }
 
 /* ---- Cursor & selection ---- */
@@ -205,6 +218,24 @@ body {
 
 .cm-editor.cm-focused .cm-selectionBackground {
   background-color: var(--selection-bg) !important;
+}
+
+/* ---- Fenced code fence lines hidden (non-atomic mark) ---- */
+.cm-fence-hidden {
+  font-size: 0;
+  color: transparent;
+}
+
+/* ---- HR text hidden (non-atomic mark, stays in layout flow) ---- */
+.cm-hr-text {
+  font-size: 0;
+  color: transparent;
+}
+
+/* ---- Task list marker hidden (non-atomic mark, stays in layout flow) ---- */
+.cm-task-list-marker {
+  font-size: 0;
+  color: transparent;
 }
 
 /* ---- Task checkbox ---- */
