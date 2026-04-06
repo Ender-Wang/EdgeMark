@@ -308,12 +308,12 @@ extension AppDelegate: NSMenuDelegate {
     /// monitor doesn't compete with menu hover events on slower hardware.
     func menuWillOpen(_: NSMenu) {
         Log.app.debug("[MenuBar] menu opened — pausing edge detector")
-        panelController?.edgeDetector.pauseDetection()
+        panelController?.edgeDetector.menuWillOpen()
     }
 
     func menuDidClose(_: NSMenu) {
         Log.app.debug("[MenuBar] menu closed — resuming edge detector")
-        panelController?.edgeDetector.resumeDetection()
+        panelController?.edgeDetector.menuDidClose()
     }
 }
 

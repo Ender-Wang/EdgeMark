@@ -11,6 +11,7 @@ final class EdgeDetector {
     private var wasAtEdge = false
     private var activationTimer: Timer?
     private var isPaused = false
+    private var isMenuOpen = false
 
     /// How close to the edge (in points) the cursor must be to trigger activation.
     private let edgeThreshold: CGFloat = 2
@@ -46,7 +47,12 @@ final class EdgeDetector {
 
     /// Resume detection after animation completes. Sets `wasAtEdge` based on
     /// current mouse position so the user must leave-and-return to re-trigger.
+    /// No-op if the menu bar menu is currently open.
     func resumeDetection() {
+        guard !isMenuOpen else {
+            Log.window.debug("[EdgeDetector] resume skipped — menu open")
+            return
+        }
         Log.window.debug("[EdgeDetector] resumed")
         isPaused = false
         let mouseLocation = NSEvent.mouseLocation
@@ -55,6 +61,16 @@ final class EdgeDetector {
         } else {
             wasAtEdge = false
         }
+    }
+
+    func menuWillOpen() {
+        isMenuOpen = true
+        pauseDetection()
+    }
+
+    func menuDidClose() {
+        isMenuOpen = false
+        resumeDetection()
     }
 
     func stopMonitoring() {
