@@ -125,9 +125,10 @@ function buildDecorations(view) {
       // Skip nodes entirely outside viewport for performance
       // (CM6 only parses visible + buffer, but tree may extend)
 
-      // Determine if cursor is on any line this node spans
+      // Determine if cursor is on any line this node spans.
+      // Require editor focus — unfocused editor renders all lines in preview mode.
       const nodeStartLine = state.doc.lineAt(from).number;
-      const isCursorLine = cursorLines.has(nodeStartLine);
+      const isCursorLine = view.hasFocus && cursorLines.has(nodeStartLine);
 
       // ---- ATX Headings (#, ##, ### ...) ----
       if (name.startsWith("ATXHeading") && !name.includes("Mark")) {
@@ -402,8 +403,8 @@ const wysiwygPlugin = ViewPlugin.fromClass(
     }
 
     update(update) {
-      // Always rebuild on doc or viewport changes
-      if (update.docChanged || update.viewportChanged) {
+      // Always rebuild on doc, viewport, or focus changes
+      if (update.docChanged || update.viewportChanged || update.focusChanged) {
         const t0 = performance.now();
         const result = buildDecorations(update.view);
         this.decorations = result.all;
