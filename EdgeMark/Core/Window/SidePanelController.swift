@@ -289,6 +289,9 @@ final class SidePanelController: NSWindowController {
         let side = ShortcutSettings.shared.edgeSide
         Log.window.info("[SidePanelController] showPanel (\(side.rawValue, privacy: .public) edge)")
 
+        // Check for external file changes every time the panel becomes visible
+        noteStore.checkForExternalChanges()
+
         isShown = true
         let gen = animationGeneration &+ 1
         animationGeneration = gen

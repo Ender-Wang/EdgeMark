@@ -41,6 +41,17 @@ final class NoteStore {
 
     var pendingFolderMoveConflict: PendingFolderMoveConflict?
 
+    /// Conflict when both EdgeMark and an external editor modified the same open note.
+    struct PendingExternalChange {
+        let noteID: UUID
+        let diskContent: String
+    }
+
+    var pendingExternalChange: PendingExternalChange?
+
+    /// Called when an open note is auto-synced from disk — pushes new content directly to the editor.
+    var onNeedEditorReload: ((String) -> Void)?
+
     /// Cached set of folder paths that exist on disk (including empty folders).
     /// Updated only by disk-mutating folder operations — avoids a full filesystem
     /// enumeration on every `refreshFolders()` call.
@@ -277,7 +288,11 @@ final class NoteStore {
                         trashedAt: note.trashedAt,
                         savedFilename: note.savedFilename,
                     )
-                    try? FileStorage.writeNote(fixed)
+                    do {
+                        try FileStorage.writeNote(fixed)
+                    } catch {
+                        Log.storage.error("[NoteStore] failed to re-save deduped note — \(error)")
+                    }
                     return fixed
                 }
                 return note
@@ -292,6 +307,66 @@ final class NoteStore {
             Log.storage.info("[NoteStore] loaded \(noteCount) notes, \(trashCount) trashed items")
         } catch {
             Log.storage.error("[NoteStore] loadFromDisk failed — \(error)")
+        }
+    }
+
+    /// Called on every app foreground transition. Checks each note for external modifications
+    /// and reloads or prompts based on dirty state.
+    func checkForExternalChanges() {
+        let count = notes.count
+        Log.storage.debug("[ExternalSync] checking \(count) notes")
+        for i in notes.indices {
+            let note = notes[i]
+            guard let diskDate = FileStorage.modificationDate(for: note) else {
+                let t = note.title
+                Log.storage.debug("[ExternalSync] '\(t, privacy: .public)' — file not found on disk")
+                continue
+            }
+            let inMemDate = note.modifiedAt
+            let diff = diskDate.timeIntervalSince(inMemDate)
+            let t = note.title
+            Log.storage.debug("[ExternalSync] '\(t, privacy: .public)' — diff: \(String(format: "%.3f", diff))s")
+            guard diff > 1 else { continue }
+
+            let noteID = notes[i].id
+            let isOpen = selectedNote?.id == noteID
+            let isDirty = dirtyNoteIDs.contains(noteID)
+
+            guard let (diskContent, diskModifiedAt) = FileStorage.reloadContent(for: notes[i]) else { continue }
+
+            let title = notes[i].title
+            if isOpen, isDirty {
+                // Both EdgeMark and external have changes — prompt user
+                Log.storage.info("[NoteStore] external conflict on open note '\(title, privacy: .public)'")
+                pendingExternalChange = PendingExternalChange(noteID: noteID, diskContent: diskContent)
+            } else {
+                // Safe to auto-reload: note not open, or open but no EdgeMark edits
+                Log.storage.info("[NoteStore] auto-syncing '\(title, privacy: .public)' from external change")
+                notes[i].content = diskContent
+                notes[i].modifiedAt = diskModifiedAt
+                dirtyNoteIDs.remove(noteID)
+                if isOpen {
+                    selectedNote = notes[i]
+                    // Push content directly to the editor — don't rely on SwiftUI update cycle
+                    onNeedEditorReload?(diskContent)
+                }
+            }
+        }
+    }
+
+    /// Resolve external conflict: keep EdgeMark edits (discard disk) or reload from disk.
+    func resolveExternalChange(keepEdgeMarkEdits: Bool) {
+        guard let conflict = pendingExternalChange else { return }
+        pendingExternalChange = nil
+        if !keepEdgeMarkEdits,
+           let i = notes.firstIndex(where: { $0.id == conflict.noteID })
+        {
+            notes[i].content = conflict.diskContent
+            dirtyNoteIDs.remove(conflict.noteID)
+            if selectedNote?.id == conflict.noteID {
+                selectedNote = notes[i]
+                onNeedEditorReload?(conflict.diskContent)
+            }
         }
     }
 
@@ -791,8 +866,14 @@ final class NoteStore {
             do {
                 let newFilename = try FileStorage.writeNote(notes[index])
                 notes[index].savedFilename = newFilename
+                // Sync modifiedAt to actual filesystem date so external change detection
+                // doesn't false-positive (disk write happens a few ms after Date() is captured)
+                if let diskDate = FileStorage.modificationDate(for: notes[index]) {
+                    notes[index].modifiedAt = diskDate
+                }
                 if selectedNote?.id == noteID {
                     selectedNote?.savedFilename = newFilename
+                    selectedNote?.modifiedAt = notes[index].modifiedAt
                 }
             } catch {
                 Log.storage.error("[NoteStore] saveDirtyNotes failed for \(noteID) — \(error)")

@@ -33,6 +33,10 @@ struct EditorScreen: View {
                     },
                     onCoordinatorReady: { coordinator in
                         editorCoordinator = coordinator
+                        // Wire external sync reload directly to coordinator
+                        noteStore.onNeedEditorReload = { [weak coordinator] content in
+                            coordinator?.setContent(content)
+                        }
                     },
                     onNavigateNext: { noteStore.navigateToNextNote(sortedBy: appSettings) },
                     onNavigatePrevious: { noteStore.navigateToPreviousNote(sortedBy: appSettings) },
@@ -47,6 +51,22 @@ struct EditorScreen: View {
                 }
             }
             Button(l10n["common.cancel"], role: .cancel) {}
+        }
+        .alert(
+            l10n["alert.externalChange.title"],
+            isPresented: Binding(
+                get: { noteStore.pendingExternalChange != nil },
+                set: { if !$0 { noteStore.pendingExternalChange = nil } },
+            ),
+        ) {
+            Button(l10n["alert.externalChange.keepEdgeMarkEdits"]) {
+                noteStore.resolveExternalChange(keepEdgeMarkEdits: true)
+            }
+            Button(l10n["alert.externalChange.reloadFromDisk"], role: .destructive) {
+                noteStore.resolveExternalChange(keepEdgeMarkEdits: false)
+            }
+        } message: {
+            Text(l10n["alert.externalChange.message"])
         }
     }
 

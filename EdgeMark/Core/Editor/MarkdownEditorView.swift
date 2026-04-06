@@ -97,8 +97,13 @@ struct MarkdownEditorView: NSViewRepresentable {
         var isEditorReady = false
         var pendingContent: String?
         private let saveDebouncer = Debouncer(delay: 1.0)
-        /// Most recently known content, used for flush on dismantle.
-        private var latestContent: String?
+        /// Most recently known content, used for flush on dismantle and external sync detection.
+        var latestContent: String?
+        /// True when a debounced save is pending (EdgeMark has unsaved edits).
+        var hasPendingChanges: Bool {
+            saveDebouncer.isPending
+        }
+
         private var noteNavMonitor: Any?
 
         init(_ parent: MarkdownEditorView) {

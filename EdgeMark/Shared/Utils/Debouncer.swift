@@ -19,4 +19,8 @@ final class Debouncer {
         timer?.invalidate()
         timer = nil
     }
+
+    var isPending: Bool {
+        timer != nil
+    }
 }

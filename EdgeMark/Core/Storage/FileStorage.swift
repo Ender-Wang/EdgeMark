@@ -75,6 +75,38 @@ enum FileStorage {
         return folders.sorted()
     }
 
+    // MARK: - External Change Detection
+
+    /// Resolves the actual path of a note on disk, preferring `savedFilename` over the
+    /// title-derived `filename` to handle any sanitization edge cases.
+    private static func diskRelativePath(for note: Note) -> String {
+        let filename = note.savedFilename ?? note.filename
+        return note.folder.isEmpty ? filename : "\(note.folder)/\(filename)"
+    }
+
+    /// Returns the filesystem modification date of a note's file, or nil if the file doesn't exist.
+    static func modificationDate(for note: Note) -> Date? {
+        let url = rootURL.appendingPathComponent(diskRelativePath(for: note))
+        return (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
+    }
+
+    /// Reloads a note's content from disk, preserving the in-memory UUID.
+    /// Returns nil if the file can't be read.
+    static func reloadContent(for note: Note) -> (content: String, modifiedAt: Date)? {
+        let url = rootURL.appendingPathComponent(diskRelativePath(for: note))
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        let modifiedAt = ((try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date) ?? Date()
+        // Strip YAML front matter — return body only
+        let body: String
+        if text.hasPrefix("---\n") {
+            let parts = text.dropFirst(4).components(separatedBy: "\n---\n")
+            body = parts.count >= 2 ? String(parts[1...].joined(separator: "\n---\n")) : text
+        } else {
+            body = text
+        }
+        return (content: body, modifiedAt: modifiedAt)
+    }
+
     // MARK: - Filename Helpers
 
     static func sanitizeForFilename(_ title: String) -> String {
