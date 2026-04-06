@@ -41,6 +41,11 @@ final class NoteStore {
 
     var pendingFolderMoveConflict: PendingFolderMoveConflict?
 
+    /// Cached set of folder paths that exist on disk (including empty folders).
+    /// Updated only by disk-mutating folder operations — avoids a full filesystem
+    /// enumeration on every `refreshFolders()` call.
+    private var diskFolderNames: Set<String> = []
+
     /// Set to true to trigger the search bar on HomeFolderView after navigating back.
     var pendingSearchOnHome = false
 
@@ -254,10 +259,33 @@ final class NoteStore {
 
     func loadFromDisk() {
         do {
-            notes = try FileStorage.loadAllNotes()
+            let loaded = try FileStorage.loadAllNotes()
+            // Auto-correct duplicate UUIDs — reassign a new UUID to any duplicate and re-save
+            // to disk so both notes survive (e.g. user copied a .md file in Finder)
+            var seen = Set<UUID>()
+            notes = loaded.map { note in
+                guard seen.insert(note.id).inserted else {
+                    let newID = UUID()
+                    Log.storage.warning("[NoteStore] duplicate UUID '\(note.id)' for '\(note.title, privacy: .public)' — reassigning to \(newID)")
+                    let fixed = Note(
+                        id: newID,
+                        title: note.title,
+                        content: note.content,
+                        createdAt: note.createdAt,
+                        modifiedAt: note.modifiedAt,
+                        folder: note.folder,
+                        trashedAt: note.trashedAt,
+                        savedFilename: note.savedFilename,
+                    )
+                    try? FileStorage.writeNote(fixed)
+                    return fixed
+                }
+                return note
+            }
             trashedNotes = try FileStorage.loadTrashedNotes()
             trashedFolders = try FileStorage.loadTrashedFolders()
             autoPurgeExpiredTrash()
+            diskFolderNames = Set((try? FileStorage.discoverFolders()) ?? [])
             refreshFolders()
             let noteCount = notes.count
             let trashCount = trashedNotes.count + trashedFolders.count
@@ -502,6 +530,9 @@ final class NoteStore {
             }
         }
 
+        // Remove trashed folder and all sub-paths from cache
+        let oldPrefix = name + "/"
+        diskFolderNames = diskFolderNames.filter { $0 != name && !$0.hasPrefix(oldPrefix) }
         refreshFolders()
     }
 
@@ -610,6 +641,7 @@ final class NoteStore {
         let fullPath = parent.isEmpty ? trimmed : "\(parent)/\(trimmed)"
         do {
             try FileStorage.ensureFolderExists(fullPath)
+            diskFolderNames.insert(fullPath)
             refreshFolders()
         } catch {
             Log.storage.error("[NoteStore] createFolder failed — \(error)")
@@ -639,6 +671,12 @@ final class NoteStore {
             if selectedFolder?.name == oldName {
                 selectedFolder = Folder(name: newFullPath, noteCount: selectedFolder?.noteCount ?? 0)
             }
+            // Update cache: rename oldName and all sub-paths (reuses oldPrefix declared above)
+            diskFolderNames = Set(diskFolderNames.map { path in
+                if path == oldName { return newFullPath }
+                if path.hasPrefix(oldPrefix) { return newFullPath + path.dropFirst(oldName.count) }
+                return path
+            })
             refreshFolders()
         } catch {
             Log.storage.error("[NoteStore] renameFolder failed — \(error)")
@@ -724,6 +762,12 @@ final class NoteStore {
             if selectedFolder?.name == name {
                 selectedFolder = Folder(name: newFullPath, noteCount: selectedFolder?.noteCount ?? 0)
             }
+            // Update cache: rename moved folder and all sub-paths (reuses oldPrefix declared above)
+            diskFolderNames = Set(diskFolderNames.map { path in
+                if path == name { return newFullPath }
+                if path.hasPrefix(oldPrefix) { return newFullPath + "/" + path.dropFirst(oldPrefix.count) }
+                return path
+            })
             refreshFolders()
         } catch {
             Log.storage.error("[NoteStore] moveFolder failed — \(error)")
@@ -761,8 +805,7 @@ final class NoteStore {
 
     private func refreshFolders() {
         let folderNames = Set(notes.map(\.folder)).filter { !$0.isEmpty }
-        let diskFolders = (try? FileStorage.discoverFolders()) ?? []
-        let allNames = folderNames.union(Set(diskFolders)).sorted()
+        let allNames = folderNames.union(diskFolderNames).sorted()
 
         folders = allNames.map { name in
             let prefix = name + "/"

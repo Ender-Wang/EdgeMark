@@ -69,8 +69,12 @@ struct HomeFolderView: View {
     }
 
     /// All notes sorted by most recently modified — shown as a feed when search query is empty.
+    /// Deduplicates by UUID as a safeguard against storage returning duplicate entries.
     private var allNotesSorted: [Note] {
-        noteStore.notes.sorted { $0.modifiedAt > $1.modifiedAt }
+        var seen = Set<UUID>()
+        return noteStore.notes
+            .sorted { $0.modifiedAt > $1.modifiedAt }
+            .filter { seen.insert($0.id).inserted }
     }
 
     /// Root-level notes (no folder), sorted by current sort setting.

@@ -31,7 +31,11 @@ struct MarkdownEditorView: NSViewRepresentable {
         webView.navigationDelegate = context.coordinator
         context.coordinator.webView = webView
         context.coordinator.currentNoteID = noteID
-        onCoordinatorReady?(context.coordinator)
+        // Defer to avoid modifying @State during a SwiftUI layout pass (makeNSView runs in view update)
+        let coordinator = context.coordinator
+        DispatchQueue.main.async { [onCoordinatorReady] in
+            onCoordinatorReady?(coordinator)
+        }
 
         // Load editor.html from app bundle
         if let htmlURL = Bundle.main.url(forResource: "editor", withExtension: "html") {
