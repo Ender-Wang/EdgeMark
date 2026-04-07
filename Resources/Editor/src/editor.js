@@ -205,7 +205,7 @@ const editorTheme = EditorView.theme({
   },
   ".cm-content": {
     fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
-    padding: "12px",
+    padding: "12px 0",
     caretColor: "var(--caret-color)",
   },
   "&.cm-focused .cm-cursor": {

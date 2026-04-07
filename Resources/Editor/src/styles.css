@@ -19,6 +19,7 @@ html, body {
 
 #editor {
   height: 100%;
+  padding: 0 16px 0 8px;
 }
 
 /* ---- Light theme (default) ---- */
@@ -73,7 +74,7 @@ body {
 }
 
 .cm-line {
-  padding: 1px 0;
+  padding: 0;
 }
 
 /* Kill any leftover default syntax highlighting that conflicts with WYSIWYG */
@@ -345,20 +346,6 @@ body {
   font-style: italic;
 }
 
-/* ---- Scrollbar styling (macOS-like) ---- */
-.cm-scroller::-webkit-scrollbar {
-  width: 8px;
-}
-
-.cm-scroller::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.cm-scroller::-webkit-scrollbar-thumb {
-  background: var(--fg-tertiary);
-  border-radius: 4px;
-}
-
-.cm-scroller::-webkit-scrollbar-thumb:hover {
-  background: var(--fg-secondary);
-}
+/* ---- Scrollbar ---- */
+/* No custom scrollbar rules — WKWebView uses the native macOS overlay scrollbar.
+   Defining ANY ::-webkit-scrollbar rule would force classic (layout-consuming) mode. */
