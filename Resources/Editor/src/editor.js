@@ -13,7 +13,7 @@ import {
   drawSelection,
   placeholder as placeholderExt,
 } from "@codemirror/view";
-import { EditorState } from "@codemirror/state";
+import { EditorState, Prec } from "@codemirror/state";
 import {
   defaultKeymap,
   history,
@@ -46,10 +46,11 @@ function listContinuation({ state, dispatch }) {
   }
 
   // Task list: "  - [ ] content" or "  - [x] content"
-  const taskMatch = text.match(/^(\s*[-*+]\s+)\[([xX ])\]\s?(.*)/);
+  const taskMatch = text.match(/^(\s*)([-*+])\s+\[([xX ])\]\s?(.*)/);
   if (taskMatch) {
-    const indent = taskMatch[1];
-    const content = taskMatch[3];
+    const leadingSpace = taskMatch[1];
+    const bullet = taskMatch[2];
+    const content = taskMatch[4];
     if (content.trim() === "") {
       // Empty task line → clear it
       dispatch({
@@ -58,7 +59,7 @@ function listContinuation({ state, dispatch }) {
       });
       return true;
     }
-    const insert = `\n${indent}[ ] `;
+    const insert = `\n${leadingSpace}${bullet} [ ] `;
     dispatch({
       changes: { from, to: from, insert },
       selection: { anchor: from + insert.length },
@@ -110,9 +111,9 @@ function listContinuation({ state, dispatch }) {
   return false;
 }
 
-const listContinuationKeymap = keymap.of([
+const listContinuationKeymap = Prec.highest(keymap.of([
   { key: "Enter", run: listContinuation },
-]);
+]));
 
 // ---------------------------------------------------------------------------
 // Markdown formatting shortcuts
