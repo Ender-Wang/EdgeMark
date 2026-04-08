@@ -13,7 +13,8 @@ import {
   drawSelection,
   placeholder as placeholderExt,
 } from "@codemirror/view";
-import { EditorState, Prec } from "@codemirror/state";
+import { EditorState, Prec, StateEffect, StateField } from "@codemirror/state";
+import { Decoration } from "@codemirror/view";
 import {
   defaultKeymap,
   history,
@@ -194,6 +195,32 @@ const markdownFormattingKeymap = keymap.of([
 ]);
 
 // ---------------------------------------------------------------------------
+// Spell check decorations (driven by NSSpellChecker via Swift bridge)
+// ---------------------------------------------------------------------------
+
+const setSpellErrorsEffect = StateEffect.define();
+
+const spellErrorField = StateField.define({
+  create() {
+    return Decoration.none;
+  },
+  update(decorations, tr) {
+    // Keep decorations in sync with document changes
+    decorations = decorations.map(tr.changes);
+    for (const effect of tr.effects) {
+      if (effect.is(setSpellErrorsEffect)) {
+        const marks = effect.value.map(({ from, to }) =>
+          Decoration.mark({ class: "cm-spell-error" }).range(from, to),
+        );
+        decorations = Decoration.set(marks, true);
+      }
+    }
+    return decorations;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+// ---------------------------------------------------------------------------
 // Theme (base styling — colors in styles.css)
 // ---------------------------------------------------------------------------
 
@@ -234,6 +261,9 @@ const editorTheme = EditorView.theme({
   "&.cm-focused .cm-selectionBackground": {
     backgroundColor: "var(--selection-bg) !important",
   },
+  ".cm-spell-error": {
+    borderBottom: "2px dotted rgba(255, 59, 48, 0.6)",
+  },
 });
 
 // ---------------------------------------------------------------------------
@@ -248,6 +278,7 @@ function createEditor(readOnly = false) {
   const extensions = [
     editorTheme,
     EditorView.lineWrapping,
+    spellErrorField,
     history(),
     drawSelection(),
     highlightActiveLine(),
@@ -390,6 +421,11 @@ window.editorAPI = {
     if (!view) return "";
     const { from, to } = view.state.selection.main;
     return from === to ? "" : view.state.sliceDoc(from, to);
+  },
+
+  setSpellErrors(errors) {
+    if (!view) return;
+    view.dispatch({ effects: setSpellErrorsEffect.of(errors) });
   },
 };
 

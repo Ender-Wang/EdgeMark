@@ -97,6 +97,7 @@ struct MarkdownEditorView: NSViewRepresentable {
         var isEditorReady = false
         var pendingContent: String?
         private let saveDebouncer = Debouncer(delay: 1.0)
+        private let spellDebouncer = Debouncer(delay: 0.5)
         /// Most recently known content, used for flush on dismantle and external sync detection.
         var latestContent: String?
         /// True when a debounced save is pending (EdgeMark has unsaved edits).
@@ -168,6 +169,11 @@ struct MarkdownEditorView: NSViewRepresentable {
                 saveDebouncer.call { [weak self] in
                     guard let self, currentNoteID == noteID else { return }
                     parent.onContentChanged(content)
+                }
+
+                // Debounced spell check
+                spellDebouncer.call { [weak self] in
+                    self?.runSpellCheck(on: content)
                 }
 
             case "openLink":
@@ -250,6 +256,34 @@ struct MarkdownEditorView: NSViewRepresentable {
             let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             let theme = isDark ? "dark" : "light"
             webView.evaluateJavaScript("window.editorAPI.setTheme('\(theme)')")
+        }
+
+        // MARK: - Spell Check
+
+        private func runSpellCheck(on text: String) {
+            let checker = NSSpellChecker.shared
+            let nsText = text as NSString
+            var errors: [[String: Int]] = []
+            var location = 0
+
+            while location < nsText.length {
+                let misspelled = checker.checkSpelling(
+                    of: text,
+                    startingAt: location,
+                    language: nil,
+                    wrap: false,
+                    inSpellDocumentWithTag: 0,
+                    wordCount: nil,
+                )
+                guard misspelled.location != NSNotFound else { break }
+                errors.append(["from": misspelled.location, "to": NSMaxRange(misspelled)])
+                location = NSMaxRange(misspelled)
+            }
+
+            guard let json = try? JSONSerialization.data(withJSONObject: errors),
+                  let jsonStr = String(data: json, encoding: .utf8)
+            else { return }
+            webView?.evaluateJavaScript("window.editorAPI.setSpellErrors(\(jsonStr))")
         }
 
         // MARK: - Note Navigation Shortcut (Cmd+Left/Right)
