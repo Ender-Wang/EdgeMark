@@ -239,6 +239,11 @@ body {
   color: transparent;
 }
 
+/* ---- Checked task text ---- */
+.cm-task-checked {
+  color: var(--fg-secondary);
+}
+
 /* ---- Task checkbox ---- */
 .cm-task-checkbox {
   cursor: pointer;

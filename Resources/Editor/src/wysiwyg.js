@@ -62,12 +62,35 @@ class CheckboxWidget extends WidgetType {
       const text = line.text;
       const uncheckedMatch = text.match(/\[ \]/);
       const checkedMatch = text.match(/\[[xX]\]/);
+
       if (uncheckedMatch) {
-        const idx = line.from + uncheckedMatch.index;
-        view.dispatch({ changes: { from: idx, to: idx + 3, insert: "[x]" } });
+        // Checking: toggle [ ] → [x] and wrap task text with ~~
+        const cbIdx = line.from + uncheckedMatch.index;
+        const textAfterCb = text.slice(uncheckedMatch.index + 3);
+        const textMatch = textAfterCb.match(/^(\s+)(.*?)(\s*)$/s);
+        const changes = [{ from: cbIdx, to: cbIdx + 3, insert: "[x]" }];
+        if (textMatch && textMatch[2].length > 0) {
+          const textStart = cbIdx + 3 + textMatch[1].length;
+          const textEnd = textStart + textMatch[2].length;
+          // Only wrap if not already struck through
+          if (!textMatch[2].startsWith("~~") || !textMatch[2].endsWith("~~")) {
+            changes.push({ from: textStart, to: textEnd, insert: "~~" + textMatch[2] + "~~" });
+          }
+        }
+        view.dispatch({ changes });
       } else if (checkedMatch) {
-        const idx = line.from + checkedMatch.index;
-        view.dispatch({ changes: { from: idx, to: idx + 3, insert: "[ ]" } });
+        // Unchecking: toggle [x] → [ ] and remove ~~ from task text
+        const cbIdx = line.from + checkedMatch.index;
+        const textAfterCb = text.slice(checkedMatch.index + 3);
+        const textMatch = textAfterCb.match(/^(\s+)(~~)?(.*?)(~~)?(\s*)$/s);
+        const changes = [{ from: cbIdx, to: cbIdx + 3, insert: "[ ]" }];
+        if (textMatch && textMatch[3].length > 0 && textMatch[2] && textMatch[4]) {
+          const spacer = textMatch[1].length;
+          const textStart = cbIdx + 3 + spacer;
+          const fullLen = textMatch[2].length + textMatch[3].length + textMatch[4].length;
+          changes.push({ from: textStart, to: textStart + fullLen, insert: textMatch[3] });
+        }
+        view.dispatch({ changes });
       }
     });
 
@@ -327,9 +350,9 @@ function buildDecorations(view) {
       if (name === "TaskMarker") {
         const taskText = state.doc.sliceString(from, to);
         const isChecked = /\[[xX]\]/.test(taskText);
+        const line = state.doc.lineAt(from);
         if (!isCursorLine) {
           // Hide the leading "- " with a non-atomic mark (keeps text in layout flow)
-          const line = state.doc.lineAt(from);
           const markerMatch = line.text.match(/^(\s*[-*+]\s+)/);
           if (markerMatch) {
             decorations.push(
@@ -344,6 +367,15 @@ function buildDecorations(view) {
           }).range(from, to);
           decorations.push(cbRange);
           atomicDecorations.push(cbRange);
+        }
+        // Dim checked task text — strikethrough comes from the ~~ Strikethrough node
+        if (isChecked && !isCursorLine) {
+          const textStart = to + (state.doc.sliceString(to, to + 1) === " " ? 1 : 0);
+          if (textStart < line.to) {
+            decorations.push(
+              Decoration.mark({ class: "cm-task-checked" }).range(textStart, line.to),
+            );
+          }
         }
       }
 
