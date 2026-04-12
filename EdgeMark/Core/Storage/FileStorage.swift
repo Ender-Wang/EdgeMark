@@ -107,6 +107,60 @@ enum FileStorage {
         return (content: body, modifiedAt: modifiedAt)
     }
 
+    // MARK: - Asset Directory
+
+    /// Hidden dot-prefix asset directory co-located with a note file.
+    /// e.g. "My-Note.md" → ".My-Note/" in the same parent directory.
+    /// stem = sanitized filename WITHOUT the .md extension.
+    static func assetDirURL(stem: String, folder: String, inTrash: Bool = false) -> URL {
+        let base = inTrash ? trashURL : rootURL
+        let dirName = "." + stem
+        if !inTrash, !folder.isEmpty {
+            return base.appendingPathComponent(folder, isDirectory: true)
+                .appendingPathComponent(dirName, isDirectory: true)
+        }
+        return base.appendingPathComponent(dirName, isDirectory: true)
+    }
+
+    /// Save image data to the note's asset directory.
+    /// Returns a relative markdown reference (portable) and absolute file:// src (for WKWebView).
+    static func saveImage(data: Data, ext: String, forNote note: Note) throws -> (markdown: String, src: String) {
+        let stem = sanitizeForFilename(note.title)
+        let assetDir = assetDirURL(stem: stem, folder: note.folder)
+        try FileManager.default.createDirectory(at: assetDir, withIntermediateDirectories: true)
+        let imageFilename = "IMG-\(UUID().uuidString).\(ext)"
+        let destURL = assetDir.appendingPathComponent(imageFilename)
+        try data.write(to: destURL, options: .atomic)
+        Log.storage.info("[Image] saved \(imageFilename, privacy: .public) (\(data.count) bytes) for '\(note.title, privacy: .public)'")
+        let markdown = "![](." + stem + "/" + imageFilename + ")"
+        return (
+            markdown: markdown,
+            src: destURL.absoluteString,
+        )
+    }
+
+    /// Remove image files in the asset dir that are no longer referenced in the note body.
+    /// Also removes the asset dir itself if it becomes empty.
+    static func cleanOrphanedImages(forNote note: Note, body: String) {
+        let stem = sanitizeForFilename(note.title)
+        let assetDir = assetDirURL(stem: stem, folder: note.folder)
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: assetDir, includingPropertiesForKeys: nil,
+        ) else { return }
+        var removed = 0
+        for file in files where !body.contains(file.lastPathComponent) {
+            try? FileManager.default.removeItem(at: file)
+            removed += 1
+        }
+        if removed > 0 {
+            Log.storage.debug("[Image] cleaned \(removed) orphaned image(s) from '\(note.title, privacy: .public)'")
+        }
+        if removed == files.count {
+            try? FileManager.default.removeItem(at: assetDir)
+            Log.storage.debug("[Image] removed empty asset dir for '\(note.title, privacy: .public)'")
+        }
+    }
+
     // MARK: - Filename Helpers
 
     static func sanitizeForFilename(_ title: String) -> String {
@@ -149,9 +203,10 @@ enum FileStorage {
 
     /// Writes the note to disk. If the title changed since last save, renames the old file
     /// to preserve macOS file metadata (creation date, Finder tags, extended attributes).
-    /// Returns the new filename so the caller can update `savedFilename`.
+    /// Also renames the co-located asset directory and rewrites image paths in the body.
+    /// Returns the new filename and, if image paths were rewritten, the updated content.
     @discardableResult
-    static func writeNote(_ note: Note) throws -> String {
+    static func writeNote(_ note: Note) throws -> (filename: String, updatedContent: String?) {
         try ensureRootExists()
         if !note.folder.isEmpty {
             try ensureFolderExists(note.folder)
@@ -170,10 +225,11 @@ enum FileStorage {
             let currentURL = rootURL.appendingPathComponent(currentRelative)
             let text = serializeFrontMatter(note: note) + note.content
             try text.data(using: .utf8)?.write(to: currentURL, options: .atomic)
-            return savedFilename
+            return (filename: savedFilename, updatedContent: nil)
         }
 
         // Rename old file first if title changed (preserves macOS metadata)
+        var updatedContent: String? = nil
         if let oldFilename = note.savedFilename, oldFilename != newFilename {
             let oldRelative = note.folder.isEmpty ? oldFilename : "\(note.folder)/\(oldFilename)"
             let oldURL = rootURL.appendingPathComponent(oldRelative)
@@ -181,13 +237,52 @@ enum FileStorage {
                 try FileManager.default.moveItem(at: oldURL, to: newURL)
                 Log.storage.debug("[FileStorage] renamed \(oldFilename, privacy: .public) → \(newFilename, privacy: .public)")
             }
+
+            // Rename asset dir and rewrite image paths in body
+            let oldStem = (oldFilename as NSString).deletingPathExtension
+            let newStem = (newFilename as NSString).deletingPathExtension
+            if oldStem != newStem {
+                let oldAsset = assetDirURL(stem: oldStem, folder: note.folder)
+                let newAsset = assetDirURL(stem: newStem, folder: note.folder)
+                if FileManager.default.fileExists(atPath: oldAsset.path) {
+                    if FileManager.default.fileExists(atPath: newAsset.path) {
+                        // Merge — UUID filenames guarantee no collision
+                        let existing = (try? FileManager.default.contentsOfDirectory(
+                            at: oldAsset, includingPropertiesForKeys: nil,
+                        )) ?? []
+                        for f in existing {
+                            try? FileManager.default.moveItem(
+                                at: f, to: newAsset.appendingPathComponent(f.lastPathComponent),
+                            )
+                        }
+                        try? FileManager.default.removeItem(at: oldAsset)
+                    } else {
+                        try? FileManager.default.moveItem(at: oldAsset, to: newAsset)
+                    }
+                    Log.storage.info("[Image] renamed asset dir .\(oldStem, privacy: .public) → .\(newStem, privacy: .public)")
+                    // Rewrite image refs in body — scoped to actual filenames, no false positives
+                    var body = note.content
+                    let imgs = (try? FileManager.default.contentsOfDirectory(
+                        at: newAsset, includingPropertiesForKeys: nil,
+                    )) ?? []
+                    for f in imgs {
+                        let name = f.lastPathComponent
+                        body = body.replacingOccurrences(
+                            of: "(." + oldStem + "/" + name + ")",
+                            with: "(." + newStem + "/" + name + ")",
+                        )
+                    }
+                    updatedContent = body
+                }
+            }
         }
 
         // Write content to the (possibly renamed) file
-        let text = serializeFrontMatter(note: note) + note.content
+        let bodyToWrite = updatedContent ?? note.content
+        let text = serializeFrontMatter(note: note) + bodyToWrite
         try text.data(using: .utf8)?.write(to: newURL, options: .atomic)
 
-        return newFilename
+        return (filename: newFilename, updatedContent: updatedContent)
     }
 
     static func deleteNote(_ note: Note) throws {
@@ -235,12 +330,22 @@ enum FileStorage {
         let newRelative = toFolder.isEmpty ? newFilename : "\(toFolder)/\(newFilename)"
         let newURL = rootURL.appendingPathComponent(newRelative)
         try FileManager.default.moveItem(at: oldURL, to: newURL)
+
+        // Move asset dir alongside note — relative paths stay valid
+        let stem = (actualFilename as NSString).deletingPathExtension
+        let srcAsset = assetDirURL(stem: stem, folder: note.folder)
+        let dstAsset = assetDirURL(stem: stem, folder: toFolder)
+        if FileManager.default.fileExists(atPath: srcAsset.path) {
+            try? FileManager.default.moveItem(at: srcAsset, to: dstAsset)
+            Log.storage.debug("[Image] moved asset dir for '\(note.title, privacy: .public)' to folder '\(toFolder, privacy: .public)'")
+        }
     }
 
     // MARK: - Trash I/O (Individual Notes)
 
     /// Move a note from its current location to `.trash/<UUID>_<Title>.md`.
     /// Updates YAML to include `folder:` (return address) and `trashed:`.
+    /// Also moves the co-located asset directory to `.trash/.<UUID>_<Title>/`.
     static func trashNote(_ note: Note) throws {
         try ensureTrashExists()
         let trashFilename = "\(note.id.uuidString)_\(sanitizeForFilename(note.title)).md"
@@ -254,6 +359,16 @@ enum FileStorage {
         let actualFilename = note.savedFilename ?? note.filename
         let oldRelative = note.folder.isEmpty ? actualFilename : "\(note.folder)/\(actualFilename)"
         try? FileManager.default.removeItem(at: rootURL.appendingPathComponent(oldRelative))
+
+        // Move asset dir to trash: .My-Note/ → .trash/.<UUID>_My-Note/
+        let stem = sanitizeForFilename(note.title)
+        let trashStem = (trashFilename as NSString).deletingPathExtension
+        let srcAsset = assetDirURL(stem: stem, folder: note.folder)
+        let dstAsset = assetDirURL(stem: trashStem, folder: "", inTrash: true)
+        if FileManager.default.fileExists(atPath: srcAsset.path) {
+            try? FileManager.default.moveItem(at: srcAsset, to: dstAsset)
+            Log.storage.debug("[Image] moved asset dir to trash for '\(note.title, privacy: .public)'")
+        }
     }
 
     /// Restore a note from `.trash/` back to its original folder.
@@ -278,15 +393,33 @@ enum FileStorage {
         // Remove from .trash/
         if let savedFilename = note.savedFilename {
             try? FileManager.default.removeItem(at: trashURL.appendingPathComponent(savedFilename))
+
+            // Restore asset dir: .trash/.<UUID>_Title/ → <folder>/.Title/
+            let trashStem = (savedFilename as NSString).deletingPathExtension
+            let restoredStem = sanitizeForFilename(note.title)
+            let srcAsset = assetDirURL(stem: trashStem, folder: "", inTrash: true)
+            let dstAsset = assetDirURL(stem: restoredStem, folder: note.folder)
+            if FileManager.default.fileExists(atPath: srcAsset.path) {
+                try? FileManager.default.moveItem(at: srcAsset, to: dstAsset)
+                Log.storage.debug("[Image] restored asset dir for '\(note.title, privacy: .public)'")
+            }
         }
 
         return newFilename
     }
 
-    /// Delete a trashed note from `.trash/`.
+    /// Delete a trashed note from `.trash/`. Also deletes its asset directory.
     static func deleteTrashedNote(_ note: Note) throws {
         if let savedFilename = note.savedFilename {
             try FileManager.default.removeItem(at: trashURL.appendingPathComponent(savedFilename))
+
+            // Delete asset dir: .trash/.<UUID>_Title/
+            let trashStem = (savedFilename as NSString).deletingPathExtension
+            let assetDir = assetDirURL(stem: trashStem, folder: "", inTrash: true)
+            if FileManager.default.fileExists(atPath: assetDir.path) {
+                try? FileManager.default.removeItem(at: assetDir)
+                Log.storage.debug("[Image] deleted asset dir for permanently deleted note '\(note.title, privacy: .public)'")
+            }
         }
     }
 

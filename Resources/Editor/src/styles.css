@@ -340,6 +340,34 @@ body {
   background: rgba(255, 159, 10, 0.45);
 }
 
+/* ---- Images ---- */
+/* Image lines: collapse the .cm-line wrapper's line-height so there's
+   no gap above/below the image from the text-based line box. */
+.cm-line:has(> .cm-image) {
+  line-height: 0;
+}
+
+.cm-image {
+  display: block;
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: 6px;
+  margin: 0;
+  padding: 0;
+  object-fit: contain;
+  cursor: default;
+  -webkit-user-drag: none;
+}
+
+.cm-image-broken {
+  display: block;
+  width: 200px;
+  height: 60px;
+  background: var(--code-bg);
+  border-radius: 6px;
+  border: 1px dashed var(--blockquote-border);
+}
+
 /* ---- Placeholder ---- */
 .cm-placeholder {
   color: var(--fg-tertiary);

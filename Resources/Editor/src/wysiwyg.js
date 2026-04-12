@@ -90,6 +90,37 @@ class CheckboxWidget extends WidgetType {
   }
 }
 
+// Image widget — renders ![alt](src) as an inline <img> off cursor
+class ImageWidget extends WidgetType {
+  constructor(src, alt) {
+    super();
+    this.src = src;
+    this.alt = alt;
+  }
+
+  toDOM() {
+    const img = document.createElement("img");
+    img.src = this.src;  // already an absolute URL, resolved in buildDecorations
+    img.alt = this.alt;
+    img.className = "cm-image";
+    img.draggable = false;
+    img.onerror = () => img.classList.add("cm-image-broken");
+    return img;
+  }
+
+  eq(other) {
+    return other.src === this.src && other.alt === this.alt;
+  }
+
+  get estimatedHeight() {
+    return 200;
+  }
+
+  ignoreEvent() {
+    return true;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Build decorations from the Lezer syntax tree
 // ---------------------------------------------------------------------------
@@ -375,6 +406,42 @@ function buildDecorations(view) {
             }
             child = child.nextSibling;
           }
+        }
+        return false;
+      }
+
+      // ---- Image ---- (always render as <img> widget — raw path never shown)
+      if (name === "Image") {
+        let urlNode = null;
+        let altStart = -1;
+        let altEnd = -1;
+        let child = node.node.firstChild;
+        // Lezer Image: ImageMark(!) LinkMark([) <text> LinkMark(]) LinkMark(() URL LinkMark())
+        let linkMarkCount = 0;
+        while (child) {
+          if (child.type.name === "URL") urlNode = child;
+          if (child.type.name === "LinkMark") {
+            linkMarkCount++;
+            if (linkMarkCount === 1) altStart = child.to; // after "["
+            if (linkMarkCount === 2) altEnd = child.from;  // before "]"
+          }
+          child = child.nextSibling;
+        }
+        if (urlNode) {
+          let src = state.doc.sliceString(urlNode.from, urlNode.to);
+          // Resolve relative paths (.NoteTitle/IMG-uuid.png) to absolute file:// URLs.
+          // Absolute URLs (file://, https://) pass through unchanged.
+          if (!src.includes("://") && window.editorNoteBaseURL) {
+            src = window.editorNoteBaseURL + src;
+          }
+          const alt = altStart >= 0 && altEnd > altStart
+            ? state.doc.sliceString(altStart, altEnd)
+            : "";
+          const imgRange = Decoration.replace({
+            widget: new ImageWidget(src, alt),
+          }).range(from, to);
+          decorations.push(imgRange);
+          atomicDecorations.push(imgRange);
         }
         return false;
       }

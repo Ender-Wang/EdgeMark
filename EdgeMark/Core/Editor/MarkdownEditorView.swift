@@ -1,8 +1,50 @@
+import OSLog
 import SwiftUI
 import WebKit
 
+/// WKWebView subclass that intercepts Cmd+V when the pasteboard contains an image.
+/// WKWebView routes Cmd+V through `performKeyEquivalent:` directly to its web
+/// process, bypassing both NSEvent local monitors and the `paste:` responder action.
+/// Overriding `performKeyEquivalent:` is the only reliable interception point.
+final class EditorWebView: WKWebView {
+    var onImagePaste: ((Data, String) -> Void)?
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        // Intercept Cmd+V only
+        if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+           event.charactersIgnoringModifiers == "v"
+        {
+            if let imageData = Self.imageDataFromPasteboard() {
+                onImagePaste?(imageData.data, imageData.ext)
+                return true // consumed — don't forward to web process
+            }
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
+    private static func imageDataFromPasteboard() -> (data: Data, ext: String)? {
+        let pb = NSPasteboard.general
+        // PNG first (CleanShot X, Cmd+Shift+4 screenshots)
+        if let pngData = pb.data(forType: NSPasteboard.PasteboardType("public.png")) {
+            return (pngData, "png")
+        }
+        // TIFF (general macOS image copy) — convert to PNG
+        if let tiffData = pb.data(forType: .tiff),
+           let image = NSImage(data: tiffData),
+           let tiffRep = image.tiffRepresentation,
+           let bitmap = NSBitmapImageRep(data: tiffRep),
+           let pngData = bitmap.representation(using: .png, properties: [:])
+        {
+            return (pngData, "png")
+        }
+        return nil
+    }
+}
+
 struct MarkdownEditorView: NSViewRepresentable {
     let noteID: UUID
+    let noteTitle: String
+    let noteFolder: String
     let initialContent: String
     let colorScheme: ColorScheme
     let onContentChanged: (String) -> Void
@@ -19,7 +61,10 @@ struct MarkdownEditorView: NSViewRepresentable {
         config.websiteDataStore = .nonPersistent()
         config.userContentController.add(context.coordinator, name: "editor")
 
-        let webView = WKWebView(frame: .zero, configuration: config)
+        let webView = EditorWebView(frame: .zero, configuration: config)
+        webView.onImagePaste = { [weak coordinator = context.coordinator] data, ext in
+            coordinator?.handlePastedImageData(data, ext: ext)
+        }
 
         // Full transparency stack — all three are needed for WKWebView
         webView.setValue(false, forKey: "drawsBackground")
@@ -42,7 +87,12 @@ struct MarkdownEditorView: NSViewRepresentable {
             #if DEBUG
                 print("[Editor] Loading editor.html from: \(htmlURL.path)")
             #endif
-            webView.loadFileURL(htmlURL, allowingReadAccessTo: htmlURL.deletingLastPathComponent())
+            // Grant access to home directory so WKWebView can load both:
+            // 1. editor.html + JS from the app bundle (inside ~/Library/Developer/...)
+            // 2. note images from the notes directory (typically ~/Documents/EdgeMark/)
+            // The app runs without sandbox so this is safe regardless of custom notes location.
+            let homeURL = URL(fileURLWithPath: NSHomeDirectory())
+            webView.loadFileURL(htmlURL, allowingReadAccessTo: homeURL)
         } else {
             #if DEBUG
                 print("[Editor] ERROR: editor.html not found in bundle!")
@@ -81,6 +131,7 @@ struct MarkdownEditorView: NSViewRepresentable {
 
         // Set content once the editor is ready
         if context.coordinator.isEditorReady {
+            context.coordinator.syncNoteBaseURL()
             context.coordinator.setContent(initialContent)
         } else {
             context.coordinator.pendingContent = initialContent
@@ -96,6 +147,9 @@ struct MarkdownEditorView: NSViewRepresentable {
         var currentNoteID: UUID?
         var isEditorReady = false
         var pendingContent: String?
+        /// The leading `# Title` line stripped from content before sending to JS.
+        /// Prepended back when receiving contentChanged, so storage always has the full content.
+        private var hiddenHeadingLine: String = ""
         private let saveDebouncer = Debouncer(delay: 1.0)
         private let spellDebouncer = Debouncer(delay: 0.5)
         /// Most recently known content, used for flush on dismantle and external sync detection.
@@ -150,6 +204,8 @@ struct MarkdownEditorView: NSViewRepresentable {
                 #if DEBUG
                     print("[Editor] JS ready. Setting content (\(content.count) chars) for note \(currentNoteID?.uuidString.prefix(8) ?? "nil")")
                 #endif
+                // Pass the note's directory URL so ImageWidget can resolve relative image paths
+                syncNoteBaseURL()
                 setContent(content)
                 syncTheme()
 
@@ -159,21 +215,40 @@ struct MarkdownEditorView: NSViewRepresentable {
 
             case "contentChanged":
                 guard let content = body["content"] as? String else { return }
-                latestContent = content
+                // Prepend hidden heading so storage always has the full content with # title
+                let fullContent = hiddenHeadingLine.isEmpty ? content : hiddenHeadingLine + "\n\n" + content
+                latestContent = fullContent
 
                 // Check for slash command trigger
-                slashHandler?.contentDidChange(content: content)
+                slashHandler?.contentDidChange(content: fullContent)
 
                 // Debounced save — capture noteID so stale saves from a previous note are dropped
                 let noteID = currentNoteID
                 saveDebouncer.call { [weak self] in
                     guard let self, currentNoteID == noteID else { return }
-                    parent.onContentChanged(content)
+                    parent.onContentChanged(fullContent)
                 }
 
-                // Debounced spell check
+                // Debounced spell check (on the editor-visible content, not the heading)
                 spellDebouncer.call { [weak self] in
                     self?.runSpellCheck(on: content)
+                }
+
+            case "saveImage":
+                guard let base64 = body["data"] as? String,
+                      let ext = body["ext"] as? String,
+                      let data = Data(base64Encoded: base64)
+                else { return }
+                let note = Note(id: parent.noteID, title: parent.noteTitle, folder: parent.noteFolder)
+                do {
+                    let result = try FileStorage.saveImage(data: data, ext: ext, forNote: note)
+                    let markdownJSON = jsonEncode(result.markdown)
+                    let srcJSON = jsonEncode(result.src)
+                    webView?.evaluateJavaScript(
+                        "window.editorAPI.onImageSaved({ markdown: \(markdownJSON), src: \(srcJSON) })",
+                    )
+                } catch {
+                    Log.storage.error("[Image] saveImage (drag/drop) failed: \(error)")
                 }
 
             case "openLink":
@@ -227,7 +302,14 @@ struct MarkdownEditorView: NSViewRepresentable {
                 pendingContent = content
                 return
             }
-            let json = jsonEncode(content)
+            // Strip the leading # heading line — title is shown in the header bar.
+            // Store it in hiddenHeadingLine so we can prepend it back on contentChanged.
+            let bodyForEditor = stripHeading(from: content)
+
+            // Image paths stay relative (.stem/IMG-uuid.png) in the CM6 doc.
+            // buildDecorations in wysiwyg.js resolves them to absolute file:// URLs
+            // at render time using editorNoteBaseURL — never stored as absolute on disk.
+            let json = jsonEncode(bodyForEditor)
             #if DEBUG
                 print("[Editor] evaluateJavaScript setContent(\(content.count) chars)")
             #endif
@@ -256,6 +338,34 @@ struct MarkdownEditorView: NSViewRepresentable {
             let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             let theme = isDark ? "dark" : "light"
             webView.evaluateJavaScript("window.editorAPI.setTheme('\(theme)')")
+        }
+
+        /// Strip the first `# Heading` line from content for display in the editor.
+        /// Stores the line in `hiddenHeadingLine` so it can be prepended on save.
+        private func stripHeading(from content: String) -> String {
+            let lines = content.components(separatedBy: "\n")
+            guard let first = lines.first, first.hasPrefix("#") else {
+                hiddenHeadingLine = ""
+                return content
+            }
+            hiddenHeadingLine = first
+            // Drop the heading line and any immediately following blank lines
+            var rest = Array(lines.dropFirst())
+            while rest.first == "" {
+                rest.removeFirst()
+            }
+            return rest.joined(separator: "\n")
+        }
+
+        func syncNoteBaseURL() {
+            guard let webView, isEditorReady else { return }
+            // Build the note's directory URL: storageRoot + folder/
+            var baseURL = FileStorage.rootURL
+            if !parent.noteFolder.isEmpty {
+                baseURL = baseURL.appendingPathComponent(parent.noteFolder, isDirectory: true)
+            }
+            let baseJSON = jsonEncode(baseURL.absoluteString)
+            webView.evaluateJavaScript("window.editorAPI.setNoteBaseURL(\(baseJSON))")
         }
 
         // MARK: - Spell Check
@@ -313,6 +423,23 @@ struct MarkdownEditorView: NSViewRepresentable {
             if let m = noteNavMonitor {
                 NSEvent.removeMonitor(m)
                 noteNavMonitor = nil
+            }
+        }
+
+        // MARK: - Image Paste (called from EditorWebView.paste override)
+
+        func handlePastedImageData(_ data: Data, ext: String) {
+            Log.storage.info("[Image] paste intercepted — \(data.count) bytes, ext: \(ext, privacy: .public)")
+            let note = Note(id: parent.noteID, title: parent.noteTitle, folder: parent.noteFolder)
+            do {
+                let result = try FileStorage.saveImage(data: data, ext: ext, forNote: note)
+                let markdownJSON = jsonEncode(result.markdown)
+                let srcJSON = jsonEncode(result.src)
+                webView?.evaluateJavaScript(
+                    "window.editorAPI.onImageSaved({ markdown: \(markdownJSON), src: \(srcJSON) })",
+                )
+            } catch {
+                Log.storage.error("[Image] saveImage (paste) failed: \(error)")
             }
         }
 

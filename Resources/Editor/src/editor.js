@@ -314,6 +314,20 @@ function createEditor(readOnly = false) {
     parent: document.getElementById("editor"),
   });
 
+  // Image drop handler — must be attached after view is created
+  view.dom.addEventListener("drop", (e) => {
+    const file = [...(e.dataTransfer?.files ?? [])].find((f) =>
+      f.type.startsWith("image/"),
+    );
+    if (!file) return;
+    e.preventDefault();
+    const pos =
+      view.posAtCoords({ x: e.clientX, y: e.clientY }) ??
+      view.state.doc.length;
+    pendingImageInsertPos = pos;
+    readImageFile(file);
+  });
+
   console.log("[Editor JS] Editor created, posting 'ready' to Swift");
   postToSwift({ action: "ready" });
 }
@@ -330,6 +344,34 @@ function postToSwift(msg) {
     console.log("[Bridge →]", msg);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Image drag & drop and paste
+// ---------------------------------------------------------------------------
+
+let pendingImageInsertPos = null;
+
+function readImageFile(file) {
+  const ext = (file.name.split(".").pop() || "png").toLowerCase();
+  const reader = new FileReader();
+  reader.onload = () => {
+    const base64 = reader.result.split(",")[1];
+    postToSwift({ action: "saveImage", data: base64, ext });
+  };
+  reader.readAsDataURL(file);
+}
+
+document.addEventListener("paste", (e) => {
+  const item = [...(e.clipboardData?.items ?? [])].find(
+    (i) => i.kind === "file" && i.type.startsWith("image/"),
+  );
+  if (!item) return;
+  e.preventDefault();
+  const file = item.getAsFile();
+  if (!file || !view) return;
+  pendingImageInsertPos = view.state.selection.main.head;
+  readImageFile(file);
+});
 
 // Debounce contentChanged to avoid flooding Swift on every keystroke
 let contentChangeTimer = null;
@@ -423,9 +465,42 @@ window.editorAPI = {
     return from === to ? "" : view.state.sliceDoc(from, to);
   },
 
+  setNoteBaseURL(url) {
+    // Absolute file:// URL of the note's directory (storageRoot + folder/).
+    // ImageWidget uses this to resolve relative paths:
+    //   .My-Note/IMG-uuid.png → file:///Users/.../EdgeMark/folder/.My-Note/IMG-uuid.png
+    window.editorNoteBaseURL = url.endsWith("/") ? url : url + "/";
+  },
+
   setSpellErrors(errors) {
     if (!view) return;
     view.dispatch({ effects: setSpellErrorsEffect.of(errors) });
+  },
+
+  onImageSaved({ markdown, src }) {
+    if (!view) return;
+    const pos = pendingImageInsertPos ?? view.state.selection.main.head;
+    pendingImageInsertPos = null;
+    const doc = view.state.doc;
+    const line = doc.lineAt(pos);
+
+    if (line.text.trim() === "") {
+      // Cursor on empty line — replace it with the image, no extra newlines
+      view.dispatch({
+        changes: { from: line.from, to: line.to, insert: markdown },
+        selection: { anchor: line.from + markdown.length },
+      });
+    } else {
+      // Cursor on content line — insert image as the next line.
+      // line.to is the last char of text; the \n after it (if any) is line.to itself
+      // in CM6's model. Insert \nmarkdown right at line.to — this creates a new line
+      // with the image, sitting directly below the current line with no blank line.
+      const insert = "\n" + markdown;
+      view.dispatch({
+        changes: { from: line.to, to: line.to, insert },
+        selection: { anchor: line.to + insert.length },
+      });
+    }
   },
 };
 

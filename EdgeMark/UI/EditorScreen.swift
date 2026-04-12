@@ -26,6 +26,8 @@ struct EditorScreen: View {
             if let note = noteStore.selectedNote {
                 MarkdownEditorView(
                     noteID: note.id,
+                    noteTitle: note.title,
+                    noteFolder: note.folder,
                     initialContent: note.content,
                     colorScheme: colorScheme,
                     onContentChanged: { newContent in

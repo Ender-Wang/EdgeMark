@@ -289,7 +289,7 @@ final class NoteStore {
                         savedFilename: note.savedFilename,
                     )
                     do {
-                        try FileStorage.writeNote(fixed)
+                        try FileStorage.writeNote(fixed) // return value intentionally discarded (dedup path)
                     } catch {
                         Log.storage.error("[NoteStore] failed to re-save deduped note — \(error)")
                     }
@@ -401,8 +401,8 @@ final class NoteStore {
             folder: folder,
         )
         do {
-            let savedName = try FileStorage.writeNote(note)
-            note.savedFilename = savedName
+            let result = try FileStorage.writeNote(note)
+            note.savedFilename = result.filename
         } catch {
             Log.storage.error("[NoteStore] writeNote failed — \(error)")
         }
@@ -864,17 +864,30 @@ final class NoteStore {
         for noteID in dirtyNoteIDs {
             guard let index = notes.firstIndex(where: { $0.id == noteID }) else { continue }
             do {
-                let newFilename = try FileStorage.writeNote(notes[index])
-                notes[index].savedFilename = newFilename
+                let result = try FileStorage.writeNote(notes[index])
+                notes[index].savedFilename = result.filename
+                // If a rename rewrote image paths in the body, sync back to in-memory state
+                // and reload the editor so the JS sees the updated relative paths immediately.
+                if let updated = result.updatedContent {
+                    notes[index].content = updated
+                    if selectedNote?.id == noteID {
+                        selectedNote?.content = updated
+                        let noteTitle = notes[index].title
+                        Log.storage.info("[Image] reloading editor after image path rewrite for '\(noteTitle, privacy: .public)'")
+                        onNeedEditorReload?(updated)
+                    }
+                }
                 // Sync modifiedAt to actual filesystem date so external change detection
                 // doesn't false-positive (disk write happens a few ms after Date() is captured)
                 if let diskDate = FileStorage.modificationDate(for: notes[index]) {
                     notes[index].modifiedAt = diskDate
                 }
                 if selectedNote?.id == noteID {
-                    selectedNote?.savedFilename = newFilename
+                    selectedNote?.savedFilename = result.filename
                     selectedNote?.modifiedAt = notes[index].modifiedAt
                 }
+                // Clean up orphaned images (deleted from body but file still on disk)
+                FileStorage.cleanOrphanedImages(forNote: notes[index], body: notes[index].content)
             } catch {
                 Log.storage.error("[NoteStore] saveDirtyNotes failed for \(noteID) — \(error)")
             }
