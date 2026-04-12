@@ -87,12 +87,12 @@ struct MarkdownEditorView: NSViewRepresentable {
             #if DEBUG
                 print("[Editor] Loading editor.html from: \(htmlURL.path)")
             #endif
-            // Grant access to home directory so WKWebView can load both:
-            // 1. editor.html + JS from the app bundle (inside ~/Library/Developer/...)
-            // 2. note images from the notes directory (typically ~/Documents/EdgeMark/)
-            // The app runs without sandbox so this is safe regardless of custom notes location.
-            let homeURL = URL(fileURLWithPath: NSHomeDirectory())
-            webView.loadFileURL(htmlURL, allowingReadAccessTo: homeURL)
+            // Grant file system root access so WKWebView can load both:
+            // 1. editor.html from the app bundle (/Applications/... or ~/Library/Developer/...)
+            // 2. note images from the notes directory (configurable, could be anywhere)
+            // Home dir is insufficient — Homebrew installs the app in /Applications/ which
+            // is outside ~/. The app runs without sandbox so root access is safe.
+            webView.loadFileURL(htmlURL, allowingReadAccessTo: URL(fileURLWithPath: "/"))
         } else {
             #if DEBUG
                 print("[Editor] ERROR: editor.html not found in bundle!")
