@@ -19,15 +19,30 @@ graph TD
     EM["EdgeDetector<br/>(mouse monitor)"] -->|"edge hit"| SP["SidePanelController<br/>(NSWindow)"]
     HK["ShortcutManager<br/>(Carbon hotkey)"] -->|"toggle"| SP
     SP -->|"host"| SUI["SwiftUI Views"]
+
     SUI -->|"observe"| NS["NoteStore (@Observable)"]
     NS -->|"read / write"| FS["FileStorage"]
-    FS -->|"YAML + .md"| Disk[("~/Documents/EdgeMark/")]
+    FS -->|".md + .NoteTitle/ images"| Disk[("~/Documents/EdgeMark/")]
+
     SUI -->|"observe"| AS["AppSettings (@Observable)"]
     AS -->|"persist"| UD["UserDefaults"]
+
     SUI -->|"observe"| US["UpdateState (@Observable)"]
     US -->|"check · download · install"| UC["UpdateChecker / Installer"]
     UC -->|"GitHub API"| GH["GitHub Releases"]
-    Log["OSLog (5 categories)"] -.->|"Console.app"| CA["Diagnostic Logs"]
+
+    SUI -->|"embed"| ED["MarkdownEditorView<br/>(WKWebView)"]
+    ED -->|"evaluateJavaScript"| CM["CodeMirror 6<br/>(editor.js · wysiwyg.js)"]
+    CM -->|"postMessage"| ED
+    ED -->|"contentChanged"| NS
+    ED -->|"saveImage"| FS
+    ED -->|"doc text"| SC["NSSpellChecker"]
+    SC -->|"error ranges"| ED
+
+    NS -.->|"log"| Log["OSLog"]
+    ED -.->|"log"| Log
+    SP -.->|"log"| Log
+    Log -.->|"Console.app"| CA["Diagnostic Logs"]
 ```
 
 ## Source Tree
@@ -76,10 +91,20 @@ EdgeMark/
 │   │   ├── HomeFolderView.swift    #   Folder list with create/rename/trash
 │   │   ├── NoteListView.swift      #   Note cards with search, sort, context menus
 │   │   └── TrashView.swift         #   Trash browser with restore/delete/empty
-│   ├── Components/                 #   Reusable UI (HeaderIconButton, NoteCardView,
+│   ├── Components/
+│   │   ├── ContentFooterBar.swift  #   Bottom toolbar (word count, copy format picker)
+│   │   ├── DateFormatting.swift    #   Shared date → display string helpers
+│   │   ├── EmptyStateView.swift    #   Icon + title + subtitle placeholder
+│   │   ├── HeaderIconButton.swift  #   Standard icon button with hover UX
+│   │   ├── InlineRenameEditor.swift#   Inline text field with "Name taken" overlay
+│   │   ├── MoveConflictAlerts.swift#   View extension: note + folder move conflict dialogs
 │   │   ├── NSContextMenuModifier.swift  # NSMenu context menus with SF Symbol icons
+│   │   ├── NoteCardView.swift      #   Note list row (title, preview, date)
 │   │   ├── NoteListMenus.swift     #   Note/folder context menu builders
-│   │   └── ...                     #   InlineRenameEditor, EmptyStateView, etc.
+│   │   ├── PageLayout.swift        #   Navigation page chrome (header + content + footer)
+│   │   ├── ShortcutRecorderView.swift   # Key capture field for global shortcut setting
+│   │   ├── SwipeDetectorView.swift #   NSView wrapper for two-finger swipe gestures
+│   │   └── VisualEffectView.swift  #   NSVisualEffectView wrapper for blur backgrounds
 │   └── Settings/
 │       ├── SettingsView.swift      #   Tab container (General, Behavior, Keyboard, About)
 │       ├── GeneralSettingsTab.swift #   Appearance, language, system, storage
@@ -94,14 +119,25 @@ EdgeMark/
 │   └── Debouncer.swift             #   Generic debounce utility
 │
 └── Resources/
-    ├── Editor/                     # CodeMirror 6 bundle
+    ├── Editor/                     # CodeMirror 6 bundle — compiled into Swift target
     │   ├── editor.html             #   WKWebView host page
-    │   ├── editor-bundle.js        #   CM6 + WYSIWYG plugin
-    │   └── styles.css              #   Editor theme
+    │   ├── editor-bundle.js        #   Compiled CM6 + WYSIWYG plugin (do not edit)
+    │   └── styles.css              #   Editor theme (do not edit)
     └── Locales/                    # i18n strings
         ├── en.json                 #   English
         └── zh-Hans.json            #   Simplified Chinese
+
+Resources/Editor/                  # JS/CSS source (outside Xcode project)
+├── src/
+│   ├── editor.js                  #   CM6 setup, Swift ↔ JS bridge, keyboard maps
+│   ├── wysiwyg.js                 #   WYSIWYG ViewPlugin: decorations, widgets (images, tables, checkboxes, copy button)
+│   └── styles.css                 #   Editor theme source
+├── dist/                          #   Intermediate build output (gitignored)
+├── package.json                   #   esbuild config
+└── build.sh                       #   Full build: bundle JS + copy to Swift target
 ```
+
+> **Editor development:** Edit files in `Resources/Editor/src/`, then run `npm run build` from `Resources/Editor/` to recompile. The bundle is written directly to `EdgeMark/Resources/Editor/editor-bundle.js`. Run `build.sh` instead to also copy `editor.html` and `styles.css` when those change.
 
 ## Key Patterns
 
@@ -111,6 +147,9 @@ EdgeMark/
 | **MainActor by default** | `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`. All types are `@MainActor` unless explicitly opted out |
 | **AppKit + SwiftUI hybrid** | `NSHostingView` embeds SwiftUI inside a borderless `NSWindow`. Panel lifecycle managed by `SidePanelController` (AppKit), UI rendered by SwiftUI |
 | **File-based storage** | Notes are plain `.md` files with YAML front matter — no database, readable by any Markdown editor |
+| **Image asset co-location** | Images are stored in a hidden dot-prefix directory next to the note (`.NoteTitle/IMG-uuid.png`). Paths in `.md` files are relative so they resolve in any external editor. `FileStorage` handles create/rename/move/trash/delete of asset dirs alongside their note |
+| **Swift ↔ JS editor bridge** | Swift calls `window.editorAPI.*` via `evaluateJavaScript`. JS posts to Swift via `webkit.messageHandlers.editor.postMessage({action, ...})`. `MarkdownEditorView.Coordinator.handleMessage` dispatches on `action`. `EditorWebView` (WKWebView subclass) overrides `performKeyEquivalent` to intercept Cmd+V for native image paste |
+| **Spell checking** | `NSSpellChecker` runs on Swift side after each debounced edit; error ranges are sent to JS as `setSpellErrors([{from, to}])`; CM6 renders them as `Decoration.mark` with a dotted red underline. Survives CM6's DOM re-renders because decorations live in CM6 state |
 | **Carbon hotkeys** | Global shortcut uses `RegisterEventHotKey` (Carbon API) since `NSEvent.addGlobalMonitorForEvents` can't intercept key events |
 | **JSON i18n** | `L10n` loads locale JSON at runtime. Access: `l10n["key"]` or `l10n.t("key", arg1, arg2)` for interpolation |
 | **OSLog diagnostics** | 5 categorized loggers (app, storage, window, shortcuts, updates). View in Console.app with `subsystem:io.github.ender-wang.EdgeMark` |
