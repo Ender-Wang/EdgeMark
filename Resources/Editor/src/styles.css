@@ -373,6 +373,41 @@ body {
   border: 1px dashed var(--blockquote-border);
 }
 
+/* ---- Table ---- */
+.cm-table-wrap {
+  overflow-x: auto;
+  margin: 4px 0;
+}
+
+.cm-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.95em;
+}
+
+.cm-table-th,
+.cm-table-td {
+  border: 1px solid var(--blockquote-border);
+  padding: 6px 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.cm-table-th {
+  font-weight: 600;
+  background: var(--code-bg);
+}
+
+/* Lines 2+ of a table are replaced with nothing and collapsed */
+.cm-table-hidden-line {
+  height: 0 !important;
+  overflow: hidden;
+  line-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+}
+
 /* ---- Placeholder ---- */
 .cm-placeholder {
   color: var(--fg-tertiary);

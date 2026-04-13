@@ -144,6 +144,62 @@ class ImageWidget extends WidgetType {
   }
 }
 
+// Table widget — renders GFM table as an HTML <table> off cursor
+class TableWidget extends WidgetType {
+  constructor(rows) {
+    super();
+    this.rows = rows; // [{cells: string[], isHeader: bool}]
+  }
+
+  toDOM() {
+    const wrap = document.createElement("div");
+    wrap.className = "cm-table-wrap";
+    const table = document.createElement("table");
+    table.className = "cm-table";
+    for (const row of this.rows) {
+      const tr = table.insertRow();
+      for (const cell of row.cells) {
+        const td = document.createElement(row.isHeader ? "th" : "td");
+        td.className = row.isHeader ? "cm-table-th" : "cm-table-td";
+        td.textContent = cell;
+        tr.appendChild(td);
+      }
+    }
+    wrap.appendChild(table);
+    return wrap;
+  }
+
+  eq(other) {
+    return JSON.stringify(this.rows) === JSON.stringify(other.rows);
+  }
+
+  get estimatedHeight() {
+    return this.rows.length * 32;
+  }
+
+  ignoreEvent() { return false; }
+}
+
+function parseTableRows(text) {
+  const lines = text.split("\n").filter((l) => l.trim());
+  const rows = [];
+  let isFirst = true;
+  for (const line of lines) {
+    // Skip separator lines (e.g. | --- | :---: | ---: |)
+    if (/^\s*\|?[\s|:\-]+\|?\s*$/.test(line) && line.includes("-")) continue;
+    const parts = line.split("|");
+    // Strip outer empty parts from leading/trailing pipes
+    const cells = (parts[0].trim() === "" ? parts.slice(1) : parts)
+      .filter((_, i, arr) => !(i === arr.length - 1 && arr[arr.length - 1].trim() === ""))
+      .map((c) => c.trim());
+    if (cells.length > 0) {
+      rows.push({ cells, isHeader: isFirst });
+      isFirst = false;
+    }
+  }
+  return rows;
+}
+
 // ---------------------------------------------------------------------------
 // Build decorations from the Lezer syntax tree
 // ---------------------------------------------------------------------------
@@ -166,6 +222,61 @@ function buildDecorations(view) {
     }
   }
 
+  // ---- Pre-scan: detect GFM tables by line content ----
+  // We must do this BEFORE tree.iterate so we can skip table lines there
+  // (Lezer doesn't know about tables — it parses them as plain paragraphs,
+  //  and tree.iterate would add inline decorations that overlap our replace).
+  const tableLineSet = new Set(); // line numbers covered by tables
+  {
+    const numLines = state.doc.lines;
+    let i = 1;
+    while (i <= numLines) {
+      const line = state.doc.line(i);
+      if (!line.text.includes("|")) { i++; continue; }
+      if (i + 1 > numLines) { i++; continue; }
+      const sepLine = state.doc.line(i + 1);
+      if (!/^\s*\|?[\s|:\-]+\|?\s*$/.test(sepLine.text) || !sepLine.text.includes("-")) {
+        i++; continue;
+      }
+      // Found a table — collect consecutive pipe-containing lines
+      const tableLines = [line.text];
+      let j = i + 1;
+      while (j <= numLines) {
+        const nl = state.doc.line(j);
+        if (!nl.text.includes("|")) break;
+        tableLines.push(nl.text);
+        j++;
+      }
+      const startLn = i;
+      const endLn = j - 1;
+      const cursorInTable = Array.from(
+        { length: endLn - startLn + 1 }, (_, k) => startLn + k,
+      ).some((ln) => cursorLines.has(ln));
+      if (!cursorInTable) {
+        for (let ln = startLn; ln <= endLn; ln++) tableLineSet.add(ln);
+        const rows = parseTableRows(tableLines.join("\n"));
+        if (rows.length > 0) {
+          // Line 1: replace with the full rendered table widget (single-line range)
+          const firstLine = state.doc.line(startLn);
+          decorations.push(
+            Decoration.replace({ widget: new TableWidget(rows) }).range(firstLine.from, firstLine.to),
+          );
+          // Lines 2+: hide content and collapse the line div to zero height
+          for (let ln = startLn + 1; ln <= endLn; ln++) {
+            const hideLine = state.doc.line(ln);
+            if (hideLine.from < hideLine.to) {
+              decorations.push(Decoration.replace({}).range(hideLine.from, hideLine.to));
+            }
+            decorations.push(
+              Decoration.line({ class: "cm-table-hidden-line" }).range(hideLine.from),
+            );
+          }
+        }
+      }
+      i = j;
+    }
+  }
+
   // Only iterate visible viewport range (+ buffer) for performance
   const { from: vpFrom, to: vpTo } = view.viewport;
 
@@ -176,8 +287,10 @@ function buildDecorations(view) {
       const { from, to } = node;
       const name = node.type.name;
 
-      // Skip nodes entirely outside viewport for performance
-      // (CM6 only parses visible + buffer, but tree may extend)
+      // Skip nodes that fall inside a table region (already handled by pre-scan)
+      if (tableLineSet.size > 0 && tableLineSet.has(state.doc.lineAt(from).number)) {
+        return false;
+      }
 
       // Determine if cursor is on any line this node spans.
       // Require editor focus — unfocused editor renders all lines in preview mode.
@@ -498,12 +611,23 @@ function buildDecorations(view) {
   });
 
   // Sort decorations by from position (CM6 requires sorted range sets)
-  decorations.sort((a, b) => a.from - b.from || a.startSide - b.startSide);
-  atomicDecorations.sort((a, b) => a.from - b.from || a.startSide - b.startSide);
-  return {
-    all: Decoration.set(decorations, true),
-    atomic: Decoration.set(atomicDecorations, true),
-  };
+  decorations.sort((a, b) => a.from - b.from || a.to - b.to);
+  atomicDecorations.sort((a, b) => a.from - b.from || a.to - b.to);
+  try {
+    return {
+      all: Decoration.set(decorations, true),
+      atomic: Decoration.set(atomicDecorations, true),
+    };
+  } catch (e) {
+    console.error("[WYSIWYG] Decoration.set failed:", e);
+    console.error("[WYSIWYG] decorations count:", decorations.length, "atomics:", atomicDecorations.length);
+    // Log problematic decorations
+    for (let i = 0; i < decorations.length; i++) {
+      const d = decorations[i];
+      console.log(`  dec[${i}]: from=${d.from} to=${d.to}`);
+    }
+    return { all: Decoration.none, atomic: Decoration.none };
+  }
 }
 
 // Helper: hide all child nodes with a given type name

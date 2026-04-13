@@ -477,7 +477,7 @@ window.editorAPI = {
     view.dispatch({ effects: setSpellErrorsEffect.of(errors) });
   },
 
-  onImageSaved({ markdown, src }) {
+  onImageSaved({ markdown }) {
     if (!view) return;
     const pos = pendingImageInsertPos ?? view.state.selection.main.head;
     pendingImageInsertPos = null;
