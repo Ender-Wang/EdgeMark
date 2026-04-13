@@ -219,8 +219,9 @@ struct MarkdownEditorView: NSViewRepresentable {
                 let fullContent = hiddenHeadingLine.isEmpty ? content : hiddenHeadingLine + "\n\n" + content
                 latestContent = fullContent
 
-                // Check for slash command trigger
-                slashHandler?.contentDidChange(content: fullContent)
+                // Check for slash command trigger — pass raw editor content (without heading)
+                // so cursor positions from JS (which doesn't see the heading) align correctly
+                slashHandler?.contentDidChange(content: content)
 
                 // Debounced save — capture noteID so stale saves from a previous note are dropped
                 let noteID = currentNoteID
