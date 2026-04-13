@@ -55,7 +55,11 @@ xattr -cr /Applications/EdgeMark.app
 ✍️ **Markdown Editing**
 
 - 👁️ CodeMirror 6 WYSIWYG editor with cursor-aware live preview (hides syntax, reveals on cursor line)
-- 📝 Full Markdown: headings, bold, italic, code, lists, task lists, blockquotes, links, tables
+- 📝 Full Markdown: headings, bold, italic, code, lists, task lists, blockquotes, links, tables (rendered as formatted grids)
+- 🖼️ Inline images — paste (`⌘V`) or drag to embed; stored as co-located asset files alongside the note
+- ✅ Checked task items are automatically struck through; uncheck to restore
+- 📋 One-click Copy button on fenced code blocks
+- 🔴 Spell checking with dotted underlines (macOS system dictionary, respects custom word lists)
 - ⚡ Slash commands (`/h1`, `/todo`, `/code`, `/quote`, `/table`, `/divider`, and more)
 - ⌨️ Formatting shortcuts: `⌘B` bold, `⌘I` italic, `⌘E` inline code, `⌘K` link, `⇧⌘X` strikethrough
 - 🔗 `⌘Click` a rendered link to open it in the browser
@@ -67,6 +71,8 @@ xattr -cr /Applications/EdgeMark.app
 - 📁 Folder-based organization with drag-and-drop
 - 📂 Configurable storage directory
 - 💾 1-second debounced auto-save
+- 🔍 Search shows all notes sorted by most recently modified when the query is empty — a quick "recent notes" feed
+- 🔄 External file sync — edits from other apps are detected on panel open; prompts when both sides changed
 - 🗑️ Trash with 30-day auto-purge and read-only preview
 
 ⌨️ **Keyboard & Shortcuts**
