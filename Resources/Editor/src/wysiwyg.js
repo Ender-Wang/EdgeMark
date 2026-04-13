@@ -144,6 +144,43 @@ class ImageWidget extends WidgetType {
   }
 }
 
+// Copy button widget — overlays the top-right of a fenced code block
+class CopyButtonWidget extends WidgetType {
+  constructor(code) {
+    super();
+    this.code = code;
+  }
+
+  toDOM() {
+    const btn = document.createElement("button");
+    btn.className = "cm-copy-button";
+    btn.setAttribute("title", "Copy code");
+    btn.textContent = "Copy";
+    btn.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      navigator.clipboard.writeText(this.code).then(() => {
+        btn.textContent = "Copied!";
+        setTimeout(() => { btn.textContent = "Copy"; }, 1500);
+      }).catch(() => {
+        // Fallback for environments without clipboard API
+        const ta = document.createElement("textarea");
+        ta.value = this.code;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        btn.textContent = "Copied!";
+        setTimeout(() => { btn.textContent = "Copy"; }, 1500);
+      });
+    });
+    return btn;
+  }
+
+  eq(other) { return this.code === other.code; }
+  ignoreEvent() { return true; }
+}
+
 // Table widget — renders GFM table as an HTML <table> off cursor
 class TableWidget extends WidgetType {
   constructor(rows) {
@@ -541,6 +578,7 @@ function buildDecorations(view) {
           (_, i) => startLine + i,
         ).some((ln) => cursorLines.has(ln));
         if (!cursorInBlock) {
+          let codeText = "";
           let child = node.node.firstChild;
           while (child) {
             if (child.type.name === "CodeMark") {
@@ -549,8 +587,16 @@ function buildDecorations(view) {
                 Decoration.mark({ class: "cm-fence-hidden" }).range(fenceLine.from, fenceLine.to),
               );
             }
+            if (child.type.name === "CodeText") {
+              codeText = state.doc.sliceString(child.from, child.to);
+            }
             child = child.nextSibling;
           }
+          // Copy button floats right inside the (hidden) opening fence line
+          const openFenceLine = state.doc.line(startLine);
+          decorations.push(
+            Decoration.widget({ widget: new CopyButtonWidget(codeText), side: 1 }).range(openFenceLine.from),
+          );
         }
         return false;
       }
