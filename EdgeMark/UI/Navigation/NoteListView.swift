@@ -6,19 +6,10 @@ struct NoteListView: View {
     @Environment(AppSettings.self) var appSettings
     @Environment(L10n.self) var l10n
 
-    // Folder creation
-    @State private var isCreatingFolder = false
-    @State private var newFolderName = ""
+    @State private var noteRename = NoteRenameCoordinator()
+    @State private var folderRename = FolderRenameCoordinator()
     @FocusState private var isFolderFieldFocused: Bool
-
-    // Note rename
-    @State private var renamingNoteID: UUID?
-    @State private var renamingNoteText = ""
     @FocusState private var isNoteRenameFocused: Bool
-
-    // Folder rename
-    @State private var renamingFolderName: String?
-    @State private var renamingFolderText = ""
     @FocusState private var isFolderRenameFocused: Bool
 
     // Folder delete confirmation
@@ -50,7 +41,7 @@ struct NoteListView: View {
     }
 
     private var isEmpty: Bool {
-        noteStore.filteredNotes.isEmpty && childFolders.isEmpty && !isCreatingFolder
+        noteStore.filteredNotes.isEmpty && childFolders.isEmpty && !folderRename.isCreating
     }
 
     var body: some View {
@@ -120,7 +111,7 @@ struct NoteListView: View {
                                 folderRowWithContextMenu(folder: folder)
                             }
 
-                            if isCreatingFolder {
+                            if folderRename.isCreating {
                                 inlineFolderEditor
                             }
 
@@ -171,7 +162,7 @@ struct NoteListView: View {
 
     @ViewBuilder
     private func folderRowWithContextMenu(folder: Folder) -> some View {
-        if renamingFolderName == folder.name {
+        if folderRename.renamingFolderName == folder.name {
             inlineFolderRenameEditor(folderName: folder.name)
         } else {
             FolderRowView(
@@ -201,7 +192,7 @@ struct NoteListView: View {
 
     @ViewBuilder
     private func noteRowWithContextMenu(note: Note) -> some View {
-        if renamingNoteID == note.id {
+        if noteRename.renamingNoteID == note.id {
             inlineNoteRenameEditor(note: note)
         } else {
             NoteRowView(
@@ -227,54 +218,30 @@ struct NoteListView: View {
         InlineRenameEditor(
             icon: "doc.text",
             placeholder: l10n["common.noteTitlePlaceholder"],
-            text: $renamingNoteText,
+            text: $noteRename.text,
             isFocused: $isNoteRenameFocused,
-            isConflicting: noteRenameConflicts,
+            isConflicting: noteRename.isConflicting(in: noteStore),
             iconWidth: iconWidth,
-            onCommit: { commitNoteRename(note) },
-            onCancel: { cancelNoteRename() },
-            onFocusLost: { commitOrCancelNoteRename(note) },
+            onCommit: { noteRename.commit(note: note, noteStore: noteStore) },
+            onCancel: { noteRename.cancel(noteStore: noteStore) },
+            onFocusLost: { noteRename.commitOrCancel(note: note, noteStore: noteStore) },
         )
     }
 
     // MARK: - Inline Folder Editor
-
-    private var noteRenameConflicts: Bool {
-        let trimmed = renamingNoteText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let noteID = renamingNoteID else { return false }
-        let folder = noteStore.notes.first(where: { $0.id == noteID })?.folder ?? ""
-        return noteStore.noteTitleExists(trimmed, in: folder, excluding: noteID)
-    }
-
-    private var newFolderNameConflicts: Bool {
-        let trimmed = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return false }
-        return childFolders.contains {
-            $0.displayName.caseInsensitiveCompare(trimmed) == .orderedSame
-        }
-    }
-
-    private var folderRenameConflicts: Bool {
-        let trimmed = renamingFolderText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let oldName = renamingFolderName else { return false }
-        return childFolders.contains {
-            $0.name != oldName
-                && $0.displayName.caseInsensitiveCompare(trimmed) == .orderedSame
-        }
-    }
 
     private var inlineFolderEditor: some View {
         InlineRenameEditor(
             icon: "folder.fill",
             iconColor: .accentColor,
             placeholder: l10n["common.folderNamePlaceholder"],
-            text: $newFolderName,
+            text: $folderRename.creationText,
             isFocused: $isFolderFieldFocused,
-            isConflicting: newFolderNameConflicts,
+            isConflicting: folderRename.isCreateConflicting(siblings: childFolders),
             iconWidth: iconWidth,
-            onCommit: { commitNewFolder() },
-            onCancel: { cancelNewFolder() },
-            onFocusLost: { commitOrCancelFolder() },
+            onCommit: { folderRename.commitCreate(parent: noteStore.selectedFolder?.name ?? "", noteStore: noteStore, siblings: childFolders) },
+            onCancel: { folderRename.cancelCreate() },
+            onFocusLost: { folderRename.commitOrCancelCreate(parent: noteStore.selectedFolder?.name ?? "", noteStore: noteStore, siblings: childFolders) },
         )
     }
 
@@ -285,13 +252,13 @@ struct NoteListView: View {
             icon: "folder.fill",
             iconColor: .accentColor,
             placeholder: l10n["common.folderNamePlaceholder"],
-            text: $renamingFolderText,
+            text: $folderRename.renameText,
             isFocused: $isFolderRenameFocused,
-            isConflicting: folderRenameConflicts,
+            isConflicting: folderRename.isRenameConflicting(siblings: childFolders),
             iconWidth: iconWidth,
-            onCommit: { commitFolderRename(folderName) },
-            onCancel: { cancelFolderRename() },
-            onFocusLost: { commitOrCancelFolderRename(folderName) },
+            onCommit: { folderRename.commitRename(folderName, noteStore: noteStore, siblings: childFolders) },
+            onCancel: { folderRename.cancelRename() },
+            onFocusLost: { folderRename.commitOrCancelRename(folderName, noteStore: noteStore, siblings: childFolders) },
         )
     }
 
@@ -315,108 +282,27 @@ struct NoteListView: View {
 
     private func createNote() {
         let folder = noteStore.selectedFolder?.name ?? ""
-        noteStore.createAndOpenNote(in: folder)
+        let note = noteStore.createNote(in: folder)
+        noteRename.beginCreate(note: note)
+        DispatchQueue.main.async { isNoteRenameFocused = true }
     }
 
     private func startRenamingNote(_ note: Note) {
-        renamingNoteID = note.id
-        renamingNoteText = note.title
-        DispatchQueue.main.async {
-            isNoteRenameFocused = true
-        }
-    }
-
-    private func commitNoteRename(_ note: Note) {
-        guard !noteRenameConflicts else { return }
-        let trimmed = renamingNoteText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty, trimmed != note.title {
-            noteStore.renameNote(note, to: trimmed)
-        }
-        renamingNoteID = nil
-        renamingNoteText = ""
-    }
-
-    private func cancelNoteRename() {
-        renamingNoteID = nil
-        renamingNoteText = ""
-    }
-
-    private func commitOrCancelNoteRename(_ note: Note) {
-        let trimmed = renamingNoteText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty || noteRenameConflicts {
-            cancelNoteRename()
-        } else {
-            commitNoteRename(note)
-        }
+        noteRename.beginRename(note)
+        DispatchQueue.main.async { isNoteRenameFocused = true }
     }
 
     // MARK: - Folder Actions
 
     private func startCreatingFolder() {
-        newFolderName = ""
-        isCreatingFolder = true
-        DispatchQueue.main.async {
-            isFolderFieldFocused = true
-        }
-    }
-
-    private func commitNewFolder() {
-        guard !newFolderNameConflicts else { return }
-        let trimmed = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty {
-            let parent = noteStore.selectedFolder?.name ?? ""
-            noteStore.createFolder(named: trimmed, in: parent)
-        }
-        isCreatingFolder = false
-        newFolderName = ""
-    }
-
-    private func cancelNewFolder() {
-        isCreatingFolder = false
-        newFolderName = ""
-    }
-
-    private func commitOrCancelFolder() {
-        let trimmed = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty || newFolderNameConflicts {
-            cancelNewFolder()
-        } else {
-            commitNewFolder()
-        }
+        folderRename.beginCreate()
+        DispatchQueue.main.async { isFolderFieldFocused = true }
     }
 
     // MARK: - Folder Rename Actions
 
     private func startRenamingFolder(_ name: String) {
-        renamingFolderName = name
-        renamingFolderText = (name as NSString).lastPathComponent
-        DispatchQueue.main.async {
-            isFolderRenameFocused = true
-        }
-    }
-
-    private func commitFolderRename(_ oldName: String) {
-        guard !folderRenameConflicts else { return }
-        let trimmed = renamingFolderText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let oldDisplayName = (oldName as NSString).lastPathComponent
-        if !trimmed.isEmpty, trimmed != oldDisplayName {
-            noteStore.renameFolder(oldName, to: trimmed)
-        }
-        renamingFolderName = nil
-        renamingFolderText = ""
-    }
-
-    private func cancelFolderRename() {
-        renamingFolderName = nil
-        renamingFolderText = ""
-    }
-
-    private func commitOrCancelFolderRename(_ oldName: String) {
-        let trimmed = renamingFolderText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty || folderRenameConflicts {
-            cancelFolderRename()
-        } else {
-            commitFolderRename(oldName)
-        }
+        folderRename.beginRename(folderName: name)
+        DispatchQueue.main.async { isFolderRenameFocused = true }
     }
 }

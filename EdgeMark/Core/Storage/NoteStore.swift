@@ -193,18 +193,6 @@ final class NoteStore {
         }
     }
 
-    @discardableResult
-    func createAndOpenNote(in folder: String = "") -> Note {
-        let note = createNote(in: folder)
-        let title = note.title
-        Log.navigation.info("[NoteStore] createAndOpenNote — \(title, privacy: .public) in \(folder, privacy: .public)")
-        navigationDirection = .forward
-        withAnimation(.easeInOut(duration: 0.2)) {
-            selectedNote = note
-        }
-        return note
-    }
-
     /// Notes in the current folder only (not descendants). Root = notes with empty folder.
     private var currentFolderNotes: [Note] {
         if let folder = selectedFolder {
