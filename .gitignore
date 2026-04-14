@@ -33,6 +33,7 @@ playground.xcworkspace
 
 # Node (CodeMirror editor build tooling)
 node_modules/
+EdgeMark/Resources/Editor/editor-bundle.js
 
 # CocoaPods
 #
