@@ -52,6 +52,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = F83FB9262F4B45D6007775F9 /* Build configuration list for PBXNativeTarget "EdgeMark" */;
 			buildPhases = (
+				565E03C16F094FB782487234 /* Build JS Editor */,
 				F83FB9F72F4C4FF3007775F9 /* ShellScript */,
 				F83FB9012F4B45D5007775F9 /* Sources */,
 				F83FB9022F4B45D5007775F9 /* Frameworks */,
@@ -116,6 +117,28 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		565E03C16F094FB782487234 /* Build JS Editor */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/Resources/Editor/src/editor.js",
+				"$(SRCROOT)/Resources/Editor/src/wysiwyg.js",
+				"$(SRCROOT)/Resources/Editor/src/styles.css",
+			);
+			name = "Build JS Editor";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/EdgeMark/Resources/Editor/editor-bundle.js",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "cd \"$SRCROOT/Resources/Editor\"\nif ! command -v npm >/dev/null 2>&1; then\n    echo \"warning: npm not found, skipping JS editor build\"\n    exit 0\nfi\nif [ ! -d node_modules ]; then\n    npm install --silent\nfi\nnpm run build\n";
+		};
 		F83FB9F72F4C4FF3007775F9 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;

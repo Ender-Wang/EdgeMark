@@ -27,6 +27,12 @@ jobs:
         with:
           xcode-version: "26.2"
 
+      - name: Build JS editor
+        run: |
+          cd Resources/Editor
+          npm ci
+          npm run build
+
       - name: Build
         run: |
           xcodebuild -project EdgeMark.xcodeproj -scheme EdgeMark -configuration Release \
