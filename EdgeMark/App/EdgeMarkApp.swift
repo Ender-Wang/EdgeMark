@@ -8,6 +8,7 @@ struct EdgeMarkApp: App {
         Settings {
             SettingsView()
                 .environment(L10n.shared)
+                .environment(AppSettings.shared)
         }
     }
 }

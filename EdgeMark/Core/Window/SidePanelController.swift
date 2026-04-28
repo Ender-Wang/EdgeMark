@@ -32,7 +32,7 @@ final class SidePanelController: NSWindowController {
     private var resizeHandleView: ResizeHandleView?
     let edgeDetector: EdgeDetector
     let noteStore = NoteStore()
-    let appSettings = AppSettings()
+    let appSettings = AppSettings.shared
 
     // MARK: - Init
 

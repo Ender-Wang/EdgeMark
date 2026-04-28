@@ -102,6 +102,14 @@
   "settings.appearance.light": "Light",
   "settings.appearance.dark": "Dark",
 
+  "settings.general.panelTint": "Panel tint",
+  "settings.panelTint.system": "System",
+  "settings.panelTint.graphite": "Graphite",
+  "settings.panelTint.slate": "Slate",
+  "settings.panelTint.sand": "Sand",
+  "settings.panelTint.sage": "Sage",
+  "settings.panelTint.rose": "Rose",
+
   "settings.general.panelPosition": "Panel position",
   "settings.general.edge": "Edge",
   "settings.general.left": "Left",

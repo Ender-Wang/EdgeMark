@@ -4,6 +4,7 @@ import SwiftUI
 /// Header and content are each wrapped in a rounded VisualEffectView card.
 /// Pass `onSwipeBack` to enable two-finger trackpad right-swipe to go back on the header.
 struct PageLayout<Header: View, Content: View>: View {
+    @Environment(AppSettings.self) private var appSettings
     var onSwipeBack: (() -> Void)?
     var onContentSwipeRight: (() -> Void)?
     var onContentSwipeLeft: (() -> Void)?
@@ -29,7 +30,7 @@ struct PageLayout<Header: View, Content: View>: View {
             header
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .background { VisualEffectView() }
+                .background { VisualEffectView(tint: appSettings.panelTint.color) }
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay {
                     if let onSwipeBack {
@@ -38,7 +39,7 @@ struct PageLayout<Header: View, Content: View>: View {
                 }
 
             content
-                .background { VisualEffectView() }
+                .background { VisualEffectView(tint: appSettings.panelTint.color) }
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay {
                     if onContentSwipeRight != nil || onContentSwipeLeft != nil {

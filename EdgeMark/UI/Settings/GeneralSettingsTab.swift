@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GeneralSettingsTab: View {
     @Environment(L10n.self) var l10n
+    @Environment(AppSettings.self) var appSettings
 
     @State private var appearanceMode: AppearanceMode
     @State private var autoCheckUpdates: Bool
@@ -19,6 +20,7 @@ struct GeneralSettingsTab: View {
     }
 
     var body: some View {
+        @Bindable var settings = appSettings
         Form {
             Section {
                 Picker(l10n["settings.general.appearance"], selection: $appearanceMode) {
@@ -31,6 +33,12 @@ struct GeneralSettingsTab: View {
                 .labelsHidden()
                 .onChange(of: appearanceMode) { _, newValue in
                     ShortcutSettings.shared.appearanceMode = newValue
+                }
+
+                Picker(l10n["settings.general.panelTint"], selection: $settings.panelTint) {
+                    ForEach(AppSettings.PanelTint.allCases, id: \.self) { tint in
+                        Text(tint.displayName(l10n)).tag(tint)
+                    }
                 }
             } header: {
                 Label(l10n["settings.general.appearance"], systemImage: "circle.lefthalf.filled")
