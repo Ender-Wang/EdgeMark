@@ -32,6 +32,7 @@ struct KeyboardSettingsTab: View {
                 localShortcutRow("\u{2318}N", l10n["settings.keyboard.newNote"])
                 localShortcutRow("\u{21E7}\u{2318}N", l10n["settings.keyboard.newFolder"])
                 localShortcutRow("\u{2318}F", l10n["settings.keyboard.search"])
+                localShortcutRow("\u{2318}P", l10n["settings.keyboard.pinPanel"])
                 localShortcutRow("Escape", l10n["settings.keyboard.hidePanel"])
                 localShortcutRow("\u{2318}Z", l10n["settings.keyboard.undo"])
                 localShortcutRow("\u{21E7}\u{2318}Z", l10n["settings.keyboard.redo"])

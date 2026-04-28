@@ -143,6 +143,7 @@
   "settings.keyboard.newNote": "新建笔记",
   "settings.keyboard.newFolder": "新建文件夹",
   "settings.keyboard.search": "搜索（编辑器聚焦时为页内查找）",
+  "settings.keyboard.pinPanel": "切换固定（保持面板打开）",
   "settings.keyboard.hidePanel": "隐藏面板或返回",
   "settings.keyboard.slashCommand": "打开斜杠命令菜单",
   "settings.keyboard.undo": "撤销",
