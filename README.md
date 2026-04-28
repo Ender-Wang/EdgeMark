@@ -49,8 +49,10 @@ xattr -cr /Applications/EdgeMark.app
 - 🖥️ Works on every virtual Desktop and alongside fullscreen apps
 - ✨ Smooth slide-in/out or fade animation (configurable) with edge activation — move mouse to screen edge to reveal
 - 🖱️ Click outside, Escape, or auto-hide dismissal
+- 📌 Pin to keep the panel open — survives focus changes, mouse exit, and Space switches (great for copy-pasting back and forth)
 - 📐 Multi-monitor support with configurable left or right edge
 - ↔️ Adjustable width — drag the inner edge to resize, saved across restarts
+- 🎨 Panel tint — pick from a curated palette (System, Graphite, Slate, Sand, Sage, Rose)
 
 ✍️ **Markdown Editing**
 
@@ -64,6 +66,7 @@ xattr -cr /Applications/EdgeMark.app
 - ⌨️ Formatting shortcuts: `⌘B` bold, `⌘I` italic, `⌘E` inline code, `⌘K` link, `⇧⌘X` strikethrough
 - 🔗 `⌘Click` a rendered link to open it in the browser
 - 🔍 Find & Replace (Cmd+F)
+- 🔤 Customizable editor font and size — pick any installed font via the system font panel with live preview
 
 🗂️ **Notes & Storage**
 
@@ -72,6 +75,8 @@ xattr -cr /Applications/EdgeMark.app
 - 📂 Configurable storage directory
 - 💾 1-second debounced auto-save
 - 🔍 Search shows all notes sorted by most recently modified when the query is empty — a quick "recent notes" feed
+- 🏷️ Finder-style color tags (Red, Orange, Yellow, Green, Blue, Purple, Gray) with rename-able labels; multi-tag per note
+- 🎯 Tag filter inside search — click tag dots to narrow results, multi-select acts as OR, combines with text search
 - 🔄 External file sync — edits from other apps are detected on panel open; prompts when both sides changed
 - 🗑️ Trash with 30-day auto-purge and read-only preview
 
@@ -80,7 +85,7 @@ xattr -cr /Applications/EdgeMark.app
 - 🌐 Global shortcut: `Ctrl+Shift+Space` toggles from any app (customizable)
 - 🎹 Custom shortcut recorder with conflict detection
 - ⏱️ Configurable activation delay and corner exclusion zones
-- 🔑 Panel shortcuts: `⌘N` new note, `⇧⌘N` new folder, `⌘F` search (when panel is focused)
+- 🔑 Panel shortcuts: `⌘N` new note, `⇧⌘N` new folder, `⌘F` search, `⌘P` pin/unpin (when panel is focused)
 - 👆 Two-finger trackpad swipe right on the header to navigate back (configurable toggle and sensitivity)
 - 👆 Two-finger swipe left/right on the editor or `⌘←`/`⌘→` to navigate between notes in the current folder
 
