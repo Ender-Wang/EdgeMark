@@ -227,11 +227,13 @@ const spellErrorField = StateField.define({
 const editorTheme = EditorView.theme({
   "&": {
     height: "100%",
-    fontSize: "15px",
+    // Inherit body font so --editor-font-family / --editor-font-size apply.
+    fontFamily: "inherit",
+    fontSize: "inherit",
     background: "transparent",
   },
   ".cm-content": {
-    fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
+    fontFamily: "inherit",
     padding: "12px 0",
     caretColor: "var(--caret-color)",
   },
@@ -241,6 +243,10 @@ const editorTheme = EditorView.theme({
   },
   ".cm-scroller": {
     overflow: "auto",
+    // CodeMirror's baseTheme defaults .cm-scroller to monospace, which
+    // cascades into .cm-content. Override here so the body's --editor-font-family
+    // reaches the editor.
+    fontFamily: "inherit",
   },
   "&.cm-focused": {
     outline: "none",
@@ -441,6 +447,21 @@ window.editorAPI = {
 
   setTheme(theme) {
     document.documentElement.setAttribute("data-theme", theme);
+  },
+
+  setFont({ family, size }) {
+    const root = document.documentElement.style;
+    if (family) {
+      // Quote font names so multi-word names ("SF Pro") stay valid in CSS.
+      root.setProperty("--editor-font-family", `"${family}", -apple-system, BlinkMacSystemFont, sans-serif`);
+    } else {
+      root.removeProperty("--editor-font-family");
+    }
+    if (size) {
+      root.setProperty("--editor-font-size", `${size}px`);
+    } else {
+      root.removeProperty("--editor-font-size");
+    }
   },
 
   getContent() {

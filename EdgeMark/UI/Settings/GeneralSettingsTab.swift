@@ -19,6 +19,18 @@ struct GeneralSettingsTab: View {
         _selectedLocale = State(initialValue: L10n.shared.locale)
     }
 
+    private var currentFontDescription: String {
+        guard let postscript = appSettings.editorFontName,
+              let f = NSFont(name: postscript, size: 13)
+        else {
+            return l10n["settings.editor.systemFont"]
+        }
+        // Strip the leading dot AppKit uses for internal/system family names
+        // (e.g. ".AppleSystemUIFont", ".SF NS"), which shouldn't surface in UI.
+        let name = f.familyName ?? f.fontName
+        return name.hasPrefix(".") ? l10n["settings.editor.systemFont"] : name
+    }
+
     var body: some View {
         @Bindable var settings = appSettings
         Form {
@@ -42,6 +54,44 @@ struct GeneralSettingsTab: View {
                 }
             } header: {
                 Label(l10n["settings.general.appearance"], systemImage: "circle.lefthalf.filled")
+            }
+
+            Section {
+                LabeledContent(l10n["settings.editor.font"]) {
+                    HStack(spacing: 8) {
+                        Text(currentFontDescription)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        FontPickerButton(title: l10n["settings.editor.chooseFont"])
+                            .fixedSize()
+                        if settings.editorFontName != nil {
+                            Button(l10n["settings.editor.resetFont"]) {
+                                settings.editorFontName = nil
+                            }
+                        }
+                    }
+                }
+
+                LabeledContent(l10n["settings.editor.fontSize"]) {
+                    HStack(spacing: 8) {
+                        Text("\(Int(settings.editorFontSize)) pt")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                        Stepper(
+                            "",
+                            value: $settings.editorFontSize, in: 11 ... 28, step: 1,
+                        )
+                        .labelsHidden()
+                        if settings.editorFontSize != 16 {
+                            Button(l10n["settings.editor.resetFont"]) {
+                                settings.editorFontSize = 16
+                            }
+                        }
+                    }
+                }
+            } header: {
+                Label(l10n["settings.editor.section"], systemImage: "textformat")
             }
 
             Section {

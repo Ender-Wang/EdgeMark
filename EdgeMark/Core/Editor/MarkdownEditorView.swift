@@ -160,11 +160,24 @@ struct MarkdownEditorView: NSViewRepresentable {
         }
 
         private var noteNavMonitor: Any?
+        private var fontObserver: NSObjectProtocol?
 
         init(_ parent: MarkdownEditorView) {
             self.parent = parent
             currentNoteID = parent.noteID
             latestContent = parent.initialContent
+            super.init()
+            fontObserver = NotificationCenter.default.addObserver(
+                forName: .editorFontChanged, object: nil, queue: .main,
+            ) { [weak self] _ in
+                self?.syncFont()
+            }
+        }
+
+        deinit {
+            if let fontObserver {
+                NotificationCenter.default.removeObserver(fontObserver)
+            }
         }
 
         // MARK: - Flush
@@ -208,6 +221,7 @@ struct MarkdownEditorView: NSViewRepresentable {
                 syncNoteBaseURL()
                 setContent(content)
                 syncTheme()
+                syncFont()
 
                 // Initialize slash handler with WKWebView bridge
                 slashHandler = SlashCommandHandler(webView: webView)
@@ -339,6 +353,22 @@ struct MarkdownEditorView: NSViewRepresentable {
             let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             let theme = isDark ? "dark" : "light"
             webView.evaluateJavaScript("window.editorAPI.setTheme('\(theme)')")
+        }
+
+        func syncFont() {
+            guard let webView, isEditorReady else { return }
+            let s = AppSettings.shared
+            // Use the font's display name (family) so the JS side gets a renderable
+            // CSS family, not a PostScript name like "Helvetica-Bold".
+            let family: String? = if let postscript = s.editorFontName,
+                                     let f = NSFont(name: postscript, size: CGFloat(s.editorFontSize))
+            {
+                f.familyName ?? postscript
+            } else {
+                nil
+            }
+            let familyJS = family.map { "\"\($0.replacingOccurrences(of: "\"", with: "\\\""))\"" } ?? "null"
+            webView.evaluateJavaScript("window.editorAPI.setFont({ family: \(familyJS), size: \(s.editorFontSize) })")
         }
 
         /// Strip the first `# Heading` line from content for display in the editor.

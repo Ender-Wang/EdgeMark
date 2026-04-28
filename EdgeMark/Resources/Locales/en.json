@@ -103,6 +103,12 @@
   "settings.appearance.dark": "Dark",
 
   "settings.general.panelTint": "Panel tint",
+  "settings.editor.section": "Editor",
+  "settings.editor.font": "Font",
+  "settings.editor.chooseFont": "Choose…",
+  "settings.editor.resetFont": "Reset",
+  "settings.editor.fontSize": "Font size",
+  "settings.editor.systemFont": "System",
   "settings.panelTint.system": "System",
   "settings.panelTint.graphite": "Graphite",
   "settings.panelTint.slate": "Slate",

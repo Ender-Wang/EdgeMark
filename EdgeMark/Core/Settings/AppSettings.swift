@@ -48,6 +48,35 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(panelTint.rawValue, forKey: "panelTint") }
     }
 
+    /// PostScript font name (e.g. "HelveticaNeue", "SFMono-Regular"). nil = system font.
+    var editorFontName: String? {
+        didSet {
+            if let name = editorFontName {
+                UserDefaults.standard.set(name, forKey: "editorFontName")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "editorFontName")
+            }
+            NotificationCenter.default.post(name: .editorFontChanged, object: nil)
+        }
+    }
+
+    /// Editor body font size in pixels. Headings scale relative to this via em units.
+    var editorFontSize: Double = 16 {
+        didSet {
+            UserDefaults.standard.set(editorFontSize, forKey: "editorFontSize")
+            NotificationCenter.default.post(name: .editorFontChanged, object: nil)
+        }
+    }
+
+    /// Resolved NSFont for the editor — falls back to system font when no custom name is set.
+    var editorFont: NSFont {
+        let size = CGFloat(editorFontSize)
+        if let name = editorFontName, let f = NSFont(name: name, size: size) {
+            return f
+        }
+        return .systemFont(ofSize: size)
+    }
+
     init() {
         if let raw = UserDefaults.standard.string(forKey: "sortBy"),
            let value = SortBy(rawValue: raw)
@@ -60,6 +89,17 @@ final class AppSettings {
         {
             panelTint = value
         }
+        // If the saved font is no longer installed (e.g. user uninstalled it),
+        // drop it silently so the editor falls back to the system font.
+        if let saved = UserDefaults.standard.string(forKey: "editorFontName"),
+           NSFont(name: saved, size: 13) != nil
+        {
+            editorFontName = saved
+        } else {
+            UserDefaults.standard.removeObject(forKey: "editorFontName")
+        }
+        let savedSize = UserDefaults.standard.object(forKey: "editorFontSize") as? Double
+        editorFontSize = savedSize ?? 16
     }
 
     /// Folder date to display based on the current sort setting.
@@ -80,6 +120,10 @@ extension AppSettings.SortBy {
         case .dateCreated: l10n["sort.dateCreated"]
         }
     }
+}
+
+extension Notification.Name {
+    static let editorFontChanged = Notification.Name("editorFontChanged")
 }
 
 extension AppSettings.PanelTint {
