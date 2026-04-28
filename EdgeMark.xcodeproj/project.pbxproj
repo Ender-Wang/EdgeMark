@@ -137,7 +137,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cd \"$SRCROOT/Resources/Editor\"\nif ! command -v npm >/dev/null 2>&1; then\n    echo \"warning: npm not found, skipping JS editor build\"\n    exit 0\nfi\nif [ ! -d node_modules ]; then\n    npm install --silent\nfi\nnpm run build\n";
+			shellScript = "# Xcode build phases run with a minimal PATH — extend it to find npm\n# from common install locations (Homebrew, /usr/local, nvm).\nNVM_NODE_BIN=\"\"\nif [ -d \"$HOME/.nvm/versions/node\" ]; then\n    NVM_LATEST=$(ls \"$HOME/.nvm/versions/node\" 2>/dev/null | tail -1)\n    [ -n \"$NVM_LATEST\" ] && NVM_NODE_BIN=\"$HOME/.nvm/versions/node/$NVM_LATEST/bin\"\nfi\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:$NVM_NODE_BIN:$PATH\"\n\ncd \"$SRCROOT/Resources/Editor\"\nif ! command -v npm >/dev/null 2>&1; then\n    echo \"warning: npm not found, skipping JS editor build\"\n    exit 0\nfi\nif [ ! -d node_modules ]; then\n    npm install --silent\nfi\nnpm run build\n";
 		};
 		F83FB9F72F4C4FF3007775F9 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
