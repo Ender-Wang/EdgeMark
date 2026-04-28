@@ -540,6 +540,8 @@ struct HomeFolderView: View {
                     .foregroundStyle(.secondary)
                     .frame(width: iconWidth)
 
+                TagDotsView(tags: note.tags)
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(note.title.isEmpty ? l10n["common.untitled"] : note.title)
                         .font(.body)
@@ -552,8 +554,6 @@ struct HomeFolderView: View {
                 }
 
                 Spacer()
-
-                TagDotsView(tags: note.tags)
 
                 Text(note.modifiedAt.homeDisplayFormat)
                     .font(.caption)
@@ -696,14 +696,14 @@ struct NoteRowView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
+                        TagDotsView(tags: note.tags)
+
                         Text(note.title.isEmpty ? L10n.shared["common.untitled"] : note.title)
                             .font(.body)
                             .foregroundStyle(.primary)
                             .lineLimit(1)
 
                         Spacer()
-
-                        TagDotsView(tags: note.tags)
 
                         Text(note.createdAt.homeDisplayFormat)
                             .font(.caption)
