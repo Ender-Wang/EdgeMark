@@ -23,11 +23,17 @@ struct HomeFolderView: View {
         searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// Apply the active tag filter (if any) to a list of notes. Used by all search-result paths.
+    private func applyTagFilter(_ notes: [Note]) -> [Note] {
+        guard !noteStore.activeTagFilter.isEmpty else { return notes }
+        return notes.filter { !Set($0.tags).isDisjoint(with: noteStore.activeTagFilter) }
+    }
+
     /// Notes whose title contains the query (case-insensitive).
     private var titleMatches: [Note] {
         guard !trimmedQuery.isEmpty else { return [] }
-        return noteStore.notes
-            .filter { $0.title.range(of: trimmedQuery, options: .caseInsensitive) != nil }
+        return applyTagFilter(noteStore.notes
+            .filter { $0.title.range(of: trimmedQuery, options: .caseInsensitive) != nil })
             .sorted { $0.modifiedAt > $1.modifiedAt }
     }
 
@@ -35,7 +41,7 @@ struct HomeFolderView: View {
     /// can appear in both Titles and Content sections if it matches both.
     private var contentMatches: [ContentMatch] {
         guard !trimmedQuery.isEmpty else { return [] }
-        return noteStore.notes
+        return applyTagFilter(noteStore.notes)
             .compactMap { note -> ContentMatch? in
                 guard let snippet = Self.buildSnippet(content: note.content, query: trimmedQuery) else {
                     return nil
@@ -60,11 +66,17 @@ struct HomeFolderView: View {
         !titleMatches.isEmpty || !contentMatches.isEmpty
     }
 
+    /// True when the search experience has any active filtering — text query or tag filter.
+    private var hasActiveSearchFilter: Bool {
+        !trimmedQuery.isEmpty || !noteStore.activeTagFilter.isEmpty
+    }
+
     /// All notes sorted by most recently modified — shown as a feed when search query is empty.
     /// Deduplicates by UUID as a safeguard against storage returning duplicate entries.
+    /// Applies the tag filter when set.
     private var allNotesSorted: [Note] {
         var seen = Set<UUID>()
-        return noteStore.notes
+        return applyTagFilter(noteStore.notes)
             .sorted { $0.modifiedAt > $1.modifiedAt }
             .filter { seen.insert($0.id).inserted }
     }
@@ -339,32 +351,46 @@ struct HomeFolderView: View {
     // MARK: - Search Results
 
     private var searchResultsList: some View {
-        ScrollView {
-            if trimmedQuery.isEmpty {
-                VStack(alignment: .leading, spacing: 0) {
-                    sectionHeader(l10n["search.recentNotes"])
-                    ForEach(allNotesSorted) { note in
-                        recentNoteRow(note: note)
-                    }
-                }
-            } else if !hasAnyResults {
-                emptySearchPlaceholder(
-                    icon: "doc.questionmark",
-                    message: l10n["search.noResults"],
-                )
-            } else {
-                VStack(alignment: .leading, spacing: 0) {
-                    if !titleMatches.isEmpty {
-                        sectionHeader(l10n["search.titles"])
-                        ForEach(titleMatches) { note in
-                            titleResultRow(note: note)
+        VStack(spacing: 0) {
+            TagFilterBar()
+
+            ScrollView {
+                if trimmedQuery.isEmpty {
+                    VStack(alignment: .leading, spacing: 0) {
+                        let header = noteStore.activeTagFilter.isEmpty
+                            ? l10n["search.recentNotes"]
+                            : l10n["search.tagged"]
+                        sectionHeader(header)
+                        if allNotesSorted.isEmpty {
+                            emptySearchPlaceholder(
+                                icon: "tag",
+                                message: l10n["search.noTagged"],
+                            )
+                        } else {
+                            ForEach(allNotesSorted) { note in
+                                recentNoteRow(note: note)
+                            }
                         }
                     }
+                } else if !hasAnyResults {
+                    emptySearchPlaceholder(
+                        icon: "doc.questionmark",
+                        message: l10n["search.noResults"],
+                    )
+                } else {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if !titleMatches.isEmpty {
+                            sectionHeader(l10n["search.titles"])
+                            ForEach(titleMatches) { note in
+                                titleResultRow(note: note)
+                            }
+                        }
 
-                    if !contentMatches.isEmpty {
-                        sectionHeader(l10n["search.content"])
-                        ForEach(contentMatches) { match in
-                            contentResultRow(note: match.note, snippet: match.snippet)
+                        if !contentMatches.isEmpty {
+                            sectionHeader(l10n["search.content"])
+                            ForEach(contentMatches) { match in
+                                contentResultRow(note: match.note, snippet: match.snippet)
+                            }
                         }
                     }
                 }
@@ -527,6 +553,8 @@ struct HomeFolderView: View {
 
                 Spacer()
 
+                TagDotsView(tags: note.tags)
+
                 Text(note.modifiedAt.homeDisplayFormat)
                     .font(.caption)
                     .foregroundStyle(.tertiary)
@@ -560,6 +588,7 @@ struct HomeFolderView: View {
         isSearchFieldFocused = false
         isSearching = false
         searchQuery = ""
+        noteStore.clearTagFilter()
         if let returnFolder = noteStore.searchReturnFolder {
             let name = returnFolder.name
             Log.navigation.debug("[HomeFolderView] dismissSearch — restoring to \(name, privacy: .public)")
@@ -673,6 +702,8 @@ struct NoteRowView: View {
                             .lineLimit(1)
 
                         Spacer()
+
+                        TagDotsView(tags: note.tags)
 
                         Text(note.createdAt.homeDisplayFormat)
                             .font(.caption)

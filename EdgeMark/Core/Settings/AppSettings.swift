@@ -68,6 +68,23 @@ final class AppSettings {
         }
     }
 
+    /// Custom labels for color tags. Missing entries fall back to `TagColor.defaultLabel`.
+    /// Persisted as a single UserDefaults dictionary keyed by raw color name.
+    var tagLabels: [TagColor: String] = [:] {
+        didSet {
+            let raw = tagLabels.reduce(into: [String: String]()) { $0[$1.key.rawValue] = $1.value }
+            UserDefaults.standard.set(raw, forKey: "tagLabels")
+        }
+    }
+
+    /// Display label for a tag — user override if set, otherwise the default name.
+    func label(for tag: TagColor) -> String {
+        if let custom = tagLabels[tag], !custom.isEmpty {
+            return custom
+        }
+        return tag.defaultLabel
+    }
+
     /// Resolved NSFont for the editor — falls back to system font when no custom name is set.
     var editorFont: NSFont {
         let size = CGFloat(editorFontSize)
@@ -100,6 +117,11 @@ final class AppSettings {
         }
         let savedSize = UserDefaults.standard.object(forKey: "editorFontSize") as? Double
         editorFontSize = savedSize ?? 16
+        if let raw = UserDefaults.standard.dictionary(forKey: "tagLabels") as? [String: String] {
+            tagLabels = raw.reduce(into: [TagColor: String]()) { result, kv in
+                if let color = TagColor(rawValue: kv.key) { result[color] = kv.value }
+            }
+        }
     }
 
     /// Folder date to display based on the current sort setting.

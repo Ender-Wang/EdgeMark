@@ -15,6 +15,11 @@ struct SettingsView: View {
                     Label(l10n["settings.tab.behavior"], systemImage: "macwindow.on.rectangle")
                 }
 
+            TagsSettingsTab()
+                .tabItem {
+                    Label(l10n["settings.tab.tags"], systemImage: "tag")
+                }
+
             KeyboardSettingsTab()
                 .tabItem {
                     Label(l10n["settings.tab.keyboard"], systemImage: "keyboard")

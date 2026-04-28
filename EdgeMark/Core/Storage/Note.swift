@@ -9,6 +9,10 @@ struct Note: Identifiable {
     var modifiedAt: Date
     var folder: String
 
+    /// Color tags assigned to this note (Finder-style multi-tag).
+    /// Persisted as a YAML list: `tags: [red, blue]`.
+    var tags: [TagColor]
+
     /// When the note was moved to Trash (nil = active). Persisted in YAML front matter.
     var trashedAt: Date?
 
@@ -43,6 +47,7 @@ struct Note: Identifiable {
         createdAt: Date = Date(),
         modifiedAt: Date = Date(),
         folder: String = "",
+        tags: [TagColor] = [],
         trashedAt: Date? = nil,
         savedFilename: String? = nil,
     ) {
@@ -52,6 +57,7 @@ struct Note: Identifiable {
         self.createdAt = createdAt
         self.modifiedAt = modifiedAt
         self.folder = folder
+        self.tags = tags
         self.trashedAt = trashedAt
         self.savedFilename = savedFilename
     }
@@ -64,6 +70,7 @@ struct Note: Identifiable {
             && lhs.createdAt == rhs.createdAt
             && lhs.modifiedAt == rhs.modifiedAt
             && lhs.folder == rhs.folder
+            && lhs.tags == rhs.tags
             && lhs.trashedAt == rhs.trashedAt
     }
 }

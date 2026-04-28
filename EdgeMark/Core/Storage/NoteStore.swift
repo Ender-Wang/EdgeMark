@@ -63,6 +63,18 @@ final class NoteStore {
     /// Folder to return to when the user dismisses search (set when search is triggered from a subfolder).
     var searchReturnFolder: Folder?
 
+    /// Active tag filter applied within the search experience. Session-only; cleared on dismiss.
+    var activeTagFilter: Set<TagColor> = []
+
+    /// Cached set of tag colors in use across all active notes. Avoids an O(N×T)
+    /// recomputation on every TagFilterBar render. Updated by the handful of
+    /// mutators that touch tags.
+    private(set) var allUsedTags: Set<TagColor> = []
+
+    private func recomputeAllUsedTags() {
+        allUsedTags = Set(notes.flatMap(\.tags))
+    }
+
     /// Notes filtered by selected folder (unsorted — views apply sort via `sortedNotes`).
     var filteredNotes: [Note] {
         if let folder = selectedFolder {
@@ -320,7 +332,10 @@ final class NoteStore {
             let isOpen = selectedNote?.id == noteID
             let isDirty = dirtyNoteIDs.contains(noteID)
 
-            guard let (diskContent, diskModifiedAt) = FileStorage.reloadContent(for: notes[i]) else { continue }
+            guard let reloaded = FileStorage.reloadContent(for: notes[i]) else { continue }
+            let diskContent = reloaded.content
+            let diskModifiedAt = reloaded.modifiedAt
+            let diskTags = reloaded.tags
 
             let title = notes[i].title
             if isOpen, isDirty {
@@ -332,12 +347,14 @@ final class NoteStore {
                 Log.storage.info("[NoteStore] auto-syncing '\(title, privacy: .public)' from external change")
                 notes[i].content = diskContent
                 notes[i].modifiedAt = diskModifiedAt
+                notes[i].tags = diskTags
                 dirtyNoteIDs.remove(noteID)
                 if isOpen {
                     selectedNote = notes[i]
                     // Push content directly to the editor — don't rely on SwiftUI update cycle
                     onNeedEditorReload?(diskContent)
                 }
+                recomputeAllUsedTags()
             }
         }
     }
@@ -442,6 +459,35 @@ final class NoteStore {
         if selectedNote?.id == note.id {
             selectedNote = notes[index]
         }
+    }
+
+    /// Toggle a single tag on a note. Updates in-memory state and marks the note dirty.
+    func toggleTag(_ tag: TagColor, on note: Note) {
+        guard let index = notes.firstIndex(where: { $0.id == note.id }) else { return }
+        if let i = notes[index].tags.firstIndex(of: tag) {
+            notes[index].tags.remove(at: i)
+        } else {
+            notes[index].tags.append(tag)
+        }
+        notes[index].modifiedAt = Date()
+        dirtyNoteIDs.insert(note.id)
+        if selectedNote?.id == note.id {
+            selectedNote = notes[index]
+        }
+        recomputeAllUsedTags()
+    }
+
+    /// Toggle a tag in the active sidebar filter. Multi-select acts as OR.
+    func toggleTagFilter(_ tag: TagColor) {
+        if activeTagFilter.contains(tag) {
+            activeTagFilter.remove(tag)
+        } else {
+            activeTagFilter.insert(tag)
+        }
+    }
+
+    func clearTagFilter() {
+        activeTagFilter.removeAll()
     }
 
     func deleteNote(_ note: Note) {
@@ -900,6 +946,8 @@ final class NoteStore {
                 earliestCreatedAt: descendantNotes.map(\.createdAt).min(),
             )
         }
+        // Folder/note membership changed → tag set may have too.
+        recomputeAllUsedTags()
     }
 
     private static func extractTitle(from content: String) -> String {

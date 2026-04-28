@@ -25,6 +25,12 @@ enum NoteListMenus {
             menu.addItem(moveItem)
         }
 
+        // Tags submenu
+        let tagsItem = NSMenuItem(title: l10n["common.tags"], action: nil, keyEquivalent: "")
+        tagsItem.image = NSImage(systemSymbolName: "tag", accessibilityDescription: nil)
+        tagsItem.submenu = tagsSubmenu(for: note, noteStore: noteStore, appSettings: AppSettings.shared)
+        menu.addItem(tagsItem)
+
         menu.addItem(.separator())
 
         menu.addActionItem(title: l10n["common.copyPlainText"], icon: "doc.on.doc") {
@@ -62,6 +68,36 @@ enum NoteListMenus {
         }
 
         return menu
+    }
+
+    // MARK: - Tags Submenu
+
+    private static func tagsSubmenu(for note: Note, noteStore: NoteStore, appSettings: AppSettings) -> NSMenu {
+        let menu = NSMenu()
+        let noteID = note.id
+        for tag in TagColor.allCases {
+            // Reuse the standard MenuDispatch wiring — capture noteID so the toggle
+            // always reads the latest note state at click time.
+            let item = menu.addActionItem(title: appSettings.label(for: tag), icon: "circle.fill") {
+                guard let current = noteStore.notes.first(where: { $0.id == noteID }) else { return }
+                noteStore.toggleTag(tag, on: current)
+            }
+            item.image = tagImage(for: tag)
+            item.state = note.tags.contains(tag) ? .on : .off
+        }
+        return menu
+    }
+
+    /// 12pt circle filled with the tag color, used as the menu item icon.
+    private static func tagImage(for tag: TagColor) -> NSImage {
+        let size: CGFloat = 12
+        let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
+            NSColor(tag.color).setFill()
+            NSBezierPath(ovalIn: rect).fill()
+            return true
+        }
+        image.isTemplate = false
+        return image
     }
 
     // MARK: - Folder Context Menu

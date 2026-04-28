@@ -90,21 +90,15 @@ enum FileStorage {
         return (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
     }
 
-    /// Reloads a note's content from disk, preserving the in-memory UUID.
+    /// Reloads a note's content + tags from disk, preserving the in-memory UUID.
     /// Returns nil if the file can't be read.
-    static func reloadContent(for note: Note) -> (content: String, modifiedAt: Date)? {
+    static func reloadContent(for note: Note) -> (content: String, modifiedAt: Date, tags: [TagColor])? {
         let url = rootURL.appendingPathComponent(diskRelativePath(for: note))
         guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
         let modifiedAt = ((try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date) ?? Date()
-        // Strip YAML front matter — return body only
-        let body: String
-        if text.hasPrefix("---\n") {
-            let parts = text.dropFirst(4).components(separatedBy: "\n---\n")
-            body = parts.count >= 2 ? String(parts[1...].joined(separator: "\n---\n")) : text
-        } else {
-            body = text
-        }
-        return (content: body, modifiedAt: modifiedAt)
+        let (metadata, body) = parseFrontMatter(text)
+        let tags = parseTagList(metadata["tags"] ?? "")
+        return (content: body, modifiedAt: modifiedAt, tags: tags)
     }
 
     // MARK: - Asset Directory
@@ -619,6 +613,7 @@ enum FileStorage {
         let created = metadata["created"].flatMap { dateFormatter.date(from: $0) } ?? Date()
         let modified = metadata["modified"].flatMap { dateFormatter.date(from: $0) } ?? Date()
         let trashed = metadata["trashed"].flatMap { dateFormatter.date(from: $0) }
+        let tags = parseTagList(metadata["tags"] ?? "")
         // For trashed notes in .trash/, folder is stored in YAML; otherwise use the directory path.
         let resolvedFolder = metadata["folder"] ?? folder
 
@@ -629,9 +624,22 @@ enum FileStorage {
             createdAt: created,
             modifiedAt: modified,
             folder: resolvedFolder,
+            tags: tags,
             trashedAt: trashed,
             savedFilename: url.lastPathComponent,
         )
+    }
+
+    /// Parses `[red, blue]` (with or without surrounding brackets / quotes / spaces)
+    /// into a list of valid TagColors. Unknown names are silently dropped.
+    private static func parseTagList(_ raw: String) -> [TagColor] {
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return [] }
+        let stripped = trimmed
+            .trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+        return stripped.components(separatedBy: ",")
+            .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " \"'")) }
+            .compactMap { TagColor(rawValue: $0.lowercased()) }
     }
 
     // MARK: - Front Matter
@@ -677,6 +685,10 @@ enum FileStorage {
         lines.append("title: \(note.title)")
         lines.append("created: \(dateFormatter.string(from: note.createdAt))")
         lines.append("modified: \(dateFormatter.string(from: note.modifiedAt))")
+        if !note.tags.isEmpty {
+            let names = note.tags.map(\.rawValue).joined(separator: ", ")
+            lines.append("tags: [\(names)]")
+        }
         if let trashedAt = note.trashedAt {
             lines.append("trashed: \(dateFormatter.string(from: trashedAt))")
             // Persist original folder as return address while in .trash/
