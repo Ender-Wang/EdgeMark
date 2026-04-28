@@ -8,6 +8,10 @@ struct TagsSettingsTab: View {
         @Bindable var settings = appSettings
         Form {
             Section {
+                Text(l10n["settings.tags.description"])
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
                 ForEach(TagColor.allCases, id: \.self) { tag in
                     HStack(spacing: 10) {
                         Circle()
@@ -17,7 +21,7 @@ struct TagsSettingsTab: View {
                         TextField(
                             tag.defaultLabel,
                             text: Binding(
-                                get: { settings.tagLabels[tag] ?? "" },
+                                get: { settings.tagLabels[tag] ?? tag.defaultLabel },
                                 set: { newValue in
                                     let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
                                     if trimmed.isEmpty || trimmed == tag.defaultLabel {
@@ -33,10 +37,6 @@ struct TagsSettingsTab: View {
                 }
             } header: {
                 Label(l10n["settings.tags.section"], systemImage: "tag")
-            } footer: {
-                Text(l10n["settings.tags.footer"])
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

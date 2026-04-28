@@ -24,6 +24,8 @@
   "common.showInFinder": "Show in Finder",
   "common.moveTo": "Move to",
   "common.tags": "Tags",
+  "common.pin": "Pin panel (stay open)",
+  "common.unpin": "Unpin panel",
   "tags.clearFilter": "Clear tag filter",
   "common.moveHere": "Move here",
   "common.nameTaken": "Name taken",
@@ -102,7 +104,7 @@
   "settings.tab.tags": "Tags",
   "settings.tab.about": "About",
   "settings.tags.section": "Tag labels",
-  "settings.tags.footer": "Custom names for color tags. Leave blank to use the default.",
+  "settings.tags.description": "Rename color tags to fit your workflow. Leave a name unchanged to use the default.",
 
   "settings.general.appearance": "Appearance",
   "settings.appearance.system": "System",
