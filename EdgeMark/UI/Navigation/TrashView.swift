@@ -111,6 +111,8 @@ struct TrashView: View {
 
                 Spacer()
 
+                PinButton()
+
                 HeaderIconButton(
                     systemName: "trash.slash",
                     help: l10n["trash.emptyTrash"],

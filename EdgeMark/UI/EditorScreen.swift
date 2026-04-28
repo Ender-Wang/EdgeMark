@@ -99,6 +99,8 @@ struct EditorScreen: View {
 
                     Spacer()
 
+                    PinButton()
+
                     CopyMenuButton(note: note, coordinator: editorCoordinator)
 
                     DeleteIconButton {

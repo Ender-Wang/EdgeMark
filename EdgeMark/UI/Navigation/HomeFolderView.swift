@@ -163,6 +163,8 @@ struct HomeFolderView: View {
 
                 Spacer()
 
+                PinButton()
+
                 HeaderIconButton(
                     systemName: "magnifyingglass",
                     help: l10n["common.search"],

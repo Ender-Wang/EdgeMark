@@ -123,7 +123,8 @@ final class SidePanelController: NSWindowController {
         // Click-outside dismissal
         NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown) { [weak self] _ in
             guard let self, isShown, !self.isMouseInPanel(),
-                  ShortcutSettings.shared.hideOnClickOutside else { return }
+                  ShortcutSettings.shared.hideOnClickOutside,
+                  !ShortcutSettings.shared.isPanelPinned else { return }
             hidePanel()
         }
 
@@ -206,7 +207,7 @@ final class SidePanelController: NSWindowController {
         // If the panel is shown and the mouse is outside, restart the auto-hide
         // timer with a short delay so the animation plays after the Space
         // transition settles (animations don't render mid-transition).
-        guard isShown else { return }
+        guard isShown, !ShortcutSettings.shared.isPanelPinned else { return }
         cancelHideTimer()
         if !isMouseInPanel() {
             let delay = max(ShortcutSettings.shared.hideDelay, 0.5)
@@ -266,7 +267,8 @@ final class SidePanelController: NSWindowController {
 
     override func mouseExited(with _: NSEvent) {
         guard isShown, !isAnimating, !isEditorFocused,
-              ShortcutSettings.shared.autoHideOnMouseExit else { return }
+              ShortcutSettings.shared.autoHideOnMouseExit,
+              !ShortcutSettings.shared.isPanelPinned else { return }
         let delay = ShortcutSettings.shared.hideDelay
         if delay == 0 {
             hidePanel()
