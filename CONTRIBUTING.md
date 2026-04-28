@@ -67,10 +67,11 @@ EdgeMark/
 │   │   ├── ShortcutSettings.swift  #   UserDefaults persistence for settings
 │   │   └── KeyCodeTranslator.swift #   Virtual key code → display string mapping
 │   ├── Storage/
-│   │   ├── NoteStore.swift         #   @Observable — note CRUD, trash, folders
+│   │   ├── NoteStore.swift         #   @Observable — note CRUD, trash, folders, tag filter
 │   │   ├── FileStorage.swift       #   Plain .md files with YAML front matter
-│   │   ├── Note.swift              #   Note model (id, title, body, timestamps)
+│   │   ├── Note.swift              #   Note model (id, title, body, timestamps, tags)
 │   │   ├── Folder.swift            #   Folder model
+│   │   ├── TagColor.swift          #   Finder-style 7-color tag palette
 │   │   └── TrashedFolder.swift     #   Trashed folder with expiry metadata
 │   ├── Updates/
 │   │   ├── UpdateChecker.swift     #   GitHub Releases API, version comparison
@@ -95,20 +96,25 @@ EdgeMark/
 │   │   ├── ContentFooterBar.swift  #   Bottom toolbar (word count, copy format picker)
 │   │   ├── DateFormatting.swift    #   Shared date → display string helpers
 │   │   ├── EmptyStateView.swift    #   Icon + title + subtitle placeholder
+│   │   ├── FontPickerButton.swift  #   NSFontPanel button with live changeFont(_:) preview
 │   │   ├── HeaderIconButton.swift  #   Standard icon button with hover UX
 │   │   ├── InlineRenameEditor.swift#   Inline text field with "Name taken" overlay
 │   │   ├── MoveConflictAlerts.swift#   View extension: note + folder move conflict dialogs
 │   │   ├── NSContextMenuModifier.swift  # NSMenu context menus with SF Symbol icons
 │   │   ├── NoteCardView.swift      #   Note list row (title, preview, date)
-│   │   ├── NoteListMenus.swift     #   Note/folder context menu builders
+│   │   ├── NoteListMenus.swift     #   Note/folder context menu builders (incl. Tags submenu)
 │   │   ├── PageLayout.swift        #   Navigation page chrome (header + content + footer)
+│   │   ├── PinButton.swift         #   Toggle for ShortcutSettings.isPanelPinned
 │   │   ├── ShortcutRecorderView.swift   # Key capture field for global shortcut setting
 │   │   ├── SwipeDetectorView.swift #   NSView wrapper for two-finger swipe gestures
-│   │   └── VisualEffectView.swift  #   NSVisualEffectView wrapper for blur backgrounds
+│   │   ├── TagDotsView.swift       #   Inline colored dots for note rows
+│   │   ├── TagFilterBar.swift      #   Search-context tag filter strip
+│   │   └── VisualEffectView.swift  #   NSVisualEffectView wrapper with optional tint sublayer
 │   └── Settings/
-│       ├── SettingsView.swift      #   Tab container (General, Behavior, Keyboard, About)
-│       ├── GeneralSettingsTab.swift #   Appearance, language, system, storage
+│       ├── SettingsView.swift      #   Tab container (General, Behavior, Tags, Keyboard, About)
+│       ├── GeneralSettingsTab.swift #   Appearance (incl. panel tint), editor font, language, storage
 │       ├── BehaviorSettingsTab.swift#   Panel position, edge activation, auto-hide
+│       ├── TagsSettingsTab.swift   #   Rename color tag labels
 │       ├── KeyboardSettingsTab.swift#   Shortcut recorder + local shortcuts
 │       ├── AboutSettingsTab.swift   #   Version info, links, copyright
 │       └── UpdateView.swift        #   Download progress, verify, install UI
@@ -119,10 +125,10 @@ EdgeMark/
 │   └── Debouncer.swift             #   Generic debounce utility
 │
 └── Resources/
-    ├── Editor/                     # CodeMirror 6 bundle — compiled into Swift target
+    ├── Editor/                     # CodeMirror 6 bundle — compiled by Xcode build phase
     │   ├── editor.html             #   WKWebView host page
-    │   ├── editor-bundle.js        #   Compiled CM6 + WYSIWYG plugin (do not edit)
-    │   └── styles.css              #   Editor theme (do not edit)
+    │   ├── editor-bundle.js        #   Compiled CM6 + WYSIWYG plugin (gitignored, generated)
+    │   └── styles.css              #   Symlink to source (do not edit here)
     └── Locales/                    # i18n strings
         ├── en.json                 #   English
         └── zh-Hans.json            #   Simplified Chinese
@@ -137,7 +143,7 @@ Resources/Editor/                  # JS/CSS source (outside Xcode project)
 └── build.sh                       #   Full build: bundle JS + copy to Swift target
 ```
 
-> **Editor development:** Edit files in `Resources/Editor/src/`, then run `npm run build` from `Resources/Editor/` to recompile. The bundle is written directly to `EdgeMark/Resources/Editor/editor-bundle.js`. Run `build.sh` instead to also copy `editor.html` and `styles.css` when those change.
+> **Editor development:** Edit files in `Resources/Editor/src/`. The Xcode build phase ("Build JS Editor") runs `npm run build` automatically when any source file changes — no manual step required. CI runs the same build before `xcodebuild`. The compiled bundle is written to `EdgeMark/Resources/Editor/editor-bundle.js` (gitignored).
 
 ## Key Patterns
 
