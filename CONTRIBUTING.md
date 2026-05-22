@@ -180,3 +180,11 @@ EdgeMark uses a custom JSON-based i18n system. Currently supported:
 4. Submit a PR
 
 No code changes needed — the app picks up new locale files automatically.
+
+---
+
+# Submitting a Pull Request
+
+- Target the `main` branch.
+- Run `swiftformat EdgeMark/` before pushing — CI fails on lint errors.
+- **Do not modify** `MARKETING_VERSION` or `CURRENT_PROJECT_VERSION` in `EdgeMark.xcodeproj/project.pbxproj`. Releases are cut by the maintainer from `main`/`develop`; PRs that bump these values will fail the `check-version` CI step.
