@@ -1,6 +1,13 @@
 import Foundation
 import OSLog
 
+struct AvailableLocale: Hashable {
+    /// Locale code matching the JSON filename (e.g. "en", "zh-Hans", "hi").
+    let code: String
+    /// Native-script display name (e.g. "English", "简体中文", "हिन्दी").
+    let displayName: String
+}
+
 @Observable
 final class L10n: @unchecked Sendable {
     static let shared = L10n()
@@ -24,10 +31,35 @@ final class L10n: @unchecked Sendable {
 
     /// Locale identifier suitable for `Locale(identifier:)` and `DateFormatter`.
     var resolvedLocaleIdentifier: String {
-        switch resolveLocale() {
-        case "zh-Hans": "zh_Hans"
-        default: "en_US"
+        resolveLocale().replacingOccurrences(of: "-", with: "_")
+    }
+
+    /// All locale JSON files present in the bundle, with their native-script display name.
+    /// Discovered dynamically — drop a new `<code>.json` into `EdgeMark/Resources/Locales/` and
+    /// it appears here automatically (Xcode 16 synchronized groups handle bundle inclusion).
+    static let availableLocales: [AvailableLocale] = {
+        var urls = Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: "Resources/Locales") ?? []
+        if urls.isEmpty {
+            urls = Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? []
         }
+        return urls
+            .map { $0.deletingPathExtension().lastPathComponent }
+            .filter { isLikelyLocaleCode($0) }
+            .map { code in
+                let id = code.replacingOccurrences(of: "-", with: "_")
+                let locale = Locale(identifier: id)
+                let name = locale.localizedString(forIdentifier: id)
+                return AvailableLocale(code: code, displayName: name ?? code)
+            }
+            .sorted { $0.code < $1.code }
+    }()
+
+    private static func isLikelyLocaleCode(_ name: String) -> Bool {
+        // Accept "en", "zh-Hans", "pt-BR" etc. Reject other JSON resources.
+        let parts = name.split(separator: "-")
+        guard let first = parts.first, (2 ... 3).contains(first.count),
+              first.allSatisfy(\.isLetter) else { return false }
+        return true
     }
 
     // MARK: - Lookup
@@ -51,8 +83,12 @@ final class L10n: @unchecked Sendable {
             return locale
         }
         let preferred = Locale.preferredLanguages.first ?? "en"
-        if preferred.hasPrefix("zh") {
-            return "zh-Hans"
+        let primary = preferred.split(separator: "-").first.map(String.init) ?? "en"
+        // Match against discovered locales — exact match first, then language-prefix match.
+        let codes = L10n.availableLocales.map(\.code)
+        if codes.contains(preferred) { return preferred }
+        if let match = codes.first(where: { $0.split(separator: "-").first.map(String.init) == primary }) {
+            return match
         }
         return "en"
     }

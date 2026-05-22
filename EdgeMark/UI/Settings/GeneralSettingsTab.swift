@@ -97,8 +97,9 @@ struct GeneralSettingsTab: View {
             Section {
                 Picker(l10n["settings.general.language"], selection: $selectedLocale) {
                     Text(l10n["settings.language.system"]).tag("system")
-                    Text(l10n["settings.language.en"]).tag("en")
-                    Text(l10n["settings.language.zh"]).tag("zh-Hans")
+                    ForEach(L10n.availableLocales, id: \.code) { locale in
+                        Text(locale.displayName).tag(locale.code)
+                    }
                 }
                 .onChange(of: selectedLocale) { _, newValue in
                     L10n.shared.locale = newValue

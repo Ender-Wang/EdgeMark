@@ -148,8 +148,6 @@
   "settings.general.chooseFolderMessage": "नोट्स सेव करने के लिए फ़ोल्डर चुनें",
 
   "settings.language.system": "सिस्टम",
-  "settings.language.en": "अंग्रेज़ी",
-  "settings.language.zh": "सरलीकृत चीनी",
 
   "settings.keyboard.globalShortcuts": "ग्लोबल शॉर्टकट्स",
   "settings.keyboard.globalDescription": "ये कीबोर्ड शॉर्टकट पूरे सिस्टम में काम करते हैं, भले ही EdgeMark बैकग्राउंड में हो.",

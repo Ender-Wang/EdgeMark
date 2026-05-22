@@ -148,8 +148,6 @@
   "settings.general.chooseFolderMessage": "Choose a folder to store your notes",
 
   "settings.language.system": "System",
-  "settings.language.en": "English",
-  "settings.language.zh": "\u7b80\u4f53\u4e2d\u6587",
 
   "settings.keyboard.globalShortcuts": "Global shortcuts",
   "settings.keyboard.globalDescription": "These keyboard shortcuts work system-wide, even when EdgeMark is in the background.",

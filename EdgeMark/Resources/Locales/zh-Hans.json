@@ -134,8 +134,6 @@
   "settings.general.changeFolder": "更改笔记文件夹…",
   "settings.general.chooseFolderMessage": "选择一个文件夹来存储笔记",
   "settings.language.system": "跟随系统",
-  "settings.language.en": "English",
-  "settings.language.zh": "简体中文",
   "settings.keyboard.globalShortcuts": "全局快捷键",
   "settings.keyboard.globalDescription": "这些快捷键在系统范围内有效，即使 EdgeMark 在后台运行。",
   "settings.keyboard.togglePanel": "切换 EdgeMark",
