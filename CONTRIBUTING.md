@@ -169,17 +169,25 @@ EdgeMark uses a custom JSON-based i18n system. Currently supported:
 
 | Language | File | Status |
 |----------|------|--------|
-| English | `Resources/Locales/en.json` | ✅ |
-| Simplified Chinese | `Resources/Locales/zh-Hans.json` | ✅ |
+| English | `EdgeMark/Resources/Locales/en.json` | ✅ |
+| Simplified Chinese | `EdgeMark/Resources/Locales/zh-Hans.json` | ✅ |
+| Hindi | `EdgeMark/Resources/Locales/hi.json` | ✅ |
 
 ## Contributing a Translation
 
-1. Copy `Resources/Locales/en.json`
-2. Rename to your language code (e.g. `ja.json`, `ko.json`, `fr.json`, `de.json`)
-3. Translate the values (keep the keys as-is)
+1. Copy `EdgeMark/Resources/Locales/en.json`
+2. Rename to your [BCP-47 language code](https://en.wikipedia.org/wiki/IETF_language_tag) (e.g. `ja.json`, `ko.json`, `fr.json`, `de.json`, `pt-BR.json`)
+3. Translate the values — keep the JSON keys unchanged
 4. Submit a PR
 
-No code changes needed — the app picks up new locale files automatically.
+No code, project, or build-phase changes are needed. The Xcode project uses Xcode 16 file-system synchronized groups, so any `.json` you drop into the folder is auto-bundled. The language picker enumerates locale files at runtime, and `L10n` matches the system language by prefix — `pt-BR.json` will be selected for any `pt-*` user, and so on. Native-script display names (e.g. "English", "简体中文", "हिन्दी") come from `Locale.localizedString(forIdentifier:)`, so no language-label keys need to be maintained.
+
+### What reviewers check on translation PRs
+
+- All keys from `en.json` are present (no missing strings → no English fallback in the UI).
+- No leftover English values where the language has a native term.
+- Placeholders (`{0}`, `{1}`, …) preserved in the same order.
+- No structural changes to keys, only values.
 
 ---
 
