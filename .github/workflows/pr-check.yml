@@ -17,6 +17,39 @@ jobs:
       - name: Lint
         run: swiftformat --lint EdgeMark/
 
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure version & build unchanged
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+
+          extract() {
+            git show "$1:EdgeMark.xcodeproj/project.pbxproj" \
+              | grep "$2" | head -1 | sed 's/.*= \(.*\);/\1/' | tr -d ' '
+          }
+
+          BASE_VERSION=$(extract "$BASE" MARKETING_VERSION)
+          HEAD_VERSION=$(extract "$HEAD" MARKETING_VERSION)
+          BASE_BUILD=$(extract "$BASE" CURRENT_PROJECT_VERSION)
+          HEAD_BUILD=$(extract "$HEAD" CURRENT_PROJECT_VERSION)
+
+          echo "Base: $BASE_VERSION (build $BASE_BUILD)"
+          echo "Head: $HEAD_VERSION (build $HEAD_BUILD)"
+
+          if [ "$BASE_VERSION" != "$HEAD_VERSION" ] || [ "$BASE_BUILD" != "$HEAD_BUILD" ]; then
+            echo "::error::Version or build number changed in this PR."
+            echo "::error::Version bumps must be made directly on main/develop by the maintainer to control release timing."
+            exit 1
+          fi
+
+          echo "Version unchanged — OK."
+
   build:
     needs: lint
     runs-on: macos-15
