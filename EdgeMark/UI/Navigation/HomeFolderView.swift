@@ -125,6 +125,12 @@ struct HomeFolderView: View {
             noteStore.pendingNewFolder = false
             startCreatingFolder()
         }
+        .onChange(of: noteStore.pendingRenameNote) { _, note in
+            guard let note else { return }
+            noteStore.pendingRenameNote = nil
+            noteRename.beginCreate(note: note)
+            DispatchQueue.main.async { isNoteRenameFocused = true }
+        }
         .onChange(of: noteStore.pendingSearchOnHome) { _, pending in
             guard pending else { return }
             Log.navigation.debug("[HomeFolderView] consuming pendingSearchOnHome")

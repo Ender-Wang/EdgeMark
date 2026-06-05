@@ -63,6 +63,8 @@ final class NoteStore {
     var pendingSearchOnHome = false
     /// Set to true by the shortcut handler to trigger "new folder" in the currently visible list view.
     var pendingNewFolder = false
+    /// Set by shortcut handler after creating a note to trigger inline rename in the list view.
+    var pendingRenameNote: Note?
 
     /// Folder to return to when the user dismisses search (set when search is triggered from a subfolder).
     var searchReturnFolder: Folder?

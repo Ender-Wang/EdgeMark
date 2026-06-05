@@ -159,6 +159,12 @@ struct NoteListView: View {
             noteStore.pendingNewFolder = false
             startCreatingFolder()
         }
+        .onChange(of: noteStore.pendingRenameNote) { _, note in
+            guard let note else { return }
+            noteStore.pendingRenameNote = nil
+            noteRename.beginCreate(note: note)
+            DispatchQueue.main.async { isNoteRenameFocused = true }
+        }
         .moveConflictAlerts(noteStore: noteStore, l10n: l10n)
     }
 

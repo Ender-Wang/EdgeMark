@@ -157,7 +157,8 @@ final class SidePanelController: NSWindowController {
                 return nil
             }
             if s.newNoteShortcut?.matches(event) == true {
-                _ = noteStore.createNote(in: noteStore.selectedFolder?.name ?? "")
+                let note = noteStore.createNote(in: noteStore.selectedFolder?.name ?? "")
+                noteStore.pendingRenameNote = note
                 return nil
             }
             if s.newFolderShortcut?.matches(event) == true {
