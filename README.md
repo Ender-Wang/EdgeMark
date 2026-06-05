@@ -126,7 +126,7 @@ EdgeMark is built on top of these open-source projects:
 
 | Project | License | Description |
 |---------|---------|-------------|
-| [swift-markdown-engine](https://github.com/nodes-app/swift-markdown-engine) | MIT | TextKit 2 / NSTextView WYSIWYG Markdown editor — powers the editing experience. Bundles [HighlighterSwift](https://github.com/smittytone/HighlighterSwift) for code block syntax highlighting and [SwiftMath](https://github.com/mgriebling/SwiftMath) for LaTeX rendering. |
+| [swift-markdown-engine](https://github.com/nodes-app/swift-markdown-engine) | Apache 2.0 | TextKit 2 / NSTextView WYSIWYG Markdown editor — powers the editing experience. Bundles [HighlighterSwift](https://github.com/smittytone/HighlighterSwift) for code block syntax highlighting and [SwiftMath](https://github.com/mgriebling/SwiftMath) for LaTeX rendering. |
 | [SwiftFormat](https://github.com/nicklockwood/SwiftFormat) | MIT | Code formatting tool used in the build pipeline |
 
 ---
