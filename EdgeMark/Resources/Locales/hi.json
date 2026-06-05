@@ -155,7 +155,7 @@
   "settings.keyboard.localShortcuts": "लोकल शॉर्टकट्स",
   "settings.keyboard.newNote": "नया नोट",
   "settings.keyboard.newFolder": "नया फ़ोल्डर",
-  "settings.keyboard.search": "सर्च करें (या एडिटर फोकस में हो तो नोट में खोजें)",
+  "settings.keyboard.search": "नोट्स खोजें (नोट में ढूंढने के लिए ⌘F का उपयोग करें)",
   "settings.keyboard.pinPanel": "पिन चालू/बंद करें (पैनल खुला रखें)",
   "settings.keyboard.hidePanel": "पैनल छिपाएं या वापस जाएं",
   "settings.keyboard.slashCommand": "स्लैश कमांड मेनू खोलें",
@@ -170,6 +170,8 @@
   "settings.keyboard.link": "लिंक जोड़ें या रैप करें",
   "settings.keyboard.strikethrough": "स्ट्राइकथ्रू",
   "settings.keyboard.openLink": "लिंक ब्राउज़र में खोलें",
+  "settings.keyboard.reset": "रीसेट करें",
+  "settings.keyboard.conflictsWith": "इससे टकराव",
 
   "settings.animation.section": "एनिमेशन",
   "settings.animation.style": "दिखाने और छिपाने की स्टाइल",

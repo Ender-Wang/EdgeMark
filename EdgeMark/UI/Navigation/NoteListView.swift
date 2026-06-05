@@ -66,7 +66,6 @@ struct NoteListView: View {
                     noteStore.pendingSearchOnHome = true
                     noteStore.navigateToHome()
                 }
-                .keyboardShortcut("f", modifiers: .command)
 
                 HeaderIconButton(
                     systemName: "folder.badge.plus",
@@ -74,7 +73,6 @@ struct NoteListView: View {
                 ) {
                     startCreatingFolder()
                 }
-                .keyboardShortcut("n", modifiers: [.command, .shift])
 
                 HeaderIconButton(
                     systemName: "square.and.pencil",
@@ -82,7 +80,6 @@ struct NoteListView: View {
                 ) {
                     createNote()
                 }
-                .keyboardShortcut("n", modifiers: .command)
             }
             .overlay {
                 HStack(spacing: 4) {
@@ -156,6 +153,11 @@ struct NoteListView: View {
             } else {
                 Text(l10n.t("alert.deleteFolder.empty", displayName))
             }
+        }
+        .onChange(of: noteStore.pendingNewFolder) { _, pending in
+            guard pending else { return }
+            noteStore.pendingNewFolder = false
+            startCreatingFolder()
         }
         .moveConflictAlerts(noteStore: noteStore, l10n: l10n)
     }

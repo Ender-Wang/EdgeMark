@@ -120,14 +120,24 @@ struct HomeFolderView: View {
             }
         }
         .moveConflictAlerts(noteStore: noteStore, l10n: l10n)
+        .onChange(of: noteStore.pendingNewFolder) { _, pending in
+            guard pending else { return }
+            noteStore.pendingNewFolder = false
+            startCreatingFolder()
+        }
+        .onChange(of: noteStore.pendingSearchOnHome) { _, pending in
+            guard pending else { return }
+            Log.navigation.debug("[HomeFolderView] consuming pendingSearchOnHome")
+            noteStore.pendingSearchOnHome = false
+            isSearching = true
+            DispatchQueue.main.async { isSearchFieldFocused = true }
+        }
         .onAppear {
             if noteStore.pendingSearchOnHome {
-                Log.navigation.debug("[HomeFolderView] consuming pendingSearchOnHome")
+                Log.navigation.debug("[HomeFolderView] consuming pendingSearchOnHome (onAppear)")
                 noteStore.pendingSearchOnHome = false
                 isSearching = true
-                DispatchQueue.main.async {
-                    isSearchFieldFocused = true
-                }
+                DispatchQueue.main.async { isSearchFieldFocused = true }
             }
         }
     }
@@ -172,7 +182,6 @@ struct HomeFolderView: View {
                     isSearching = true
                     isSearchFieldFocused = true
                 }
-                .keyboardShortcut("f", modifiers: .command)
 
                 HeaderIconButton(
                     systemName: "folder.badge.plus",
@@ -180,7 +189,6 @@ struct HomeFolderView: View {
                 ) {
                     startCreatingFolder()
                 }
-                .keyboardShortcut("n", modifiers: [.command, .shift])
 
                 HeaderIconButton(
                     systemName: "square.and.pencil",
@@ -188,7 +196,6 @@ struct HomeFolderView: View {
                 ) {
                     createRootNote()
                 }
-                .keyboardShortcut("n", modifiers: .command)
             }
             .opacity(isSearching ? 0 : 1)
             .allowsHitTesting(!isSearching)

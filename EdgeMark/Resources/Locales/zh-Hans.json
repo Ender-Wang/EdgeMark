@@ -140,7 +140,7 @@
   "settings.keyboard.localShortcuts": "局部快捷键",
   "settings.keyboard.newNote": "新建笔记",
   "settings.keyboard.newFolder": "新建文件夹",
-  "settings.keyboard.search": "搜索（编辑器聚焦时为页内查找）",
+  "settings.keyboard.search": "搜索笔记（页内查找固定使用 ⌘F）",
   "settings.keyboard.pinPanel": "切换固定（保持面板打开）",
   "settings.keyboard.hidePanel": "隐藏面板或返回",
   "settings.keyboard.slashCommand": "打开斜杠命令菜单",
@@ -155,6 +155,8 @@
   "settings.keyboard.link": "插入或转换为链接",
   "settings.keyboard.strikethrough": "删除线",
   "settings.keyboard.openLink": "在浏览器中打开链接",
+  "settings.keyboard.reset": "恢复默认",
+  "settings.keyboard.conflictsWith": "与以下快捷键冲突",
 
   "settings.animation.section": "动画",
   "settings.animation.style": "显示/隐藏方式",

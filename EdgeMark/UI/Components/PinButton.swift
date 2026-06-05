@@ -24,7 +24,6 @@ struct PinButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .keyboardShortcut("p", modifiers: .command)
         .help(isPinned ? l10n["common.unpin"] : l10n["common.pin"])
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {

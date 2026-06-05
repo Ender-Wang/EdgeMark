@@ -2,10 +2,27 @@ import SwiftUI
 
 struct KeyboardSettingsTab: View {
     @Environment(L10n.self) var l10n
+
+    /// Global shortcut
     @State private var toggleShortcut: KeyboardShortcut?
 
+    // Local configurable shortcuts
+    @State private var newNoteShortcut: KeyboardShortcut?
+    @State private var newFolderShortcut: KeyboardShortcut?
+    @State private var searchShortcut: KeyboardShortcut?
+    @State private var pinShortcut: KeyboardShortcut?
+    @State private var previousNoteShortcut: KeyboardShortcut?
+    @State private var nextNoteShortcut: KeyboardShortcut?
+
     init() {
-        _toggleShortcut = State(initialValue: ShortcutSettings.shared.togglePanelShortcut)
+        let s = ShortcutSettings.shared
+        _toggleShortcut = State(initialValue: s.togglePanelShortcut)
+        _newNoteShortcut = State(initialValue: s.newNoteShortcut)
+        _newFolderShortcut = State(initialValue: s.newFolderShortcut)
+        _searchShortcut = State(initialValue: s.searchShortcut)
+        _pinShortcut = State(initialValue: s.pinShortcut)
+        _previousNoteShortcut = State(initialValue: s.previousNoteShortcut)
+        _nextNoteShortcut = State(initialValue: s.nextNoteShortcut)
     }
 
     var body: some View {
@@ -14,35 +31,70 @@ struct KeyboardSettingsTab: View {
                 Text(l10n["settings.keyboard.globalDescription"])
                     .font(.callout)
                     .foregroundStyle(.secondary)
-
                 HStack {
                     Text(l10n["settings.keyboard.togglePanel"])
                     Spacer()
                     ShortcutRecorderView(shortcut: $toggleShortcut)
                         .frame(width: 180, height: 32)
                 }
-                .onChange(of: toggleShortcut) { _, newValue in
-                    ShortcutSettings.shared.togglePanelShortcut = newValue
+                .onChange(of: toggleShortcut) { _, v in
+                    ShortcutSettings.shared.togglePanelShortcut = v
                 }
             } header: {
                 Label(l10n["settings.keyboard.globalShortcuts"], systemImage: "globe")
             }
 
             Section {
-                localShortcutRow("\u{2318}N", l10n["settings.keyboard.newNote"])
-                localShortcutRow("\u{21E7}\u{2318}N", l10n["settings.keyboard.newFolder"])
-                localShortcutRow("\u{2318}F", l10n["settings.keyboard.search"])
-                localShortcutRow("\u{2318}P", l10n["settings.keyboard.pinPanel"])
+                editableRow(
+                    ownKey: "settings.keyboard.newNote",
+                    label: l10n["settings.keyboard.newNote"],
+                    shortcut: $newNoteShortcut,
+                    defaultValue: ShortcutSettings.defaultNewNote,
+                    apply: { ShortcutSettings.shared.newNoteShortcut = $0 },
+                )
+                editableRow(
+                    ownKey: "settings.keyboard.newFolder",
+                    label: l10n["settings.keyboard.newFolder"],
+                    shortcut: $newFolderShortcut,
+                    defaultValue: ShortcutSettings.defaultNewFolder,
+                    apply: { ShortcutSettings.shared.newFolderShortcut = $0 },
+                )
+                editableRow(
+                    ownKey: "settings.keyboard.search",
+                    label: l10n["settings.keyboard.search"],
+                    shortcut: $searchShortcut,
+                    defaultValue: ShortcutSettings.defaultSearch,
+                    apply: { ShortcutSettings.shared.searchShortcut = $0 },
+                )
+                editableRow(
+                    ownKey: "settings.keyboard.pinPanel",
+                    label: l10n["settings.keyboard.pinPanel"],
+                    shortcut: $pinShortcut,
+                    defaultValue: ShortcutSettings.defaultPin,
+                    apply: { ShortcutSettings.shared.pinShortcut = $0 },
+                )
                 localShortcutRow("Escape", l10n["settings.keyboard.hidePanel"])
-                localShortcutRow("\u{2318}Z", l10n["settings.keyboard.undo"])
-                localShortcutRow("\u{21E7}\u{2318}Z", l10n["settings.keyboard.redo"])
-                localShortcutRow("\u{2318}\u{2190}", l10n["settings.keyboard.previousNote"])
-                localShortcutRow("\u{2318}\u{2192}", l10n["settings.keyboard.nextNote"])
+                editableRow(
+                    ownKey: "settings.keyboard.previousNote",
+                    label: l10n["settings.keyboard.previousNote"],
+                    shortcut: $previousNoteShortcut,
+                    defaultValue: ShortcutSettings.defaultPreviousNote,
+                    apply: { ShortcutSettings.shared.previousNoteShortcut = $0 },
+                )
+                editableRow(
+                    ownKey: "settings.keyboard.nextNote",
+                    label: l10n["settings.keyboard.nextNote"],
+                    shortcut: $nextNoteShortcut,
+                    defaultValue: ShortcutSettings.defaultNextNote,
+                    apply: { ShortcutSettings.shared.nextNoteShortcut = $0 },
+                )
             } header: {
                 Label(l10n["settings.keyboard.localShortcuts"], systemImage: "keyboard")
             }
 
             Section {
+                localShortcutRow("\u{2318}Z", l10n["settings.keyboard.undo"])
+                localShortcutRow("\u{21E7}\u{2318}Z", l10n["settings.keyboard.redo"])
                 localShortcutRow("\u{2318}B", l10n["settings.keyboard.bold"])
                 localShortcutRow("\u{2318}I", l10n["settings.keyboard.italic"])
                 localShortcutRow("\u{2318}E", l10n["settings.keyboard.inlineCode"])
@@ -57,6 +109,50 @@ struct KeyboardSettingsTab: View {
         .formStyle(.grouped)
     }
 
+    // MARK: - Editable row
+
+    @ViewBuilder
+    private func editableRow(
+        ownKey: String,
+        label: String,
+        shortcut: Binding<KeyboardShortcut?>,
+        defaultValue: KeyboardShortcut,
+        apply: @escaping (KeyboardShortcut?) -> Void,
+    ) -> some View {
+        let conflictKey = shortcut.wrappedValue.flatMap {
+            ShortcutSettings.shared.conflictingKey(for: $0, excluding: ownKey)
+        }
+
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                if let conflictKey {
+                    Text("⚠ \(l10n["settings.keyboard.conflictsWith"]): \(l10n[conflictKey])")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
+            Spacer()
+            if shortcut.wrappedValue != defaultValue {
+                Button(l10n["settings.keyboard.reset"]) {
+                    shortcut.wrappedValue = defaultValue
+                    // .onChange on the ShortcutRecorderView handles apply()
+                }
+                .buttonStyle(.plain)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(RoundedRectangle(cornerRadius: 4).fill(.quaternary))
+            }
+            ShortcutRecorderView(shortcut: shortcut)
+                .frame(width: 140, height: 32)
+                .onChange(of: shortcut.wrappedValue) { _, v in apply(v) }
+        }
+    }
+
+    // MARK: - Display-only row (non-customizable)
+
     private func localShortcutRow(_ keys: String, _ description: String) -> some View {
         HStack {
             Text(description)
@@ -66,10 +162,7 @@ struct KeyboardSettingsTab: View {
                 .font(.system(.body, design: .monospaced))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(.quaternary),
-                )
+                .background(RoundedRectangle(cornerRadius: 6).fill(.quaternary))
         }
     }
 }

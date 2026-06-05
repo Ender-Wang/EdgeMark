@@ -131,12 +131,41 @@ final class SidePanelController: NSWindowController {
         // Escape key dismissal
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53, self?.isShown == true {
-                // If a SwiftUI TextField is focused (field editor is first responder),
-                // let the event propagate so SwiftUI can handle it (e.g. dismiss search).
                 if let fr = self?.window?.firstResponder as? NSTextView, fr.isFieldEditor {
                     return event
                 }
                 self?.hidePanel()
+            }
+            return event
+        }
+
+        // Configurable local shortcuts
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, isShown else { return event }
+            let s = ShortcutSettings.shared
+            if s.searchShortcut?.matches(event) == true {
+                // Let editor handle its native find; also skip when Trash is overlaid
+                // (navigateToHome while Trash is active leaves pendingSearchOnHome stuck).
+                if noteStore.selectedNote != nil || noteStore.showTrash { return event }
+                noteStore.searchReturnFolder = noteStore.selectedFolder
+                noteStore.pendingSearchOnHome = true
+                noteStore.navigateToHome()
+                return nil
+            }
+            if s.pinShortcut?.matches(event) == true {
+                s.isPanelPinned.toggle()
+                return nil
+            }
+            if s.newNoteShortcut?.matches(event) == true {
+                _ = noteStore.createNote(in: noteStore.selectedFolder?.name ?? "")
+                return nil
+            }
+            if s.newFolderShortcut?.matches(event) == true {
+                // Only trigger when a list view is mounted. Editor and Trash both have
+                // selectedNote == nil but no consumer, so pending would get stuck.
+                guard noteStore.selectedNote == nil, !noteStore.showTrash else { return event }
+                noteStore.pendingNewFolder = true
+                return nil
             }
             return event
         }

@@ -21,11 +21,9 @@ struct KeyRecorderRepresentable: NSViewRepresentable {
         button.onKeyRecorded = { keyCode, modifiers in
             shortcut = KeyboardShortcut(keyCode: keyCode, modifiers: modifiers)
             isRecording = false
-            NotificationCenter.default.post(name: .shortcutSettingsChanged, object: nil)
         }
         button.onClear = {
             shortcut = nil
-            NotificationCenter.default.post(name: .shortcutSettingsChanged, object: nil)
         }
         button.onRecordingChanged = { recording in
             isRecording = recording

@@ -137,11 +137,9 @@ struct MarkdownEditorView: View {
         )
         .onAppear {
             noteNavMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [self] event in
-                guard event.modifierFlags.contains(.command),
-                      !event.modifierFlags.contains(.shift)
-                else { return event }
-                if event.keyCode == 123 { onNavigatePrevious?(); return nil }
-                if event.keyCode == 124 { onNavigateNext?(); return nil }
+                let s = ShortcutSettings.shared
+                if s.previousNoteShortcut?.matches(event) == true { onNavigatePrevious?(); return nil }
+                if s.nextNoteShortcut?.matches(event) == true { onNavigateNext?(); return nil }
                 return event
             }
         }

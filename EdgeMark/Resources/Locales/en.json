@@ -155,7 +155,7 @@
   "settings.keyboard.localShortcuts": "Local shortcuts",
   "settings.keyboard.newNote": "New note",
   "settings.keyboard.newFolder": "New folder",
-  "settings.keyboard.search": "Search (or find in note when editor is focused)",
+  "settings.keyboard.search": "Search notes (find in note always uses ⌘F)",
   "settings.keyboard.pinPanel": "Toggle pin (keep panel open)",
   "settings.keyboard.hidePanel": "Hide panel or go back",
   "settings.keyboard.slashCommand": "Open slash command menu",
@@ -170,6 +170,8 @@
   "settings.keyboard.link": "Insert or wrap link",
   "settings.keyboard.strikethrough": "Strikethrough",
   "settings.keyboard.openLink": "Open link in browser",
+  "settings.keyboard.reset": "Reset",
+  "settings.keyboard.conflictsWith": "Conflicts with",
 
   "settings.animation.section": "Animation",
   "settings.animation.style": "Show and hide style",

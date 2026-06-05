@@ -61,6 +61,8 @@ final class NoteStore {
 
     /// Set to true to trigger the search bar on HomeFolderView after navigating back.
     var pendingSearchOnHome = false
+    /// Set to true by the shortcut handler to trigger "new folder" in the currently visible list view.
+    var pendingNewFolder = false
 
     /// Folder to return to when the user dismisses search (set when search is triggered from a subfolder).
     var searchReturnFolder: Folder?
