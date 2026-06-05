@@ -56,21 +56,23 @@ xattr -cr /Applications/EdgeMark.app
 
 ✍️ **Markdown Editing**
 
-- 👁️ CodeMirror 6 WYSIWYG editor with cursor-aware live preview (hides syntax, reveals on cursor line)
-- 📝 Full Markdown: headings, bold, italic, code, lists, task lists, blockquotes, links, tables (rendered as formatted grids)
+- 👁️ Native TextKit 2 WYSIWYG editor — powered by [swift-markdown-engine](https://github.com/nodes-app/swift-markdown-engine), no JavaScript or WebKit involved
+- 📝 Full Markdown: headings, bold, italic, code, lists, task lists, blockquotes, links, tables, wiki-links
 - 🖼️ Inline images — paste (`⌘V`) or drag to embed; stored as co-located asset files alongside the note
 - ✅ Checked task items are automatically struck through; uncheck to restore
 - 📋 One-click Copy button on fenced code blocks
-- 🔴 Spell checking with dotted underlines (macOS system dictionary, respects custom word lists)
+- 🔴 Native spell check, grammar check, and autocorrect (macOS system dictionary)
 - ⚡ Slash commands (`/h1`, `/todo`, `/code`, `/quote`, `/table`, `/divider`, and more)
 - ⌨️ Formatting shortcuts: `⌘B` bold, `⌘I` italic, `⌘E` inline code, `⌘K` link, `⇧⌘X` strikethrough
-- 🔗 `⌘Click` a rendered link to open it in the browser
-- 🔍 Find & Replace (Cmd+F)
+- 🔗 Click a rendered link to open it in the browser
+- 🔍 Find & Replace (`⌘F`)
 - 🔤 Customizable editor font and size — pick any installed font via the system font panel with live preview
+- 🧮 LaTeX rendering — block (`$$...$$`) and inline (`$...$`) via SwiftMath
+- 🍎 Apple Intelligence Writing Tools (macOS 15.1+)
 
 🗂️ **Notes & Storage**
 
-- 📄 Plain `.md` files with YAML front matter — open in any editor, sync with any service
+- 📄 Plain `.md` files with no injected headers — open in any editor, sync with any service; metadata lives in a hidden `.edgemark/meta.json` sidecar
 - 📁 Folder-based organization with drag-and-drop
 - 📂 Configurable storage directory
 - 💾 1-second debounced auto-save
@@ -83,9 +85,9 @@ xattr -cr /Applications/EdgeMark.app
 ⌨️ **Keyboard & Shortcuts**
 
 - 🌐 Global shortcut: `Ctrl+Shift+Space` toggles from any app (customizable)
-- 🎹 Custom shortcut recorder with conflict detection
+- 🎹 Fully customizable local shortcuts — new note, new folder, search, pin, prev/next note — all rebindable in Settings with conflict detection
 - ⏱️ Configurable activation delay and corner exclusion zones
-- 🔑 Panel shortcuts: `⌘N` new note, `⇧⌘N` new folder, `⌘F` search, `⌘P` pin/unpin (when panel is focused)
+- 🔑 Default panel shortcuts: `⌘N` new note, `⇧⌘N` new folder, `⌘F` search, `⌘P` pin/unpin
 - 👆 Two-finger trackpad swipe right on the header to navigate back (configurable toggle and sensitivity)
 - 👆 Two-finger swipe left/right on the editor or `⌘←`/`⌘→` to navigate between notes in the current folder
 
@@ -124,8 +126,7 @@ EdgeMark is built on top of these open-source projects:
 
 | Project | License | Description |
 |---------|---------|-------------|
-| [CodeMirror 6](https://codemirror.net/) | MIT | Extensible code editor — powers the WYSIWYG Markdown editing experience |
-| [Lezer](https://lezer.codemirror.net/) | MIT | Incremental parser system used for live Markdown syntax highlighting |
+| [swift-markdown-engine](https://github.com/nodes-app/swift-markdown-engine) | MIT | TextKit 2 / NSTextView WYSIWYG Markdown editor — powers the editing experience. Bundles [HighlighterSwift](https://github.com/smittytone/HighlighterSwift) for code block syntax highlighting and [SwiftMath](https://github.com/mgriebling/SwiftMath) for LaTeX rendering. |
 | [SwiftFormat](https://github.com/nicklockwood/SwiftFormat) | MIT | Code formatting tool used in the build pipeline |
 
 ---
