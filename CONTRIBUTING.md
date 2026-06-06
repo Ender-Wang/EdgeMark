@@ -68,7 +68,7 @@ EdgeMark/
 │   │   ├── ShortcutSettings.swift  #   6 customizable local shortcuts + persistence
 │   │   └── KeyCodeTranslator.swift #   Virtual key code → display string mapping
 │   ├── Storage/
-│   │   ├── NoteStore.swift         #   @Observable — note CRUD, trash, folders, tag filter
+│   │   ├── NoteStore.swift         #   @Observable — note CRUD, trash, folders, tag filter, multi-selection + batch ops, move-conflict queue
 │   │   ├── FileStorage.swift       #   Plain .md file I/O (no YAML); asset dir management
 │   │   ├── SidecarStore.swift      #   In-memory .edgemark/meta.json store + persistence
 │   │   ├── SidecarMigration.swift  #   One-time migration: strips YAML, restores timestamps
@@ -124,7 +124,7 @@ EdgeMark/
 │
 ├── Shared/Utils/
 │   ├── L10n.swift                  #   JSON-based i18n runtime
-│   ├── Log.swift                   #   OSLog — 5 categories
+│   ├── Log.swift                   #   OSLog — 6 categories
 │   └── Debouncer.swift             #   Generic debounce utility
 │
 └── Resources/
@@ -147,7 +147,8 @@ EdgeMark/
 | **Carbon hotkeys** | Global shortcut uses `RegisterEventHotKey` (Carbon API) since `NSEvent.addGlobalMonitorForEvents` can't intercept key events |
 | **Local shortcut monitor** | `SidePanelController` installs an `NSEvent.addLocalMonitorForEvents` that checks all six configurable local shortcuts at event time. Settings changes take effect immediately without re-registration. |
 | **JSON i18n** | `L10n` loads locale JSON at runtime. Access: `l10n["key"]` or `l10n.t("key", arg1, arg2)` for interpolation |
-| **OSLog diagnostics** | 5 categorized loggers (app, storage, window, shortcuts, updates). View in Console.app with `subsystem:io.github.ender-wang.EdgeMark` |
+| **OSLog diagnostics** | 6 categorized loggers (app, storage, window, shortcuts, navigation, updates). View in Console.app with `subsystem:io.github.ender-wang.EdgeMark` |
+| **Move conflict queue** | Name-conflict pre-flight uses filesystem-aware helpers (`noteFilenameWouldCollide`, `folderWouldCollide`) that check both in-memory state and the destination on disk. Conflicts are queued, not singletons — `MoveConflictAlerts` reads the queue head and surfaces batch buttons (Keep Both All / Replace All / Skip / Cancel) when more than one is pending. Resolver branches handle orphan files / directories at the destination. |
 | **DMG auto-update** | `UpdateChecker` queries GitHub Releases API. `UpdateInstaller`: mount DMG → verify bundle ID → copy → replace → restart |
 
 ---
