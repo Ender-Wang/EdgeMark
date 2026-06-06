@@ -98,6 +98,79 @@ private struct NSContextMenuOverlay: NSViewRepresentable {
     }
 }
 
+// MARK: - Row Click Modifier (single + double click, no SwiftUI delay)
+
+/// Attaches an AppKit-driven click handler to a row.
+/// SwiftUI's `.onTapGesture(count: 1)` waits for the multi-tap window before firing,
+/// which feels laggy. AppKit delivers each `mouseDown` immediately with `clickCount`
+/// indicating 1 or 2 — so we fire the single-click action right away and the
+/// double-click action when the second click arrives.
+struct RowClickModifier: ViewModifier {
+    let onSingle: (NSEvent.ModifierFlags) -> Void
+    let onDouble: () -> Void
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            RowClickOverlay(onSingle: onSingle, onDouble: onDouble)
+        }
+    }
+}
+
+extension View {
+    /// Attach an instant single/double click handler.
+    /// Single click fires immediately on mouse-down with the active modifier flags.
+    /// Double click fires when the second click arrives.
+    func rowClick(
+        onSingle: @escaping (NSEvent.ModifierFlags) -> Void,
+        onDouble: @escaping () -> Void,
+    ) -> some View {
+        modifier(RowClickModifier(onSingle: onSingle, onDouble: onDouble))
+    }
+}
+
+private struct RowClickOverlay: NSViewRepresentable {
+    let onSingle: (NSEvent.ModifierFlags) -> Void
+    let onDouble: () -> Void
+
+    func makeNSView(context _: Context) -> RowClickCatcher {
+        RowClickCatcher()
+    }
+
+    func updateNSView(_ nsView: RowClickCatcher, context _: Context) {
+        nsView.onSingle = onSingle
+        nsView.onDouble = onDouble
+    }
+
+    /// Transparent NSView that intercepts only left-mouse-down (so right-clicks,
+    /// scrolls, hovers and drags continue to flow into SwiftUI as normal).
+    final class RowClickCatcher: NSView {
+        var onSingle: ((NSEvent.ModifierFlags) -> Void)?
+        var onDouble: (() -> Void)?
+
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            // Only intercept left-clicks; pass everything else through.
+            if let event = NSApp.currentEvent, event.type == .leftMouseDown {
+                let local = convert(point, from: superview)
+                if bounds.contains(local) {
+                    return self
+                }
+            }
+            return nil
+        }
+
+        override func mouseDown(with event: NSEvent) {
+            // clickCount is 1 for the first click and 2 for a quick second click.
+            // We fire each immediately — selection is harmless before a follow-up
+            // open, and openNote/navigate clear the selection anyway.
+            if event.clickCount >= 2 {
+                onDouble?()
+            } else {
+                onSingle?(event.modifierFlags)
+            }
+        }
+    }
+}
+
 // MARK: - NSMenu Builder Helpers
 
 extension NSMenu {

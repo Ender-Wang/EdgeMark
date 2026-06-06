@@ -351,7 +351,8 @@ struct TrashView: View {
                                     count: subfolder.noteCount,
                                     date: subfolder.latestModifiedAt,
                                     iconWidth: iconWidth,
-                                ) {
+                                )
+                                .onTapGesture {
                                     internalDirection = .forward
                                     withAnimation(.easeInOut(duration: 0.2)) {
                                         browsePath = currentPath + "/" + subfolder.name
@@ -369,7 +370,8 @@ struct TrashView: View {
                                 NoteRowView(
                                     note: note,
                                     iconWidth: iconWidth,
-                                ) {
+                                )
+                                .onTapGesture {
                                     openNotePreview(note)
                                 }
                             }

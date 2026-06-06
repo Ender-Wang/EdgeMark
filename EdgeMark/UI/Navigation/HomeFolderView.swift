@@ -93,6 +93,11 @@ struct HomeFolderView: View {
         return noteStore.sortedFolders(topLevel, by: appSettings.sortBy, ascending: appSettings.sortAscending)
     }
 
+    /// Flat row order used for ⇧-click range selection (folders first, then root notes).
+    private var visibleOrder: [NoteStore.SelectableID] {
+        sortedFolders.map { .folder($0.name) } + rootNotes.map { .note($0.id) }
+    }
+
     // MARK: - Icon width
 
     /// Fixed width for leading icons so folder and note icons align.
@@ -211,29 +216,49 @@ struct HomeFolderView: View {
     // MARK: - Folder List
 
     private var folderList: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                ForEach(sortedFolders) { folder in
-                    folderRowWithContextMenu(folder: folder)
-                }
-
-                if folderRename.isCreating {
-                    inlineFolderEditor
-                }
-
-                if !rootNotes.isEmpty {
-                    if !sortedFolders.isEmpty || folderRename.isCreating {
-                        Divider()
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 4)
+        GeometryReader { geo in
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(sortedFolders) { folder in
+                        folderRowWithContextMenu(folder: folder)
                     }
 
-                    ForEach(rootNotes) { note in
-                        noteRowWithContextMenu(note: note)
+                    if folderRename.isCreating {
+                        inlineFolderEditor
+                    }
+
+                    if !rootNotes.isEmpty {
+                        if !sortedFolders.isEmpty || folderRename.isCreating {
+                            Divider()
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 4)
+                        }
+
+                        ForEach(rootNotes) { note in
+                            noteRowWithContextMenu(note: note)
+                        }
                     }
                 }
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .top)
+                // Empty-area click clears selection; drag draws a marquee that selects
+                // every row whose frame intersects the rectangle. Row clicks are claimed
+                // by `.rowClick` first, so this overlay only sees empty-area input.
+                .marqueeSelection(
+                    baseline: { noteStore.selection },
+                    apply: { noteStore.selection = $0 },
+                    onClick: { noteStore.clearSelection() },
+                )
             }
-            .padding(.vertical, 10)
+        }
+        .focusable()
+        .focusEffectDisabled()
+        .onKeyPress(.escape) {
+            if !noteStore.selection.isEmpty {
+                noteStore.clearSelection()
+                return .handled
+            }
+            return .ignored
         }
         .alert(
             l10n["alert.deleteFolder.title"],
@@ -283,17 +308,36 @@ struct HomeFolderView: View {
         if folderRename.renamingFolderName == folder.name {
             inlineFolderRenameEditor(folderName: folder.name)
         } else {
+            let id = NoteStore.SelectableID.folder(folder.name)
             FolderRowView(
                 name: folder.name,
                 count: folder.noteCount,
                 date: appSettings.folderDate(for: folder),
                 iconWidth: iconWidth,
                 color: folder.color,
-            ) {
-                noteStore.navigateToFolder(folder)
-            }
+                isSelected: noteStore.isSelected(id),
+            )
+            .rowClick(
+                onSingle: { mods in
+                    noteStore.handleSelectionClick(
+                        on: id,
+                        isShift: mods.contains(.shift),
+                        isCommand: mods.contains(.command),
+                        visibleOrder: visibleOrder,
+                    )
+                },
+                onDouble: { noteStore.navigateToFolder(folder) },
+            )
+            .reportRowFrame(id)
             .nsContextMenu {
-                NoteListMenus.folderMenu(
+                // Finder rule: right-clicking an unselected row first selects it.
+                if !noteStore.isSelected(id) {
+                    noteStore.replaceSelection(with: id)
+                }
+                if noteStore.selection.count > 1 {
+                    return NoteListMenus.selectionMenu(noteStore: noteStore, l10n: l10n)
+                }
+                return NoteListMenus.folderMenu(
                     folder: folder,
                     noteStore: noteStore,
                     l10n: l10n,
@@ -314,14 +358,32 @@ struct HomeFolderView: View {
         if noteRename.renamingNoteID == note.id {
             inlineNoteRenameEditor(note: note)
         } else {
+            let id = NoteStore.SelectableID.note(note.id)
             NoteRowView(
                 note: note,
                 iconWidth: iconWidth,
-            ) {
-                noteStore.openNote(note)
-            }
+                isSelected: noteStore.isSelected(id),
+            )
+            .rowClick(
+                onSingle: { mods in
+                    noteStore.handleSelectionClick(
+                        on: id,
+                        isShift: mods.contains(.shift),
+                        isCommand: mods.contains(.command),
+                        visibleOrder: visibleOrder,
+                    )
+                },
+                onDouble: { noteStore.openNote(note) },
+            )
+            .reportRowFrame(id)
             .nsContextMenu {
-                NoteListMenus.noteMenu(
+                if !noteStore.isSelected(id) {
+                    noteStore.replaceSelection(with: id)
+                }
+                if noteStore.selection.count > 1 {
+                    return NoteListMenus.selectionMenu(noteStore: noteStore, l10n: l10n)
+                }
+                return NoteListMenus.noteMenu(
                     note: note,
                     noteStore: noteStore,
                     l10n: l10n,
@@ -630,125 +692,135 @@ struct HomeFolderView: View {
 
 // MARK: - Folder Row View
 
-/// Folder row with hover highlight animation.
+/// Folder row with hover highlight animation. Tap gestures (single-click select,
+/// double-click open) are wired by the caller — this view only renders.
 struct FolderRowView: View {
     let name: String
     let count: Int
     var date: Date?
     let iconWidth: CGFloat
     var color: TagColor?
-    let action: () -> Void
+    var isSelected: Bool = false
 
     @State private var isHovered = false
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: "folder.fill")
-                        .font(.title3)
-                        .foregroundStyle(color?.color ?? Color.accentColor)
+        HStack(spacing: 10) {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: "folder.fill")
+                    .font(.title3)
+                    .foregroundStyle(color?.color ?? Color.accentColor)
 
-                    if count > 0 {
-                        Text("\(count)")
-                            .font(.system(size: 9, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.background)
-                            .padding(.horizontal, 3)
-                            .padding(.vertical, 0.5)
-                            .background(.primary.opacity(0.8), in: Capsule())
-                            .offset(x: 4, y: -3)
-                    }
-                }
-                .frame(width: iconWidth)
-
-                Text(name)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-
-                Spacer()
-
-                if let date {
-                    Text(date.homeDisplayFormat)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.background)
+                        .padding(.horizontal, 3)
+                        .padding(.vertical, 0.5)
+                        .background(.primary.opacity(0.8), in: Capsule())
+                        .offset(x: 4, y: -3)
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 10)
-            .background {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(.primary.opacity(isHovered ? 0.06 : 0))
+            .frame(width: iconWidth)
+
+            Text(name)
+                .font(.body)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+
+            Spacer()
+
+            if let date {
+                Text(date.homeDisplayFormat)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
             }
-            .padding(.horizontal, 8)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 10)
+        .background {
+            RoundedRectangle(cornerRadius: 6)
+                .fill(rowBackground)
+        }
+        .padding(.horizontal, 8)
+        .contentShape(Rectangle())
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovered = hovering
             }
         }
     }
+
+    private var rowBackground: Color {
+        if isSelected {
+            return Color.accentColor.opacity(isHovered ? 0.28 : 0.20)
+        }
+        return Color.primary.opacity(isHovered ? 0.06 : 0)
+    }
 }
 
 // MARK: - Note Row View
 
-/// Note row with hover highlight animation and preview line.
+/// Note row with hover highlight animation and preview line. Tap gestures are
+/// wired by the caller (single-click select, double-click open).
 struct NoteRowView: View {
     let note: Note
     let iconWidth: CGFloat
-    let action: () -> Void
+    var isSelected: Bool = false
 
     @State private var isHovered = false
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: "doc.text")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-                    .frame(width: iconWidth)
+        HStack(spacing: 10) {
+            Image(systemName: "doc.text")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+                .frame(width: iconWidth)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack {
-                        TagDotsView(tags: note.tags)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    TagDotsView(tags: note.tags)
 
-                        Text(note.title.isEmpty ? L10n.shared["common.untitled"] : note.title)
-                            .font(.body)
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
+                    Text(note.title.isEmpty ? L10n.shared["common.untitled"] : note.title)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
 
-                        Spacer()
+                    Spacer()
 
-                        Text(note.createdAt.homeDisplayFormat)
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
+                    Text(note.createdAt.homeDisplayFormat)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
 
-                    if !note.previewText.isEmpty {
-                        Text(note.previewText)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
+                if !note.previewText.isEmpty {
+                    Text(note.previewText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 10)
-            .background {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(.primary.opacity(isHovered ? 0.06 : 0))
-            }
-            .padding(.horizontal, 8)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 10)
+        .background {
+            RoundedRectangle(cornerRadius: 6)
+                .fill(rowBackground)
+        }
+        .padding(.horizontal, 8)
+        .contentShape(Rectangle())
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovered = hovering
             }
         }
+    }
+
+    private var rowBackground: Color {
+        if isSelected {
+            return Color.accentColor.opacity(isHovered ? 0.28 : 0.20)
+        }
+        return Color.primary.opacity(isHovered ? 0.06 : 0)
     }
 }

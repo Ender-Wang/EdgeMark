@@ -26,6 +26,9 @@
   "common.tags": "टैग",
   "common.folderColor": "फ़ोल्डर का रंग",
   "common.none": "कोई नहीं",
+  "selection.moveTo": "{0} आइटम यहाँ ले जाएं",
+  "selection.tag": "{0} नोट टैग करें",
+  "selection.moveToTrash": "{0} आइटम कूड़ेदान में ले जाएं",
   "common.pin": "पैनल पिन करें (खुला रखें)",
   "common.unpin": "पैनल अनपिन करें",
   "tags.clearFilter": "टैग फ़िल्टर हटाएं",
@@ -74,6 +77,11 @@
   "alert.nameConflict.folder": "\"{0}\" नाम का फ़ोल्डर \"{1}\" में पहले से मौजूद है.",
   "alert.nameConflict.keepBoth": "दोनों रखें",
   "alert.nameConflict.replace": "बदलें",
+  "alert.nameConflict.note.batch": "\"{0}\" नाम का नोट \"{1}\" में पहले से मौजूद है. {2} टकराव बाकी हैं.",
+  "alert.nameConflict.folder.batch": "\"{0}\" नाम का फ़़ोल्डर \"{1}\" में पहले से मौजूद है. {2} टकराव बाकी हैं.",
+  "alert.nameConflict.keepBothAll": "सभी दोनों रखें",
+  "alert.nameConflict.replaceAll": "सभी बदलें",
+  "alert.nameConflict.skip": "छोड़ें",
 
   "home.title": "EdgeMark",
 

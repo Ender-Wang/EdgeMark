@@ -40,6 +40,11 @@ struct NoteListView: View {
         )
     }
 
+    /// Flat row order used for ⇧-click range selection (folders first, then notes).
+    private var visibleOrder: [NoteStore.SelectableID] {
+        childFolders.map { .folder($0.name) } + sortedNotes.map { .note($0.id) }
+    }
+
     private var isEmpty: Bool {
         noteStore.filteredNotes.isEmpty && childFolders.isEmpty && !folderRename.isCreating
     }
@@ -104,27 +109,38 @@ struct NoteListView: View {
                     emptyState
                         .opacity(isEmpty ? 1 : 0)
 
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            ForEach(childFolders) { folder in
-                                folderRowWithContextMenu(folder: folder)
-                            }
+                    GeometryReader { geo in
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                ForEach(childFolders) { folder in
+                                    folderRowWithContextMenu(folder: folder)
+                                }
 
-                            if folderRename.isCreating {
-                                inlineFolderEditor
-                            }
+                                if folderRename.isCreating {
+                                    inlineFolderEditor
+                                }
 
-                            if !childFolders.isEmpty, !sortedNotes.isEmpty {
-                                Divider()
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 4)
-                            }
+                                if !childFolders.isEmpty, !sortedNotes.isEmpty {
+                                    Divider()
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 4)
+                                }
 
-                            ForEach(sortedNotes) { note in
-                                noteRowWithContextMenu(note: note)
+                                ForEach(sortedNotes) { note in
+                                    noteRowWithContextMenu(note: note)
+                                }
                             }
+                            .padding(.vertical, 10)
+                            .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .top)
+                            // Empty-area click clears selection; drag draws a marquee that
+                            // selects every row intersecting the rectangle. Row clicks are
+                            // claimed by `.rowClick` first, so this only sees empty-area input.
+                            .marqueeSelection(
+                                baseline: { noteStore.selection },
+                                apply: { noteStore.selection = $0 },
+                                onClick: { noteStore.clearSelection() },
+                            )
                         }
-                        .padding(.vertical, 10)
                     }
                     .opacity(isEmpty ? 0 : 1)
                 }
@@ -133,6 +149,15 @@ struct NoteListView: View {
                     .padding(.horizontal, 12)
 
                 ContentFooterBar()
+            }
+            .focusable()
+            .focusEffectDisabled()
+            .onKeyPress(.escape) {
+                if !noteStore.selection.isEmpty {
+                    noteStore.clearSelection()
+                    return .handled
+                }
+                return .ignored
             }
         }
         .alert(
@@ -175,17 +200,35 @@ struct NoteListView: View {
         if folderRename.renamingFolderName == folder.name {
             inlineFolderRenameEditor(folderName: folder.name)
         } else {
+            let id = NoteStore.SelectableID.folder(folder.name)
             FolderRowView(
                 name: folder.displayName,
                 count: folder.noteCount,
                 date: appSettings.folderDate(for: folder),
                 iconWidth: iconWidth,
                 color: folder.color,
-            ) {
-                noteStore.navigateToSubfolder(folder)
-            }
+                isSelected: noteStore.isSelected(id),
+            )
+            .rowClick(
+                onSingle: { mods in
+                    noteStore.handleSelectionClick(
+                        on: id,
+                        isShift: mods.contains(.shift),
+                        isCommand: mods.contains(.command),
+                        visibleOrder: visibleOrder,
+                    )
+                },
+                onDouble: { noteStore.navigateToSubfolder(folder) },
+            )
+            .reportRowFrame(id)
             .nsContextMenu {
-                NoteListMenus.folderMenu(
+                if !noteStore.isSelected(id) {
+                    noteStore.replaceSelection(with: id)
+                }
+                if noteStore.selection.count > 1 {
+                    return NoteListMenus.selectionMenu(noteStore: noteStore, l10n: l10n)
+                }
+                return NoteListMenus.folderMenu(
                     folder: folder,
                     noteStore: noteStore,
                     l10n: l10n,
@@ -206,14 +249,32 @@ struct NoteListView: View {
         if noteRename.renamingNoteID == note.id {
             inlineNoteRenameEditor(note: note)
         } else {
+            let id = NoteStore.SelectableID.note(note.id)
             NoteRowView(
                 note: note,
                 iconWidth: iconWidth,
-            ) {
-                noteStore.openNote(note)
-            }
+                isSelected: noteStore.isSelected(id),
+            )
+            .rowClick(
+                onSingle: { mods in
+                    noteStore.handleSelectionClick(
+                        on: id,
+                        isShift: mods.contains(.shift),
+                        isCommand: mods.contains(.command),
+                        visibleOrder: visibleOrder,
+                    )
+                },
+                onDouble: { noteStore.openNote(note) },
+            )
+            .reportRowFrame(id)
             .nsContextMenu {
-                NoteListMenus.noteMenu(
+                if !noteStore.isSelected(id) {
+                    noteStore.replaceSelection(with: id)
+                }
+                if noteStore.selection.count > 1 {
+                    return NoteListMenus.selectionMenu(noteStore: noteStore, l10n: l10n)
+                }
+                return NoteListMenus.noteMenu(
                     note: note,
                     noteStore: noteStore,
                     l10n: l10n,

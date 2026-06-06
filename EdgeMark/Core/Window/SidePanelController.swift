@@ -134,9 +134,34 @@ final class SidePanelController: NSWindowController {
                 if let fr = self?.window?.firstResponder as? NSTextView, fr.isFieldEditor {
                     return event
                 }
+                // Selection takes priority over panel-hide: clear it instead of hiding.
+                if let store = self?.noteStore, !store.selection.isEmpty {
+                    store.clearSelection()
+                    return nil
+                }
                 self?.hidePanel()
             }
             return event
+        }
+
+        // List keyboard navigation: ↑ / ↓ / ⇧↑ / ⇧↓ / Return.
+        // Runs before any SwiftUI .onKeyPress so it wins over default focus traversal.
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, isShown else { return event }
+            // Skip while editing text or browsing the editor / trash.
+            if let fr = window.firstResponder as? NSTextView, fr.isFieldEditor { return event }
+            if noteStore.selectedNote != nil || noteStore.showTrash { return event }
+            let shift = event.modifierFlags.contains(.shift)
+            switch event.keyCode {
+            case 125: // ↓
+                return noteStore.moveSelection(direction: 1, extending: shift) ? nil : event
+            case 126: // ↑
+                return noteStore.moveSelection(direction: -1, extending: shift) ? nil : event
+            case 36, 76: // Return / numpad Enter
+                return noteStore.openSelectedItem() ? nil : event
+            default:
+                return event
+            }
         }
 
         // Configurable local shortcuts

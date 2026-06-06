@@ -351,8 +351,12 @@ enum FileStorage {
         try FileManager.default.moveItem(at: oldURL, to: newURL)
     }
 
+    /// Move a note to `toFolder`, optionally renaming the on-disk file to `newFilename`.
+    /// When `newFilename` is nil, the existing on-disk filename is preserved — caller's
+    /// `savedFilename ?? filename`. Pass an explicit name to atomically move + rename
+    /// (used by the conflict-resolver's "Keep Both" path).
     @discardableResult
-    static func moveNote(_ note: Note, toFolder: String) throws -> Date {
+    static func moveNote(_ note: Note, toFolder: String, withFilename newFilename: String? = nil) throws -> Date {
         let actualFilename = note.savedFilename ?? note.filename
         let oldRelative = note.folder.isEmpty ? actualFilename : "\(note.folder)/\(actualFilename)"
         let oldURL = rootURL.appendingPathComponent(oldRelative)
@@ -360,15 +364,16 @@ enum FileStorage {
         if !toFolder.isEmpty {
             try ensureFolderExists(toFolder)
         }
-        // Use actualFilename so notes with a savedFilename different from title keep their name
-        let newRelative = toFolder.isEmpty ? actualFilename : "\(toFolder)/\(actualFilename)"
+        let destFilename = newFilename ?? actualFilename
+        let newRelative = toFolder.isEmpty ? destFilename : "\(toFolder)/\(destFilename)"
         let newURL = rootURL.appendingPathComponent(newRelative)
         try FileManager.default.moveItem(at: oldURL, to: newURL)
 
-        // Move asset dir alongside note — relative paths stay valid
-        let stem = (actualFilename as NSString).deletingPathExtension
-        let srcAsset = assetDirURL(stem: stem, folder: note.folder)
-        let dstAsset = assetDirURL(stem: stem, folder: toFolder)
+        // Move asset dir alongside note — rename stem too if filename changed.
+        let oldStem = (actualFilename as NSString).deletingPathExtension
+        let newStem = (destFilename as NSString).deletingPathExtension
+        let srcAsset = assetDirURL(stem: oldStem, folder: note.folder)
+        let dstAsset = assetDirURL(stem: newStem, folder: toFolder)
         if FileManager.default.fileExists(atPath: srcAsset.path) {
             try? FileManager.default.moveItem(at: srcAsset, to: dstAsset)
             Log.storage.debug("[Image] moved asset dir for '\(note.title, privacy: .public)' to folder '\(toFolder, privacy: .public)'")

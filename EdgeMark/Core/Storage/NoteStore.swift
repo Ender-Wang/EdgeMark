@@ -14,6 +14,25 @@ final class NoteStore {
     var selectedNote: Note?
     var showTrash = false
 
+    // MARK: - List Selection (multi-select)
+
+    /// Identity for a row in the note list. Notes use UUID; folders use path.
+    enum SelectableID: Hashable {
+        case note(UUID)
+        case folder(String)
+    }
+
+    /// What's selected in the visible list — distinct from `selectedNote` /
+    /// `selectedFolder` (which represent what's *open*). Empty after navigation.
+    var selection: Set<SelectableID> = []
+
+    /// Anchor row for ⇧-click range selection.
+    private var selectionAnchor: SelectableID?
+
+    /// The "active end" of a shift-extended range — walks with ⇧-arrow / ⇧-click
+    /// while `selectionAnchor` stays put. Equals anchor for non-extended selections.
+    private var selectionExtensionEnd: SelectableID?
+
     // MARK: - Navigation Direction
 
     enum NavigationDirection {
@@ -25,21 +44,24 @@ final class NoteStore {
 
     var navigationDirection: NavigationDirection = .none
 
-    /// Pending note move that has a name conflict — UI shows confirmation dialog.
+    /// Pending note moves that have name conflicts at the destination.
+    /// The first element is the active conflict shown by the UI; remaining elements
+    /// queue up so a batch move surfaces every collision sequentially instead of dropping
+    /// all but the last.
     struct PendingNoteMoveConflict {
         let noteID: UUID
         let targetFolder: String
     }
 
-    var pendingNoteMoveConflict: PendingNoteMoveConflict?
+    var pendingNoteMoveConflicts: [PendingNoteMoveConflict] = []
 
-    /// Pending folder move that has a name conflict — UI shows confirmation dialog.
+    /// Pending folder moves that have name conflicts at the destination. Same queue semantics as notes.
     struct PendingFolderMoveConflict {
         let folderName: String
         let targetParent: String
     }
 
-    var pendingFolderMoveConflict: PendingFolderMoveConflict?
+    var pendingFolderMoveConflicts: [PendingFolderMoveConflict] = []
 
     /// Conflict when both EdgeMark and an external editor modified the same open note.
     struct PendingExternalChange {
@@ -134,6 +156,7 @@ final class NoteStore {
     func navigateToHome() {
         Log.navigation.debug("[NoteStore] navigateToHome")
         navigationDirection = .backward
+        clearSelection()
         withAnimation(.easeInOut(duration: 0.2)) {
             selectedNote = nil
             selectedFolder = nil
@@ -144,6 +167,7 @@ final class NoteStore {
         let name = folder.name
         Log.navigation.debug("[NoteStore] navigateToFolder — \(name, privacy: .public)")
         navigationDirection = .forward
+        clearSelection()
         withAnimation(.easeInOut(duration: 0.2)) {
             selectedFolder = folder
         }
@@ -153,6 +177,7 @@ final class NoteStore {
         let name = folder.name
         Log.navigation.debug("[NoteStore] navigateToSubfolder — \(name, privacy: .public)")
         navigationDirection = .forward
+        clearSelection()
         withAnimation(.easeInOut(duration: 0.2)) {
             selectedFolder = folder
         }
@@ -162,6 +187,7 @@ final class NoteStore {
         let from = selectedNote?.title ?? selectedFolder?.name ?? "home"
         Log.navigation.debug("[NoteStore] navigateBack from \(from, privacy: .public)")
         navigationDirection = .backward
+        clearSelection()
         if selectedNote != nil {
             saveDirtyNotes()
             withAnimation(.easeInOut(duration: 0.2)) {
@@ -183,6 +209,7 @@ final class NoteStore {
         let title = note.title
         Log.navigation.debug("[NoteStore] openNote — \(title, privacy: .public)")
         navigationDirection = .forward
+        clearSelection()
         withAnimation(.easeInOut(duration: 0.2)) {
             selectedNote = note
         }
@@ -255,6 +282,7 @@ final class NoteStore {
     func openTrash() {
         Log.navigation.debug("[NoteStore] openTrash")
         navigationDirection = .overlay
+        clearSelection()
         withAnimation(.easeInOut(duration: 0.2)) {
             showTrash = true
         }
@@ -263,6 +291,7 @@ final class NoteStore {
     func closeTrash() {
         Log.navigation.debug("[NoteStore] closeTrash")
         navigationDirection = .overlay
+        clearSelection()
         withAnimation(.easeInOut(duration: 0.2)) {
             showTrash = false
         }
@@ -417,6 +446,45 @@ final class NoteStore {
         }
     }
 
+    /// Effective on-disk filename for a note (savedFilename if set, else title-derived).
+    /// `noteTitleExists` is purely title-based and misses the case where a title was
+    /// renamed in memory but `savedFilename` still points at the old on-disk name — or
+    /// where an orphan `.md` file exists in the destination directory. The move path
+    /// must use this helper to avoid the OS-level NSCocoaErrorDomain 516 leaking through.
+    private func noteFilenameWouldCollide(_ filename: String, in folder: String, excluding noteID: UUID? = nil) -> Bool {
+        let collidesInMemory = notes.contains { other in
+            other.id != noteID
+                && other.folder == folder
+                && (other.savedFilename ?? other.filename).caseInsensitiveCompare(filename) == .orderedSame
+        }
+        if collidesInMemory { return true }
+        let destURL = folder.isEmpty
+            ? FileStorage.rootURL.appendingPathComponent(filename)
+            : FileStorage.rootURL.appendingPathComponent(folder).appendingPathComponent(filename)
+        return FileManager.default.fileExists(atPath: destURL.path)
+    }
+
+    /// Symmetric helper for folder moves — catches in-memory sibling clashes plus
+    /// orphan directories on disk that aren't tracked in `folders`. Without the
+    /// filesystem check, `moveFolder` would skip the conflict alert and fall through
+    /// to `FileStorage.moveFolder`, where macOS surfaces NSCocoaErrorDomain 516.
+    private func folderWouldCollide(displayName: String, in newParent: String, excluding folderPath: String? = nil) -> Bool {
+        let siblings = newParent.isEmpty
+            ? folders.filter(\.isTopLevel)
+            : childFolders(of: newParent)
+        let collidesInMemory = siblings.contains { sib in
+            sib.name != folderPath
+                && sib.displayName.caseInsensitiveCompare(displayName) == .orderedSame
+        }
+        if collidesInMemory { return true }
+        let destURL = newParent.isEmpty
+            ? FileStorage.rootURL.appendingPathComponent(displayName)
+            : FileStorage.rootURL.appendingPathComponent(newParent).appendingPathComponent(displayName)
+        var isDir: ObjCBool = false
+        let exists = FileManager.default.fileExists(atPath: destURL.path, isDirectory: &isDir)
+        return exists && isDir.boolValue
+    }
+
     // MARK: - Note CRUD
 
     func createNote(in folder: String = "") -> Note {
@@ -510,6 +578,8 @@ final class NoteStore {
 
     /// Toggle a tag in the active sidebar filter. Multi-select acts as OR.
     func toggleTagFilter(_ tag: TagColor) {
+        // Filter change → visible row set may shrink; selection would point at hidden rows.
+        clearSelection()
         if activeTagFilter.contains(tag) {
             activeTagFilter.remove(tag)
         } else {
@@ -519,6 +589,236 @@ final class NoteStore {
 
     func clearTagFilter() {
         activeTagFilter.removeAll()
+    }
+
+    // MARK: - Selection actions
+
+    func isSelected(_ id: SelectableID) -> Bool {
+        selection.contains(id)
+    }
+
+    /// Mouse-driven selection handler matching Finder semantics.
+    /// `visibleOrder` is the current flat row order used for ⇧-click ranges.
+    func handleSelectionClick(
+        on item: SelectableID,
+        isShift: Bool,
+        isCommand: Bool,
+        visibleOrder: [SelectableID],
+    ) {
+        if isCommand {
+            if selection.contains(item) {
+                selection.remove(item)
+            } else {
+                selection.insert(item)
+            }
+            selectionAnchor = item
+            selectionExtensionEnd = item
+        } else if isShift,
+                  let anchor = selectionAnchor,
+                  let a = visibleOrder.firstIndex(of: anchor),
+                  let b = visibleOrder.firstIndex(of: item)
+        {
+            let lo = min(a, b)
+            let hi = max(a, b)
+            selection = Set(visibleOrder[lo ... hi])
+            selectionExtensionEnd = item
+        } else {
+            selection = [item]
+            selectionAnchor = item
+            selectionExtensionEnd = item
+        }
+    }
+
+    /// Replace selection with a single item (used when right-clicking an unselected row).
+    func replaceSelection(with item: SelectableID) {
+        selection = [item]
+        selectionAnchor = item
+        selectionExtensionEnd = item
+    }
+
+    func clearSelection() {
+        selection.removeAll()
+        selectionAnchor = nil
+        selectionExtensionEnd = nil
+    }
+
+    // MARK: - Keyboard navigation
+
+    /// Flat row order matching what the active list view is rendering.
+    /// Empty when keyboard navigation shouldn't apply (editor, trash).
+    var keyboardNavOrder: [SelectableID] {
+        if selectedNote != nil || showTrash { return [] }
+        let s = AppSettings.shared
+        if let parent = selectedFolder?.name {
+            let kidFolders = sortedFolders(childFolders(of: parent), by: s.sortBy, ascending: s.sortAscending)
+            let folderNotes = sortedNotes(filteredNotes, by: s.sortBy, ascending: s.sortAscending)
+            return kidFolders.map { .folder($0.name) } + folderNotes.map { .note($0.id) }
+        }
+        let topLevel = sortedFolders(folders.filter(\.isTopLevel), by: s.sortBy, ascending: s.sortAscending)
+        let rootNotes = sortedNotes(notes.filter(\.folder.isEmpty), by: s.sortBy, ascending: s.sortAscending)
+        return topLevel.map { .folder($0.name) } + rootNotes.map { .note($0.id) }
+    }
+
+    /// Move the selection one row down (or up). When `extending` is true,
+    /// walk the active end from the anchor (⇧-arrow); otherwise replace with a single item.
+    /// Returns true if the keystroke was consumed.
+    @discardableResult
+    func moveSelection(direction: Int, extending: Bool) -> Bool {
+        let order = keyboardNavOrder
+        guard !order.isEmpty else { return false }
+
+        // Cursor walks `selectionExtensionEnd` for ⇧-arrows so each press advances
+        // by one. Falls back to anchor / first selected row when state is missing.
+        let cursor = selectionExtensionEnd ?? selectionAnchor ?? selection.first
+
+        // No prior cursor (or it points at a hidden row) — land on first/last.
+        guard let cursor, let idx = order.firstIndex(of: cursor) else {
+            let target = direction > 0 ? order.first! : order.last!
+            selection = [target]
+            selectionAnchor = target
+            selectionExtensionEnd = target
+            return true
+        }
+
+        let next = max(0, min(order.count - 1, idx + direction))
+        let target = order[next]
+
+        if extending {
+            // Anchor stays put; only the extension end walks.
+            let anchor = selectionAnchor ?? cursor
+            guard let a = order.firstIndex(of: anchor) else {
+                selection = [target]
+                selectionAnchor = target
+                selectionExtensionEnd = target
+                return true
+            }
+            let lo = min(a, next)
+            let hi = max(a, next)
+            selection = Set(order[lo ... hi])
+            selectionExtensionEnd = target
+        } else {
+            selection = [target]
+            selectionAnchor = target
+            selectionExtensionEnd = target
+        }
+        return true
+    }
+
+    /// Activate the lone selected item: open the note, or navigate into the folder.
+    /// No-op when the selection isn't a single item.
+    @discardableResult
+    func openSelectedItem() -> Bool {
+        guard selection.count == 1, let item = selection.first else { return false }
+        switch item {
+        case let .note(id):
+            if let note = notes.first(where: { $0.id == id }) {
+                openNote(note)
+                return true
+            }
+        case let .folder(path):
+            if let folder = folders.first(where: { $0.name == path }) {
+                navigateToFolder(folder)
+                return true
+            }
+        }
+        return false
+    }
+
+    // MARK: - Batch actions
+
+    /// Move every note + folder in the current selection to the trash.
+    /// Folders that are descendants of another selected folder are skipped
+    /// because the parent's trash already swept them up.
+    func trashSelection() {
+        guard !selection.isEmpty else { return }
+        let snapshot = selection
+        let noteIDs: [UUID] = snapshot.compactMap {
+            if case let .note(id) = $0 { id } else { nil }
+        }
+        let folderPaths: [String] = snapshot.compactMap {
+            if case let .folder(path) = $0 { path } else { nil }
+        }
+        Log.storage.info("[NoteStore] trashSelection — \(noteIDs.count) notes, \(folderPaths.count) folders")
+        for id in noteIDs {
+            if let note = notes.first(where: { $0.id == id }) {
+                trashNote(note)
+            }
+        }
+        for path in folderPaths where folders.contains(where: { $0.name == path }) {
+            trashFolder(path)
+        }
+        clearSelection()
+    }
+
+    /// Notes currently in the selection (resolved against the live note list).
+    var selectedNotes: [Note] {
+        selection.compactMap {
+            if case let .note(id) = $0 {
+                return notes.first(where: { $0.id == id })
+            }
+            return nil
+        }
+    }
+
+    /// Folders currently in the selection.
+    var selectedFolderPaths: [String] {
+        selection.compactMap {
+            if case let .folder(path) = $0 { path } else { nil }
+        }
+    }
+
+    /// Move every selected note and folder into `targetFolder`.
+    /// A target that is a selected folder itself or a descendant of a selected folder is skipped
+    /// to avoid moving a folder into itself.
+    func moveSelection(toFolder targetFolder: String) {
+        guard !selection.isEmpty else { return }
+        let noteSnapshot = selectedNotes
+        let folderSnapshot = selectedFolderPaths
+        let noteConflictsBefore = pendingNoteMoveConflicts.count
+        let folderConflictsBefore = pendingFolderMoveConflicts.count
+        for note in noteSnapshot {
+            moveNote(note, to: targetFolder)
+        }
+        for path in folderSnapshot {
+            // Skip moving a folder into itself or any of its own descendants.
+            if targetFolder == path || targetFolder.hasPrefix(path + "/") { continue }
+            moveFolder(path, toParent: targetFolder)
+        }
+        let queuedNotes = pendingNoteMoveConflicts.count - noteConflictsBefore
+        let queuedFolders = pendingFolderMoveConflicts.count - folderConflictsBefore
+        let movedNotes = noteSnapshot.count - queuedNotes
+        let movedFolders = folderSnapshot.count - queuedFolders
+        Log.storage.info("[NoteStore] moveSelection → '\(targetFolder, privacy: .public)' — moved \(movedNotes) notes + \(movedFolders) folders, queued \(queuedNotes + queuedFolders) conflicts")
+        clearSelection()
+    }
+
+    /// Aggregate state of `tag` across the selected notes (for menu indicators).
+    /// Returns `.on` when every selected note has it, `.off` when none do, `.mixed` otherwise.
+    enum SelectionTagState { case on, off, mixed }
+    func tagState(_ tag: TagColor) -> SelectionTagState {
+        let notes = selectedNotes
+        guard !notes.isEmpty else { return .off }
+        let withTag = notes.count(where: { $0.tags.contains(tag) })
+        if withTag == 0 { return .off }
+        if withTag == notes.count { return .on }
+        return .mixed
+    }
+
+    /// Finder/Mail-style batch tag toggle: if every selected note already has the tag,
+    /// remove it from all of them; otherwise add the tag to every note that lacks it.
+    func toggleTagOnSelection(_ tag: TagColor) {
+        let notes = selectedNotes
+        guard !notes.isEmpty else { return }
+        let allHave = notes.allSatisfy { $0.tags.contains(tag) }
+        Log.storage.info("[NoteStore] toggleTagOnSelection \(allHave ? "remove" : "add", privacy: .public) '\(tag.rawValue, privacy: .public)' on \(notes.count) notes")
+        for note in notes {
+            let has = note.tags.contains(tag)
+            if allHave, has {
+                toggleTag(tag, on: note)
+            } else if !allHave, !has {
+                toggleTag(tag, on: note)
+            }
+        }
     }
 
     func deleteNote(_ note: Note) {
@@ -534,61 +834,110 @@ final class NoteStore {
 
     func moveNote(_ note: Note, to folder: String) {
         guard let index = notes.firstIndex(where: { $0.id == note.id }) else { return }
-        if noteTitleExists(notes[index].title, in: folder, excluding: note.id) {
-            pendingNoteMoveConflict = PendingNoteMoveConflict(noteID: note.id, targetFolder: folder)
+        let actualFilename = notes[index].savedFilename ?? notes[index].filename
+        if noteFilenameWouldCollide(actualFilename, in: folder, excluding: note.id) {
+            pendingNoteMoveConflicts.append(PendingNoteMoveConflict(noteID: note.id, targetFolder: folder))
             return
         }
         performMoveNote(at: index, to: folder)
     }
 
     func resolveNoteMoveConflict(keepBoth: Bool) {
-        guard let conflict = pendingNoteMoveConflict,
-              let index = notes.firstIndex(where: { $0.id == conflict.noteID })
-        else {
-            pendingNoteMoveConflict = nil
-            return
-        }
-        let title = notes[index].title
+        guard !pendingNoteMoveConflicts.isEmpty else { return }
+        let conflict = pendingNoteMoveConflicts.removeFirst()
+        guard let index = notes.firstIndex(where: { $0.id == conflict.noteID }) else { return }
         let folder = conflict.targetFolder
+        let originalFilename = notes[index].savedFilename ?? notes[index].filename
 
         if keepBoth {
+            // Find an unused title whose derived filename also doesn't collide on disk.
+            let baseTitle = notes[index].title
             var counter = 2
-            var newTitle = "\(title) \(counter)"
-            while noteTitleExists(newTitle, in: folder, excluding: conflict.noteID) {
+            var newTitle = "\(baseTitle) \(counter)"
+            var newFilename = "\(FileStorage.sanitizeForFilename(newTitle)).md"
+            while noteFilenameWouldCollide(newFilename, in: folder, excluding: conflict.noteID) {
                 counter += 1
-                newTitle = "\(title) \(counter)"
+                newTitle = "\(baseTitle) \(counter)"
+                newFilename = "\(FileStorage.sanitizeForFilename(newTitle)).md"
             }
             notes[index].title = newTitle
             notes[index].modifiedAt = Date()
+            // Rewrite the H1 heading line to match.
             var lines = notes[index].content.components(separatedBy: "\n")
             if let headingIdx = lines.firstIndex(where: { $0.hasPrefix("#") }) {
                 let prefix = String(lines[headingIdx].prefix(while: { $0 == "#" }))
                 lines[headingIdx] = "\(prefix) \(newTitle)"
                 notes[index].content = lines.joined(separator: "\n")
             }
+            // Atomic move + rename so the file actually lands at the new name on disk.
+            performMoveNote(at: index, to: folder, renamingTo: newFilename)
+            return
+        }
+
+        // Replace: trash the in-memory note whose effective filename matches at the destination.
+        // If no in-memory note matches but a file is squatting on the destination path,
+        // treat it as an orphan and remove it so the move can proceed.
+        if let existing = notes.first(where: {
+            $0.id != conflict.noteID
+                && $0.folder == folder
+                && (($0.savedFilename ?? $0.filename).caseInsensitiveCompare(originalFilename) == .orderedSame)
+        }) {
+            trashNote(existing)
         } else {
-            if let existing = notes.first(where: {
-                $0.id != conflict.noteID
-                    && $0.folder == folder
-                    && FileStorage.sanitizeForFilename($0.title)
-                    .caseInsensitiveCompare(FileStorage.sanitizeForFilename(title)) == .orderedSame
-            }) {
-                trashNote(existing)
+            let destURL = folder.isEmpty
+                ? FileStorage.rootURL.appendingPathComponent(originalFilename)
+                : FileStorage.rootURL.appendingPathComponent(folder).appendingPathComponent(originalFilename)
+            if FileManager.default.fileExists(atPath: destURL.path) {
+                do {
+                    try FileManager.default.removeItem(at: destURL)
+                    Log.storage.info("[NoteStore] resolveNoteMoveConflict Replace — removed orphan file at '\(destURL.path, privacy: .public)'")
+                } catch {
+                    Log.storage.error("[NoteStore] resolveNoteMoveConflict Replace — failed to remove orphan: \(error)")
+                    return
+                }
             }
         }
 
         if let idx = notes.firstIndex(where: { $0.id == conflict.noteID }) {
             performMoveNote(at: idx, to: folder)
         }
-        pendingNoteMoveConflict = nil
     }
 
-    private func performMoveNote(at index: Int, to folder: String) {
+    /// Drains the entire note conflict queue with one choice — backs the "Keep Both All" / "Replace All" buttons.
+    func resolveAllNoteMoveConflicts(keepBoth: Bool) {
+        var resolved = 0
+        while !pendingNoteMoveConflicts.isEmpty {
+            let before = pendingNoteMoveConflicts.count
+            resolveNoteMoveConflict(keepBoth: keepBoth)
+            if pendingNoteMoveConflicts.count >= before { break } // safety: ensure forward progress
+            resolved += 1
+        }
+        Log.storage.info("[NoteStore] resolveAllNoteMoveConflicts \(keepBoth ? "keepBoth" : "replace", privacy: .public) — \(resolved) resolved")
+    }
+
+    /// Drops just the head note conflict — the next conflict (if any) becomes active.
+    func skipNoteMoveConflict() {
+        guard !pendingNoteMoveConflicts.isEmpty else { return }
+        _ = pendingNoteMoveConflicts.removeFirst()
+        let remaining = pendingNoteMoveConflicts.count
+        Log.storage.info("[NoteStore] skipNoteMoveConflict — 1 note kept in original folder, \(remaining) remaining")
+    }
+
+    /// Discards every pending note conflict — items remain in their original folders.
+    func cancelAllNoteMoveConflicts() {
+        let count = pendingNoteMoveConflicts.count
+        pendingNoteMoveConflicts.removeAll()
+        if count > 0 {
+            Log.storage.info("[NoteStore] cancelAllNoteMoveConflicts — \(count) notes kept in original folders")
+        }
+    }
+
+    private func performMoveNote(at index: Int, to folder: String, renamingTo newFilename: String? = nil) {
         let note = notes[index]
         do {
-            let movedSavedAt = try FileStorage.moveNote(note, toFolder: folder)
+            let movedSavedAt = try FileStorage.moveNote(note, toFolder: folder, withFilename: newFilename)
             notes[index].folder = folder
-            notes[index].savedFilename = note.savedFilename ?? note.filename
+            notes[index].savedFilename = newFilename ?? note.savedFilename ?? note.filename
             notes[index].savedAt = movedSavedAt
             refreshFolders()
         } catch {
@@ -845,40 +1194,26 @@ final class NoteStore {
         guard newFullPath != name else { return }
         guard !newParent.hasPrefix(name + "/"), newParent != name else { return }
 
-        // Check if a folder with the same name exists at the destination
-        let siblings = newParent.isEmpty
-            ? folders.filter(\.isTopLevel)
-            : childFolders(of: newParent)
-        let conflicts = siblings.contains {
-            $0.name != name && $0.displayName.caseInsensitiveCompare(displayName) == .orderedSame
-        }
-        if conflicts {
-            pendingFolderMoveConflict = PendingFolderMoveConflict(folderName: name, targetParent: newParent)
+        if folderWouldCollide(displayName: displayName, in: newParent, excluding: name) {
+            pendingFolderMoveConflicts.append(PendingFolderMoveConflict(folderName: name, targetParent: newParent))
             return
         }
         performMoveFolder(name, toParent: newParent)
     }
 
     func resolveFolderMoveConflict(keepBoth: Bool) {
-        guard let conflict = pendingFolderMoveConflict else {
-            pendingFolderMoveConflict = nil
-            return
-        }
+        guard !pendingFolderMoveConflicts.isEmpty else { return }
+        let conflict = pendingFolderMoveConflicts.removeFirst()
         let name = conflict.folderName
         let newParent = conflict.targetParent
         let displayName = (name as NSString).lastPathComponent
         let targetFullPath = newParent.isEmpty ? displayName : "\(newParent)/\(displayName)"
 
         if keepBoth {
-            // Rename this folder with a number suffix before moving
+            // Loop on filesystem-aware check so we don't pick a name an orphan dir already squats on.
             var counter = 2
             var newDisplayName = "\(displayName) \(counter)"
-            let siblings = newParent.isEmpty
-                ? folders.filter(\.isTopLevel)
-                : childFolders(of: newParent)
-            while siblings.contains(where: {
-                $0.displayName.caseInsensitiveCompare(newDisplayName) == .orderedSame
-            }) {
+            while folderWouldCollide(displayName: newDisplayName, in: newParent) {
                 counter += 1
                 newDisplayName = "\(displayName) \(counter)"
             }
@@ -888,16 +1223,57 @@ final class NoteStore {
             let renamedParent = renamedPath == "." ? "" : renamedPath
             let renamedFullPath = renamedParent.isEmpty ? newDisplayName : "\(renamedParent)/\(newDisplayName)"
             performMoveFolder(renamedFullPath, toParent: newParent)
-        } else {
-            // Replace: trash the existing folder at destination
-            if let existingFolder = folders.first(where: {
-                $0.name == targetFullPath
-            }) {
-                trashFolder(existingFolder.name)
-            }
-            performMoveFolder(name, toParent: newParent)
+            return
         }
-        pendingFolderMoveConflict = nil
+
+        // Replace: trash the existing tracked folder at destination, OR remove an orphan dir on disk.
+        if let existingFolder = folders.first(where: { $0.name == targetFullPath }) {
+            trashFolder(existingFolder.name)
+        } else {
+            let destURL = newParent.isEmpty
+                ? FileStorage.rootURL.appendingPathComponent(displayName)
+                : FileStorage.rootURL.appendingPathComponent(newParent).appendingPathComponent(displayName)
+            var isDir: ObjCBool = false
+            if FileManager.default.fileExists(atPath: destURL.path, isDirectory: &isDir), isDir.boolValue {
+                do {
+                    try FileManager.default.removeItem(at: destURL)
+                    Log.storage.info("[NoteStore] resolveFolderMoveConflict Replace — removed orphan directory at '\(destURL.path, privacy: .public)'")
+                } catch {
+                    Log.storage.error("[NoteStore] resolveFolderMoveConflict Replace — failed to remove orphan directory: \(error)")
+                    return
+                }
+            }
+        }
+        performMoveFolder(name, toParent: newParent)
+    }
+
+    /// Drains the entire folder conflict queue with one choice — backs the "Keep Both All" / "Replace All" buttons.
+    func resolveAllFolderMoveConflicts(keepBoth: Bool) {
+        var resolved = 0
+        while !pendingFolderMoveConflicts.isEmpty {
+            let before = pendingFolderMoveConflicts.count
+            resolveFolderMoveConflict(keepBoth: keepBoth)
+            if pendingFolderMoveConflicts.count >= before { break }
+            resolved += 1
+        }
+        Log.storage.info("[NoteStore] resolveAllFolderMoveConflicts \(keepBoth ? "keepBoth" : "replace", privacy: .public) — \(resolved) resolved")
+    }
+
+    /// Drops just the head folder conflict.
+    func skipFolderMoveConflict() {
+        guard !pendingFolderMoveConflicts.isEmpty else { return }
+        _ = pendingFolderMoveConflicts.removeFirst()
+        let remaining = pendingFolderMoveConflicts.count
+        Log.storage.info("[NoteStore] skipFolderMoveConflict — 1 folder kept in original parent, \(remaining) remaining")
+    }
+
+    /// Discards every pending folder conflict.
+    func cancelAllFolderMoveConflicts() {
+        let count = pendingFolderMoveConflicts.count
+        pendingFolderMoveConflicts.removeAll()
+        if count > 0 {
+            Log.storage.info("[NoteStore] cancelAllFolderMoveConflicts — \(count) folders kept in original parents")
+        }
     }
 
     private func performMoveFolder(_ name: String, toParent newParent: String) {
