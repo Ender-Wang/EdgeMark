@@ -9,6 +9,8 @@ struct Folder: Identifiable, Hashable {
     var noteCount: Int
     var latestModifiedAt: Date?
     var earliestCreatedAt: Date?
+    /// User-assigned color from the shared TagColor palette. `nil` = system default.
+    var color: TagColor?
 
     /// Last path component, e.g. "Projects" for "Work/Projects"
     var displayName: String {

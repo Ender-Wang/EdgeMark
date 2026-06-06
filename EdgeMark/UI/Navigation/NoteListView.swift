@@ -180,6 +180,7 @@ struct NoteListView: View {
                 count: folder.noteCount,
                 date: appSettings.folderDate(for: folder),
                 iconWidth: iconWidth,
+                color: folder.color,
             ) {
                 noteStore.navigateToSubfolder(folder)
             }

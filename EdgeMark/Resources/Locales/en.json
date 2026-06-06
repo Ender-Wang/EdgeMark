@@ -24,6 +24,8 @@
   "common.showInFinder": "Show in Finder",
   "common.moveTo": "Move to",
   "common.tags": "Tags",
+  "common.folderColor": "Folder Color",
+  "common.none": "None",
   "common.pin": "Pin panel (stay open)",
   "common.unpin": "Unpin panel",
   "tags.clearFilter": "Clear tag filter",

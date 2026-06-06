@@ -288,6 +288,7 @@ struct HomeFolderView: View {
                 count: folder.noteCount,
                 date: appSettings.folderDate(for: folder),
                 iconWidth: iconWidth,
+                color: folder.color,
             ) {
                 noteStore.navigateToFolder(folder)
             }
@@ -635,6 +636,7 @@ struct FolderRowView: View {
     let count: Int
     var date: Date?
     let iconWidth: CGFloat
+    var color: TagColor?
     let action: () -> Void
 
     @State private var isHovered = false
@@ -645,7 +647,7 @@ struct FolderRowView: View {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: "folder.fill")
                         .font(.title3)
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(color?.color ?? Color.accentColor)
 
                     if count > 0 {
                         Text("\(count)")

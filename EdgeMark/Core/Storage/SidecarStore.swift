@@ -25,10 +25,29 @@ final class SidecarStore {
         var tags: [String]
     }
 
+    struct FolderEntry: Codable {
+        var color: String // TagColor rawValue
+    }
+
     struct Payload: Codable {
-        var version: Int = 1
+        var version: Int = 2
         var notes: [String: NoteEntry] = [:] // UUID string → NoteEntry
         var trash: [String: TrashEntry] = [:] // UUID string → TrashEntry
+        var folders: [String: FolderEntry] = [:] // folder path → FolderEntry
+
+        init() {}
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            version = try c.decodeIfPresent(Int.self, forKey: .version) ?? 1
+            notes = try c.decodeIfPresent([String: NoteEntry].self, forKey: .notes) ?? [:]
+            trash = try c.decodeIfPresent([String: TrashEntry].self, forKey: .trash) ?? [:]
+            folders = try c.decodeIfPresent([String: FolderEntry].self, forKey: .folders) ?? [:]
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case version, notes, trash, folders
+        }
     }
 
     // MARK: - In-memory state
@@ -110,6 +129,48 @@ final class SidecarStore {
 
     func removeTrash(id: UUID) {
         data.trash.removeValue(forKey: id.uuidString)
+    }
+
+    // MARK: - Folders
+
+    func folderEntry(forPath path: String) -> FolderEntry? {
+        data.folders[path]
+    }
+
+    func upsertFolder(_ entry: FolderEntry, forPath path: String) {
+        data.folders[path] = entry
+    }
+
+    func removeFolder(path: String) {
+        data.folders.removeValue(forKey: path)
+    }
+
+    /// Rewrites folder entry keys after a folder rename / move. Migrates the renamed
+    /// folder itself plus every nested sub-folder entry that lives under it.
+    func renameFolderEntries(from oldPath: String, to newPath: String) {
+        guard oldPath != newPath else { return }
+        let oldPrefix = oldPath + "/"
+        let newPrefix = newPath + "/"
+        for key in Array(data.folders.keys) {
+            if key == oldPath {
+                if let entry = data.folders.removeValue(forKey: key) {
+                    data.folders[newPath] = entry
+                }
+            } else if key.hasPrefix(oldPrefix) {
+                if let entry = data.folders.removeValue(forKey: key) {
+                    let newKey = newPrefix + String(key.dropFirst(oldPrefix.count))
+                    data.folders[newKey] = entry
+                }
+            }
+        }
+    }
+
+    /// Remove folder entries for a folder and all its descendants. Called on permanent delete.
+    func removeFolderSubtree(path: String) {
+        let prefix = path + "/"
+        for key in Array(data.folders.keys) where key == path || key.hasPrefix(prefix) {
+            data.folders.removeValue(forKey: key)
+        }
     }
 
     // MARK: - Private

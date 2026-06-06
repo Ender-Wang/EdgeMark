@@ -732,6 +732,10 @@ final class NoteStore {
         } catch {
             Log.storage.error("[NoteStore] permanentlyDeleteFolder failed — \(error)")
         }
+        // Folder color metadata persists under the original path while in trash so
+        // restore preserves it. Permanent delete is the right place to clean it up.
+        SidecarStore.shared.removeFolderSubtree(path: folder.originalPath)
+        try? SidecarStore.shared.save()
     }
 
     func emptyTrash() {
@@ -826,6 +830,8 @@ final class NoteStore {
                 return path
             })
             updateSidecarPaths(for: notes)
+            SidecarStore.shared.renameFolderEntries(from: oldName, to: newFullPath)
+            try? SidecarStore.shared.save()
             refreshFolders()
         } catch {
             Log.storage.error("[NoteStore] renameFolder failed — \(error)")
@@ -918,6 +924,8 @@ final class NoteStore {
                 return path
             })
             updateSidecarPaths(for: notes)
+            SidecarStore.shared.renameFolderEntries(from: name, to: newFullPath)
+            try? SidecarStore.shared.save()
             refreshFolders()
         } catch {
             Log.storage.error("[NoteStore] moveFolder failed — \(error)")
@@ -927,6 +935,21 @@ final class NoteStore {
     /// Folders that are direct children of the given parent path.
     func childFolders(of parent: String) -> [Folder] {
         folders.filter { $0.parentPath == parent }
+    }
+
+    /// Set or clear the color of a folder. Persisted in the sidecar; UI refresh follows.
+    func setFolderColor(_ color: TagColor?, for folderName: String) {
+        guard !folderName.isEmpty else { return }
+        if let color {
+            SidecarStore.shared.upsertFolder(
+                SidecarStore.FolderEntry(color: color.rawValue),
+                forPath: folderName,
+            )
+        } else {
+            SidecarStore.shared.removeFolder(path: folderName)
+        }
+        try? SidecarStore.shared.save()
+        refreshFolders()
     }
 
     // MARK: - Save
@@ -974,11 +997,14 @@ final class NoteStore {
             let prefix = name + "/"
             // Count notes in this folder AND all subfolders (recursive)
             let descendantNotes = notes.filter { $0.folder == name || $0.folder.hasPrefix(prefix) }
+            let color = SidecarStore.shared.folderEntry(forPath: name)
+                .flatMap { TagColor(rawValue: $0.color) }
             return Folder(
                 name: name,
                 noteCount: descendantNotes.count,
                 latestModifiedAt: descendantNotes.map(\.modifiedAt).max(),
                 earliestCreatedAt: descendantNotes.map(\.createdAt).min(),
+                color: color,
             )
         }
         // Folder/note membership changed → tag set may have too.

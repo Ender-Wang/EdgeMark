@@ -100,6 +100,37 @@ enum NoteListMenus {
         return image
     }
 
+    // MARK: - Folder Color Submenu
+
+    private static func folderColorSubmenu(
+        for folder: Folder,
+        noteStore: NoteStore,
+        l10n: L10n,
+    ) -> NSMenu {
+        let menu = NSMenu()
+        let folderName = folder.name
+        let currentColor = folder.color
+
+        for tag in TagColor.allCases {
+            // Use the static palette name (Red / Orange / …), not the user's tag label,
+            // so renaming a tag does not bleed into the folder color picker.
+            let item = menu.addActionItem(title: tag.defaultLabel, icon: "circle.fill") {
+                noteStore.setFolderColor(tag, for: folderName)
+            }
+            item.image = tagImage(for: tag)
+            item.state = currentColor == tag ? .on : .off
+        }
+
+        menu.addItem(.separator())
+
+        let noneItem = menu.addActionItem(title: l10n["common.none"], icon: "circle") {
+            noteStore.setFolderColor(nil, for: folderName)
+        }
+        noneItem.state = currentColor == nil ? .on : .off
+
+        return menu
+    }
+
     // MARK: - Folder Context Menu
 
     /// Build an NSMenu for a folder row context menu.
@@ -121,6 +152,12 @@ enum NoteListMenus {
             moveItem.submenu = moveSubmenu
             menu.addItem(moveItem)
         }
+
+        // Folder Color submenu
+        let colorItem = NSMenuItem(title: l10n["common.folderColor"], action: nil, keyEquivalent: "")
+        colorItem.image = NSImage(systemSymbolName: "paintpalette", accessibilityDescription: nil)
+        colorItem.submenu = folderColorSubmenu(for: folder, noteStore: noteStore, l10n: l10n)
+        menu.addItem(colorItem)
 
         menu.addActionItem(title: l10n["common.showInFinder"], icon: "folder") {
             NSWorkspace.shared.activateFileViewerSelecting([

@@ -24,6 +24,8 @@
   "common.showInFinder": "Finder में दिखाएं",
   "common.moveTo": "ले जाएं",
   "common.tags": "टैग",
+  "common.folderColor": "फ़ोल्डर का रंग",
+  "common.none": "कोई नहीं",
   "common.pin": "पैनल पिन करें (खुला रखें)",
   "common.unpin": "पैनल अनपिन करें",
   "tags.clearFilter": "टैग फ़िल्टर हटाएं",
