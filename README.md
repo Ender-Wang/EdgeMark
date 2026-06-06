@@ -73,11 +73,13 @@ xattr -cr /Applications/EdgeMark.app
 
 - 📄 Plain `.md` files with no injected headers — open in any editor, sync with any service; metadata lives in a hidden `.edgemark/meta.json` sidecar
 - 📁 Folder-based organization with drag-and-drop
+- 🎨 Custom folder colors — tint any folder's icon with a palette color via right-click → Folder Color
 - 📂 Configurable storage directory
 - 💾 1-second debounced auto-save
 - 🔍 Search shows all notes sorted by most recently modified when the query is empty — a quick "recent notes" feed
 - 🏷️ Finder-style color tags (Red, Orange, Yellow, Green, Blue, Purple, Gray) with rename-able labels; multi-tag per note
 - 🎯 Tag filter inside search — click tag dots to narrow results, multi-select acts as OR, combines with text search
+- ☑️ Native macOS multi-selection — click / ⇧-click / ⌘-click rows, marquee-drag to box-select, then batch **Move**, **Tag**, or **Trash** from the right-click menu; conflicts in a batch are queued and resolvable
 - 🔄 External file sync — edits from other apps are detected on panel open; prompts when both sides changed
 - 🗑️ Trash with 30-day auto-purge and read-only preview
 
@@ -105,7 +107,7 @@ xattr -cr /Applications/EdgeMark.app
 - 📋 Copy as Plain Text, Markdown, or Rich Text — selection-aware in editor with right-click context menu
 - 🎨 SF Symbol icons throughout all context menus
 - 🔀 Smooth directional page transitions
-- 🌍 English + Simplified Chinese (JSON-based, easy to contribute)
+- 🌍 English + Simplified Chinese + Hindi (JSON-based, easy to contribute)
 
 ---
 
