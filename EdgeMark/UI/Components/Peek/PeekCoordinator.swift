@@ -126,12 +126,14 @@ final class PeekCoordinator {
     }
 
     /// Schedule a hide after `dismissDelay`. Fires the hide only if the
-    /// cursor is still outside the panel + gap + preview union region.
+    /// cursor is still outside the gap + preview union region.
     /// If a show timer is pending and the cursor is still in the panel,
     /// the show timer is left running — its own `isMouseInRow` check will
     /// abort if the cursor moved to a different row.
     func scheduleDismiss() {
         cancelDismiss()
+        let showing = controller.isShowing
+        Log.peek.debug("[PeekCoordinator] scheduleDismiss — cursor=\(NSEvent.mouseLocation.debugDescription) showing=\(showing)")
 
         // Don't cancel the pending show timer if the cursor is still inside
         // the panel — the user is just moving between rows. The show timer's
@@ -144,14 +146,41 @@ final class PeekCoordinator {
 
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            if isMouseInUnion() {
-                return // cursor crossed into the preview window or back into the panel
+            let inUnion = isMouseInUnion()
+            Log.peek.debug("[PeekCoordinator] dismissTimer — inUnion=\(inUnion) showing=\(controller.isShowing) cursor=\(NSEvent.mouseLocation.debugDescription)")
+            if inUnion {
+                // Cursor is in the gap or preview window — keep alive but
+                // poll until it leaves so we don't get stuck open.
+                if controller.isShowing {
+                    rescheduleDismiss()
+                }
+                return
             }
             scheduledID = nil
             controller.hide()
         }
         dismissWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.dismissDelay, execute: work)
+    }
+
+    /// Re-check the cursor position after a short delay. If the cursor has
+    /// left the union region, dismiss. Otherwise keep re-checking.
+    private func rescheduleDismiss() {
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            let inUnion = isMouseInUnion()
+            Log.peek.debug("[PeekCoordinator] recheckDismiss — inUnion=\(inUnion) cursor=\(NSEvent.mouseLocation.debugDescription)")
+            if inUnion {
+                if controller.isShowing {
+                    rescheduleDismiss()
+                }
+                return
+            }
+            scheduledID = nil
+            controller.hide()
+        }
+        dismissWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: work)
     }
 
     /// Called by the preview window's `mouseEntered` handler so the grace
@@ -174,10 +203,12 @@ final class PeekCoordinator {
 
     // MARK: - Geometry
 
-    /// Union region: panel window frame + 12pt gap strip + preview window frame.
+    /// Union region: gap strip + preview window frame. The panel itself is
+    /// intentionally excluded — row-to-row transitions are handled by
+    /// `mouseEntered → cancelDismiss`, so the preview should dismiss when the
+    /// cursor lands anywhere else (header, footer, empty space below rows).
     func isMouseInUnion() -> Bool {
         let cursor = NSEvent.mouseLocation
-        if panelFrame.contains(cursor) { return true }
         if controller.window?.frame.contains(cursor) == true { return true }
         if gapStrip().contains(cursor) { return true }
         return false
