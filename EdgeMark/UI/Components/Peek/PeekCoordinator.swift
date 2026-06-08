@@ -9,9 +9,12 @@ import SwiftUI
 final class PeekCoordinator {
     // MARK: - Tuning
 
-    /// Hover dwell before the preview appears. Long enough to ignore a
-    /// fast cursor pass; short enough to feel instant.
-    static let showDelay: TimeInterval = 0.35
+    /// Hover dwell before the preview appears. Read from settings on each
+    /// schedule so changes take effect without restarting.
+    private var showDelay: TimeInterval {
+        AppSettings.shared.hoverPeekDelay.seconds
+    }
+
     /// Grace period after mouseExited before the preview hides. Lets the
     /// cursor cross the gap from the row to the preview window.
     static let dismissDelay: TimeInterval = 0.12
@@ -53,14 +56,21 @@ final class PeekCoordinator {
             self?.dismissNow()
         }
 
-        // Dismiss when the hover-peek toggle is flipped off in Settings.
+        // Dismiss when a preview-related toggle is flipped off in Settings.
+        // Only dismiss the preview that the just-disabled trigger owns:
+        // hover off → dismiss hover-driven; space off → dismiss keyboard-driven.
         NotificationCenter.default.addObserver(
-            forName: .hoverPeekSettingsChanged,
+            forName: .previewSettingsChanged,
             object: nil,
             queue: .main,
         ) { [weak self] _ in
-            if !AppSettings.shared.hoverPeekEnabled {
-                self?.dismissNow()
+            guard let self else { return }
+            let hoverOn = AppSettings.shared.hoverPeekEnabled
+            let spaceOn = AppSettings.shared.spaceToPreviewEnabled
+            if isKeyboardTriggered, !spaceOn {
+                dismissNow()
+            } else if !isKeyboardTriggered, !hoverOn {
+                dismissNow()
             }
         }
     }
@@ -127,7 +137,7 @@ final class PeekCoordinator {
             )
         }
         pendingShowWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.showDelay, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + showDelay, execute: work)
     }
 
     /// Schedule a hide after `dismissDelay`. Fires the hide only if the
@@ -213,8 +223,8 @@ final class PeekCoordinator {
     /// content, dismiss. Otherwise, show immediately (no hover delay).
     /// Used by the Space-to-preview keyboard shortcut.
     func triggerPeek(content: PeekContent, panelFrame: NSRect) {
-        // Respect the hover-peek kill switch.
-        guard AppSettings.shared.hoverPeekEnabled else { return }
+        // Respect the Space-to-preview kill switch (independent from hover).
+        guard AppSettings.shared.spaceToPreviewEnabled else { return }
         guard !suppressPeek else { return }
 
         // Toggle off: already showing this exact content.

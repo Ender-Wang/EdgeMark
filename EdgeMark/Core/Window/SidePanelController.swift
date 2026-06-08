@@ -698,7 +698,7 @@ final class SidePanelController: NSWindowController {
 
     /// Handle Space-to-preview (Quick Look). Returns true if the event was consumed.
     private func handleSpacePeek() -> Bool {
-        guard AppSettings.shared.hoverPeekEnabled, !peekCoordinator.suppressPeek else { return false }
+        guard AppSettings.shared.spaceToPreviewEnabled, !peekCoordinator.suppressPeek else { return false }
         guard noteStore.pendingEditorFind == false else { return false }
         guard noteStore.selection.count == 1 else { return false }
         guard let win = window else { return false }

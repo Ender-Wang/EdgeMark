@@ -95,6 +95,13 @@ struct GeneralSettingsTab: View {
                 Toggle(l10n["settings.editor.grammarChecking"], isOn: $settings.grammarCheckingEnabled)
                 Toggle(l10n["settings.editor.autocorrect"], isOn: $settings.automaticSpellingCorrectionEnabled)
                 Toggle(l10n["settings.editor.hoverPeek"], isOn: $settings.hoverPeekEnabled)
+                Picker(l10n["settings.editor.hoverDelay"], selection: $settings.hoverPeekDelay) {
+                    ForEach(AppSettings.HoverPeekDelay.allCases, id: \.self) { delay in
+                        Text(delay.displayName(l10n)).tag(delay)
+                    }
+                }
+                .disabled(!settings.hoverPeekEnabled)
+                Toggle(l10n["settings.editor.spacePreview"], isOn: $settings.spaceToPreviewEnabled)
             } header: {
                 Label(l10n["settings.editor.section"], systemImage: "textformat")
             }
