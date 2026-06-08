@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(NoteStore.self) var noteStore
+    @Environment(PeekCoordinator.self) var peekCoordinator
 
     private var showHome: Bool {
         !noteStore.showTrash && noteStore.selectedFolder == nil && noteStore.selectedNote == nil
@@ -69,6 +70,19 @@ struct ContentView: View {
             }
         }
         .clipped()
+        // Dismiss any open hover/Quick-Look preview when the user navigates
+        // deeper (open note, enter folder, open trash). The preview is anchored
+        // to a row in the list view we're leaving, so it would otherwise float
+        // detached after the transition.
+        .onChange(of: noteStore.selectedNote?.id) { _, newID in
+            if newID != nil { peekCoordinator.dismissNow() }
+        }
+        .onChange(of: noteStore.selectedFolder?.name) { _, newName in
+            if newName != nil { peekCoordinator.dismissNow() }
+        }
+        .onChange(of: noteStore.showTrash) { _, isOn in
+            if isOn { peekCoordinator.dismissNow() }
+        }
     }
 }
 
@@ -77,5 +91,6 @@ struct ContentView: View {
         .environment(NoteStore())
         .environment(AppSettings.shared)
         .environment(L10n.shared)
+        .environment(PeekCoordinator())
         .frame(width: 400, height: 600)
 }
