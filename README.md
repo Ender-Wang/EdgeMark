@@ -82,6 +82,7 @@ xattr -cr /Applications/EdgeMark.app
 - ☑️ Native macOS multi-selection — click / ⇧-click / ⌘-click rows, marquee-drag to box-select, then batch **Move**, **Tag**, or **Trash** from the right-click menu; conflicts in a batch are queued and resolvable
 - 🔄 External file sync — edits from other apps are detected on panel open; prompts when both sides changed
 - 🗑️ Trash with 30-day auto-purge and read-only preview
+- 👁️ Hover-to-peek — hover over a note or folder row to preview its contents in a floating panel alongside the list; note previews render full Markdown with images, folder previews show subfolders and all notes inside
 
 ⌨️ **Keyboard & Shortcuts**
 
@@ -89,6 +90,7 @@ xattr -cr /Applications/EdgeMark.app
 - 🎹 Fully customizable local shortcuts — new note, new folder, search, pin, prev/next note — all rebindable in Settings with conflict detection
 - ⏱️ Configurable activation delay and corner exclusion zones
 - 🔑 Default panel shortcuts: `⌘N` new note, `⇧⌘N` new folder, `⌘F` search, `⌘P` pin/unpin
+- 👁️ `Space` to Quick Look — select a note or folder and press `Space` to preview; `↑↓` to browse, `Space`/`ESC` to dismiss
 - 👆 Two-finger trackpad swipe right on the header to navigate back (configurable toggle and sensitivity)
 - 👆 Two-finger swipe left/right on the editor or `⌘←`/`⌘→` to navigate between notes in the current folder
 
