@@ -376,10 +376,10 @@
 /* Begin XCRemoteSwiftPackageReference section */
 		F8F898652FD1E02E00AD68BF /* XCRemoteSwiftPackageReference "swift-markdown-engine" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Ender-Wang/swift-markdown-engine";
+			repositoryURL = "https://github.com/nodes-app/swift-markdown-engine";
 			requirement = {
-				kind = branch;
-				branch = "feature/code-spell-check-suppression";
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.6.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

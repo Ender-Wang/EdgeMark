@@ -1,5 +1,5 @@
 {
-  "originHash" : "a599a85ac9c920aac51e4d02131e98b2987099cef2b0847cb62d5dd1510e1c12",
+  "originHash" : "0c31afe7ba44079a2100ebe19f9fb831948cc347dc17bba9a6607e688908ff03",
   "pins" : [
     {
       "identity" : "highlighterswift",
@@ -13,10 +13,10 @@
     {
       "identity" : "swift-markdown-engine",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Ender-Wang/swift-markdown-engine",
+      "location" : "https://github.com/nodes-app/swift-markdown-engine",
       "state" : {
-        "branch" : "feature/code-spell-check-suppression",
-        "revision" : "76458652e3ecd1dc44bfce83ad52ad09cb0418aa"
+        "revision" : "301c4a554f87eb473ee649eb588250cca7918125",
+        "version" : "0.7.0"
       }
     },
     {
