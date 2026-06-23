@@ -30,7 +30,7 @@ struct PageLayout<Header: View, Content: View>: View {
             header
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .background { VisualEffectView(tint: appSettings.panelTint.color) }
+                .background { VisualEffectView(tint: appSettings.panelTint.color, material: appSettings.panelStyle.material) }
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay {
                     if let onSwipeBack {
@@ -39,7 +39,7 @@ struct PageLayout<Header: View, Content: View>: View {
                 }
 
             content
-                .background { VisualEffectView(tint: appSettings.panelTint.color) }
+                .background { VisualEffectView(tint: appSettings.panelTint.color, material: appSettings.panelStyle.material) }
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay {
                     if onContentSwipeRight != nil || onContentSwipeLeft != nil {

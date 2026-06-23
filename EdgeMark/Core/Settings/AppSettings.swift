@@ -68,6 +68,24 @@ final class AppSettings {
         }
     }
 
+    // MARK: - Panel opacity
+
+    enum PanelStyle: String, CaseIterable {
+        case translucent
+        case opaque
+
+        var material: NSVisualEffectView.Material {
+            switch self {
+            case .translucent: .sidebar
+            case .opaque: .contentBackground
+            }
+        }
+    }
+
+    var panelStyle: PanelStyle = .translucent {
+        didSet { UserDefaults.standard.set(panelStyle.rawValue, forKey: "panelStyle") }
+    }
+
     // MARK: - Spell checking
 
     /// Mirrors `SpellCheckingPolicy.continuousSpellChecking`.
@@ -174,6 +192,11 @@ final class AppSettings {
         {
             panelTint = value
         }
+        if let raw = UserDefaults.standard.string(forKey: "panelStyle"),
+           let value = PanelStyle(rawValue: raw)
+        {
+            panelStyle = value
+        }
         // If the saved font is no longer installed (e.g. user uninstalled it),
         // drop it silently so the editor falls back to the system font.
         if let saved = UserDefaults.standard.string(forKey: "editorFontName"),
@@ -257,6 +280,15 @@ extension AppSettings.PanelTint {
         case .sand: l10n["settings.panelTint.sand"]
         case .sage: l10n["settings.panelTint.sage"]
         case .rose: l10n["settings.panelTint.rose"]
+        }
+    }
+}
+
+extension AppSettings.PanelStyle {
+    func displayName(_ l10n: L10n) -> String {
+        switch self {
+        case .translucent: l10n["settings.panelStyle.translucent"]
+        case .opaque: l10n["settings.panelStyle.opaque"]
         }
     }
 }

@@ -47,6 +47,11 @@ struct GeneralSettingsTab: View {
                     ShortcutSettings.shared.appearanceMode = newValue
                 }
 
+                Picker(l10n["settings.general.panelStyle"], selection: $settings.panelStyle) {
+                    ForEach(AppSettings.PanelStyle.allCases, id: \.self) { style in
+                        Text(style.displayName(l10n)).tag(style)
+                    }
+                }
                 Picker(l10n["settings.general.panelTint"], selection: $settings.panelTint) {
                     ForEach(AppSettings.PanelTint.allCases, id: \.self) { tint in
                         Text(tint.displayName(l10n)).tag(tint)
