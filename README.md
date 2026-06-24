@@ -4,6 +4,10 @@
 
  A native macOS side-panel Markdown notes app. Always one edge away.
 
+<p align="right">
+  <a href="README-ES.md">Español</a>
+</p>
+
 <br clear="all" />
 
 <p align="center">
