@@ -1,14 +1,10 @@
-<table>
-  <tr>
-    <td width="150" align="center" valign="middle">
-      <img src=".github/assets/EdgeMark.svg" alt="EdgeMark" width="128" />
-    </td>
-    <td valign="middle">
-      <b><font>EdgeMark</font></b><br/>
-      <sub>A native macOS side-panel Markdown notes app. Always one edge away.</sub>
-    </td>
-  </tr>
-</table>
+<img src=".github/assets/EdgeMark.svg" alt="EdgeMark" width="128" align="left" />
+
+<b><font>EdgeMark</font></b>
+
+ A native macOS side-panel Markdown notes app. Always one edge away.
+
+<br clear="all" />
 
 <p align="center">
   <b>English</b> · <a href="README-zh-Hans.md">简体中文</a> · <a href="README-hi.md">हिन्दी</a> · <a href="README-ES.md">Español</a>

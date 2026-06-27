@@ -1,14 +1,10 @@
-<table>
-  <tr>
-    <td width="150" align="center" valign="middle">
-      <img src=".github/assets/EdgeMark.svg" alt="EdgeMark" width="128" />
-    </td>
-    <td valign="middle">
-      <b><font>EdgeMark</font></b><br/>
-      <sub>Una aplicación nativa de macOS para tomar notas en Markdown con un panel lateral. Siempre a un borde de distancia.</sub>
-    </td>
-  </tr>
-</table>
+<img src=".github/assets/EdgeMark.svg" alt="EdgeMark" width="128" align="left" />
+
+<b><font>EdgeMark</font></b>
+
+ Una aplicación nativa de macOS para tomar notas en Markdown con un panel lateral. Siempre a un borde de distancia.
+
+<br clear="all" />
 
 <p align="center">
   <a href="README.md">English</a> · <a href="README-zh-Hans.md">简体中文</a> · <a href="README-hi.md">हिन्दी</a> · <b>Español</b>

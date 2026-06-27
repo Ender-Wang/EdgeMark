@@ -1,14 +1,10 @@
-<table>
-  <tr>
-    <td width="150" align="center" valign="middle">
-      <img src=".github/assets/EdgeMark.svg" alt="EdgeMark" width="128" />
-    </td>
-    <td valign="middle">
-      <b><font>EdgeMark</font></b><br/>
-      <sub>一款原生 macOS 侧边栏 Markdown 笔记应用。离你永远只有一次边缘滑动之遥。</sub>
-    </td>
-  </tr>
-</table>
+<img src=".github/assets/EdgeMark.svg" alt="EdgeMark" width="128" align="left" />
+
+<b><font>EdgeMark</font></b>
+
+ 一款原生 macOS 侧边栏 Markdown 笔记应用。离你永远只有一次边缘滑动之遥。
+
+<br clear="all" />
 
 <p align="center">
   <a href="README.md">English</a> · <b>简体中文</b> · <a href="README-hi.md">हिन्दी</a> · <a href="README-ES.md">Español</a>
