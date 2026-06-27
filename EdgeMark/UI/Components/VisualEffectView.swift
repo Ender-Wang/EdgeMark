@@ -7,10 +7,11 @@ import SwiftUI
 /// so foreground content (including code block syntax colors) is unaffected.
 struct VisualEffectView: NSViewRepresentable {
     var tint: NSColor?
+    var material: NSVisualEffectView.Material = .sidebar
 
     func makeNSView(context _: Context) -> TintableVisualEffectView {
         let view = TintableVisualEffectView()
-        view.material = .sidebar
+        view.material = material
         view.blendingMode = .behindWindow
         view.state = .active
         view.tintColor = tint
@@ -18,6 +19,7 @@ struct VisualEffectView: NSViewRepresentable {
     }
 
     func updateNSView(_ view: TintableVisualEffectView, context _: Context) {
+        view.material = material
         view.tintColor = tint
     }
 }

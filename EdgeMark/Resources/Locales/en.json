@@ -155,6 +155,10 @@
   "settings.panelTint.sand": "Sand",
   "settings.panelTint.sage": "Sage",
   "settings.panelTint.rose": "Rose",
+  
+  "settings.general.panelStyle": "Panel Style",
+  "settings.panelStyle.translucent": "Translucent",
+  "settings.panelStyle.opaque": "Opaque",
 
   "settings.general.panelPosition": "Panel position",
   "settings.general.edge": "Edge",

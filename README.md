@@ -56,6 +56,7 @@ xattr -cr /Applications/EdgeMark.app
 - 📌 Pin to keep the panel open — survives focus changes, mouse exit, and Space switches (great for copy-pasting back and forth)
 - 📐 Multi-monitor support with configurable left or right edge
 - ↔️ Adjustable width — drag the inner edge to resize, saved across restarts
+- 🪟 Panel style — toggle between Translucent and Opaque panel backgrounds
 - 🎨 Panel tint — pick from a curated palette (System, Graphite, Slate, Sand, Sage, Rose)
 
 ✍️ **Markdown Editing**
