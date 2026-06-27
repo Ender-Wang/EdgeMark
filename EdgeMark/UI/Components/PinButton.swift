@@ -30,5 +30,10 @@ struct PinButton: View {
                 isHovered = hovering
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .panelPinStateChanged)) { _ in
+            // Keep the icon in sync when pin is toggled by the Cmd-P shortcut
+            // (or any path other than this button's own tap).
+            isPinned = ShortcutSettings.shared.isPanelPinned
+        }
     }
 }
