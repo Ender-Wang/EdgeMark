@@ -156,6 +156,10 @@
   "settings.panelTint.sage": "Salvia",
   "settings.panelTint.rose": "Rosa",
 
+  "settings.general.panelStyle": "Estilo del panel",
+  "settings.panelStyle.translucent": "Translúcido",
+  "settings.panelStyle.opaque": "Opaco",
+
   "settings.general.panelPosition": "Posición del panel",
   "settings.general.edge": "Borde",
   "settings.general.left": "Izquierda",
