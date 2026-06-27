@@ -113,7 +113,7 @@ xattr -cr /Applications/EdgeMark.app
 - 📋 Copiar como Texto plano, Markdown o Texto enriquecido — sensible a la selección en el editor con menú contextual
 - 🎨 Iconos SF Symbol en todos los menús contextuales
 - 🔀 Transiciones de página suaves con dirección
-- 🌍 Inglés + Chino simplificado + Hindi (basado en JSON, fácil de contribuir)
+- 🌍 Inglés + Chino simplificado + Hindi + Español (basado en JSON, fácil de contribuir)
 
 ---
 

@@ -114,7 +114,7 @@ xattr -cr /Applications/EdgeMark.app
 - 📋 Copy as Plain Text, Markdown, or Rich Text — selection-aware in editor with right-click context menu
 - 🎨 SF Symbol icons throughout all context menus
 - 🔀 Smooth directional page transitions
-- 🌍 English + Simplified Chinese + Hindi (JSON-based, easy to contribute)
+- 🌍 English + Simplified Chinese + Hindi + Spanish (JSON-based, easy to contribute)
 
 ---
 
