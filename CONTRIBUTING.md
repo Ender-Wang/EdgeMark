@@ -132,7 +132,8 @@ EdgeMark/
         ├── en.json                 #   English
         ├── zh-Hans.json            #   Simplified Chinese
         ├── hi.json                 #   Hindi
-        └── es.json                 #   Spanish
+        ├── es.json                 #   Spanish
+        └── de.json                 #   German
 ```
 
 ## Key Patterns
@@ -164,13 +165,14 @@ EdgeMark uses a custom JSON-based i18n system. Currently supported:
 | Simplified Chinese | `EdgeMark/Resources/Locales/zh-Hans.json` | ✅ |
 | Hindi | `EdgeMark/Resources/Locales/hi.json` | ✅ |
 | Spanish | `EdgeMark/Resources/Locales/es.json` | ✅ |
+| German | `EdgeMark/Resources/Locales/de.json` | ✅ |
 
 ## Contributing a Translation
 
 1. Copy `EdgeMark/Resources/Locales/en.json`
 2. Rename to your [BCP-47 language code](https://en.wikipedia.org/wiki/IETF_language_tag) (e.g. `ja.json`, `ko.json`, `fr.json`, `de.json`, `pt-BR.json`)
 3. Translate the values — keep the JSON keys unchanged
-4. (Optional but appreciated) Add a translated `README-<code>.md` (e.g. `README-ja.md`) modeled on `README.md`, and add your language to the switcher row at the top of every `README*.md` (`English · 简体中文 · हिन्दी · Español · …`), bolding the current language in each file.
+4. (Optional but appreciated) Add a translated `README-<code>.md` (e.g. `README-ja.md`) modeled on `README.md`, and add your language to the switcher row at the top of every `README*.md` (`English · 简体中文 · हिन्दी · Español · Deutsch · …`), bolding the current language in each file.
 5. Submit a PR
 
 No code, project, or build-phase changes are needed. The Xcode project uses Xcode 16 file-system synchronized groups, so any `.json` you drop into the folder is auto-bundled. The language picker enumerates locale files at runtime, and `L10n` matches the system language by prefix — `pt-BR.json` will be selected for any `pt-*` user, and so on. Native-script display names (e.g. "English", "简体中文", "हिन्दी") come from `Locale.localizedString(forIdentifier:)`, so no language-label keys need to be maintained.

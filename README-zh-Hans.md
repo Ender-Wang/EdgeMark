@@ -7,7 +7,7 @@
 <br clear="all" />
 
 <p align="center">
-  <a href="README.md">English</a> · <b>简体中文</b> · <a href="README-hi.md">हिन्दी</a> · <a href="README-ES.md">Español</a>
+  <a href="README.md">English</a> · <b>简体中文</b> · <a href="README-hi.md">हिन्दी</a> · <a href="README-ES.md">Español</a> · <a href="README-de.md">Deutsch</a>
 </p>
 
 <p align="center">
@@ -114,7 +114,7 @@ xattr -cr /Applications/EdgeMark.app
 - 📋 复制为纯文本、Markdown 或富文本——编辑器内选中感知的右键菜单
 - 🎨 所有右键菜单均使用 SF Symbol 图标
 - 🔀 平滑的定向页面过渡
-- 🌍 English + 简体中文 + हिन्दी + Español（基于 JSON，易于贡献）
+- 🌍 English + 简体中文 + हिन्दी + Español + Deutsch（基于 JSON，易于贡献）
 
 ---
 

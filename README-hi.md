@@ -7,7 +7,7 @@
 <br clear="all" />
 
 <p align="center">
-  <a href="README.md">English</a> · <a href="README-zh-Hans.md">简体中文</a> · <b>हिन्दी</b> · <a href="README-ES.md">Español</a>
+  <a href="README.md">English</a> · <a href="README-zh-Hans.md">简体中文</a> · <b>हिन्दी</b> · <a href="README-ES.md">Español</a> · <a href="README-de.md">Deutsch</a>
 </p>
 
 <p align="center">
@@ -114,7 +114,7 @@ xattr -cr /Applications/EdgeMark.app
 - 📋 कॉपी ऐज़ प्लेन टेक्स्ट, Markdown, या रिच टेक्स्ट — एडिटर में सेलेक्शन-अवेयर राइट-क्लिक कॉन्टेक्स्ट मेन्यू
 - 🎨 सभी कॉन्टेक्स्ट मेन्यू में SF Symbol आइकन्स
 - 🔀 स्मूद डायरेक्शनल पेज ट्रांज़िशन्स
-- 🌍 English + 简体中文 + हिन्दी + Español (JSON-आधारित, योगदान देना आसान)
+- 🌍 English + 简体中文 + हिन्दी + Español + Deutsch (JSON-आधारित, योगदान देना आसान)
 
 ---
 

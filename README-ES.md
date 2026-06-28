@@ -7,7 +7,7 @@
 <br clear="all" />
 
 <p align="center">
-  <a href="README.md">English</a> · <a href="README-zh-Hans.md">简体中文</a> · <a href="README-hi.md">हिन्दी</a> · <b>Español</b>
+  <a href="README.md">English</a> · <a href="README-zh-Hans.md">简体中文</a> · <a href="README-hi.md">हिन्दी</a> · <b>Español</b> · <a href="README-de.md">Deutsch</a>
 </p>
 
 <p align="center">
@@ -113,7 +113,7 @@ xattr -cr /Applications/EdgeMark.app
 - 📋 Copiar como Texto plano, Markdown o Texto enriquecido — sensible a la selección en el editor con menú contextual
 - 🎨 Iconos SF Symbol en todos los menús contextuales
 - 🔀 Transiciones de página suaves con dirección
-- 🌍 Inglés + Chino simplificado + Hindi + Español (basado en JSON, fácil de contribuir)
+- 🌍 Inglés + Chino simplificado + Hindi + Español + Alemán (basado en JSON, fácil de contribuir)
 
 ---
 
