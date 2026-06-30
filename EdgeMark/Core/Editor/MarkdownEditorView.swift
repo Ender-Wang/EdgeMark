@@ -100,6 +100,14 @@ struct MarkdownEditorView: View {
             syntaxHighlighter: HighlighterSwiftBridge(),
             latex: SwiftMathBridge(),
             bus: MarkdownEditorBus(
+                // Formatting-request channels — posting these drives the engine's
+                // didMarkdown* actions (bold/italic/code/link/strikethrough), which in
+                // 0.8+ also word-wrap the token under the caret when nothing is selected.
+                applyBoldRequest: .editorApplyBold,
+                applyItalicRequest: .editorApplyItalic,
+                applyStrikethroughRequest: .editorApplyStrikethrough,
+                applyInlineCodeRequest: .editorApplyInlineCode,
+                applyLinkRequest: .editorApplyLink,
                 findScrollToRange: .editorFindScrollToRange,
                 findClearHighlights: .editorFindClearHighlights,
             ),
@@ -173,6 +181,29 @@ struct MarkdownEditorView: View {
         .animation(.easeInOut(duration: 0.18), value: showFindBar.wrappedValue)
         .onAppear {
             noteNavMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [self] event in
+                // Markdown formatting shortcuts — route through the engine's bus so the
+                // didMarkdown* actions run (with word-boundary auto-wrap when no selection).
+                // Guard on the editor's text view being focused, not a field editor (find
+                // bar / search / rename), so typing into those doesn't bold/italicize.
+                if let tv = NSApp.keyWindow?.firstResponder as? NSTextView, !tv.isFieldEditor {
+                    let key = event.charactersIgnoringModifiers?.lowercased()
+                    let mods = event.modifierFlags.intersection([.command, .shift, .option, .control])
+                    if key == "b", mods == [.command] {
+                        NotificationCenter.default.post(name: .editorApplyBold, object: nil); return nil
+                    }
+                    if key == "i", mods == [.command] {
+                        NotificationCenter.default.post(name: .editorApplyItalic, object: nil); return nil
+                    }
+                    if key == "e", mods == [.command] {
+                        NotificationCenter.default.post(name: .editorApplyInlineCode, object: nil); return nil
+                    }
+                    if key == "k", mods == [.command] {
+                        NotificationCenter.default.post(name: .editorApplyLink, object: nil); return nil
+                    }
+                    if key == "x", mods == [.command, .shift] {
+                        NotificationCenter.default.post(name: .editorApplyStrikethrough, object: nil); return nil
+                    }
+                }
                 let s = ShortcutSettings.shared
                 if s.previousNoteShortcut?.matches(event) == true { onNavigatePrevious?(); return nil }
                 if s.nextNoteShortcut?.matches(event) == true { onNavigateNext?(); return nil }
@@ -263,4 +294,12 @@ struct MarkdownEditorView: View {
 extension Notification.Name {
     static let editorFindScrollToRange = Notification.Name("io.github.ender-wang.EdgeMark.editor.findScrollToRange")
     static let editorFindClearHighlights = Notification.Name("io.github.ender-wang.EdgeMark.editor.findClearHighlights")
+
+    // Formatting-request bus channels — posting these drives the engine's
+    // didMarkdown* actions (routed from the ⌘B/⌘I/⌘E/⌘K/⇧⌘X local key monitor).
+    static let editorApplyBold = Notification.Name("io.github.ender-wang.EdgeMark.editor.applyBold")
+    static let editorApplyItalic = Notification.Name("io.github.ender-wang.EdgeMark.editor.applyItalic")
+    static let editorApplyInlineCode = Notification.Name("io.github.ender-wang.EdgeMark.editor.applyInlineCode")
+    static let editorApplyLink = Notification.Name("io.github.ender-wang.EdgeMark.editor.applyLink")
+    static let editorApplyStrikethrough = Notification.Name("io.github.ender-wang.EdgeMark.editor.applyStrikethrough")
 }
