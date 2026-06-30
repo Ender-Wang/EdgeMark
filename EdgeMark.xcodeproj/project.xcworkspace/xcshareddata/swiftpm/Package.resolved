@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/nodes-app/swift-markdown-engine",
       "state" : {
-        "revision" : "8a97fc5748ce044e39a0a5327780b158dd9357f0",
-        "version" : "0.7.1"
+        "revision" : "7d537d0646a6a3170a0779d4e08f6e951b378eb9",
+        "version" : "0.8.0"
       }
     },
     {
