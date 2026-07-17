@@ -95,6 +95,11 @@ struct MarkdownEditorView: View {
             grammarChecking: appSettings.grammarCheckingEnabled,
             automaticSpellingCorrection: appSettings.automaticSpellingCorrectionEnabled,
         )
+        // Register the highlight (==text==) and strikethrough (~~text~~) extensions.
+        // As of swift-markdown-engine 0.10 these are opt-in — unregistered, the
+        // syntax stays literal text (regressing the v2.5.0 highlight feature and
+        // the ⇧⌘X strikethrough shortcut restored in 3e3a86c).
+        config.extensions = [HighlightExtension(), StrikethroughExtension()]
         config.services = MarkdownEditorServices(
             images: EdgeMarkImageProvider(noteFolder: noteFolder),
             syntaxHighlighter: HighlighterSwiftBridge(),

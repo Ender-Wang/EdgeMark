@@ -12,6 +12,10 @@ struct ReadOnlyMarkdownView: View {
     var body: some View {
         var config = MarkdownEditorConfiguration.default
         config.textInsets = TextInsets(horizontal: 16, vertical: 12)
+        // Register highlight (==text==) and strikethrough (~~text~~). Opt-in since
+        // swift-markdown-engine 0.10; without this, trashed/peeked notes render the
+        // markers as literal text.
+        config.extensions = [HighlightExtension(), StrikethroughExtension()]
         config.services = MarkdownEditorServices(
             images: EdgeMarkImageProvider(noteFolder: noteFolder),
             syntaxHighlighter: HighlighterSwiftBridge(),
