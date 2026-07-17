@@ -41,7 +41,9 @@ struct InlineRenameEditor: View {
         .padding(.horizontal, 8)
         .onExitCommand(perform: onCancel)
         .onChange(of: isFocused.wrappedValue) { _, focused in
-            if !focused { onFocusLost() }
+            if !focused {
+                onFocusLost()
+            }
         }
     }
 }

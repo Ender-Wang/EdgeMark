@@ -229,7 +229,9 @@ final class MarqueeView: NSView {
         let dy = current.y - origin.y
 
         // Below threshold: still treat as pending click, don't draw or select yet.
-        if !didDrag, hypot(dx, dy) < dragThreshold { return }
+        if !didDrag, hypot(dx, dy) < dragThreshold {
+            return
+        }
         didDrag = true
 
         let rect = NSRect(

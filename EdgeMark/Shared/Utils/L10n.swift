@@ -86,7 +86,9 @@ final class L10n: @unchecked Sendable {
         let primary = preferred.split(separator: "-").first.map(String.init) ?? "en"
         // Match against discovered locales — exact match first, then language-prefix match.
         let codes = L10n.availableLocales.map(\.code)
-        if codes.contains(preferred) { return preferred }
+        if codes.contains(preferred) {
+            return preferred
+        }
         if let match = codes.first(where: { $0.split(separator: "-").first.map(String.init) == primary }) {
             return match
         }

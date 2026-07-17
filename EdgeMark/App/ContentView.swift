@@ -75,13 +75,19 @@ struct ContentView: View {
         // to a row in the list view we're leaving, so it would otherwise float
         // detached after the transition.
         .onChange(of: noteStore.selectedNote?.id) { _, newID in
-            if newID != nil { peekCoordinator.dismissNow() }
+            if newID != nil {
+                peekCoordinator.dismissNow()
+            }
         }
         .onChange(of: noteStore.selectedFolder?.name) { _, newName in
-            if newName != nil { peekCoordinator.dismissNow() }
+            if newName != nil {
+                peekCoordinator.dismissNow()
+            }
         }
         .onChange(of: noteStore.showTrash) { _, isOn in
-            if isOn { peekCoordinator.dismissNow() }
+            if isOn {
+                peekCoordinator.dismissNow()
+            }
         }
     }
 }

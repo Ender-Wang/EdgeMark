@@ -289,7 +289,9 @@ enum FileStorage {
         // Sync sidecar — use actual disk mtime as savedAt so the external-change
         // detector sees no diff on the next poll cycle.
         var noteForSidecar = note
-        if updatedContent != nil { noteForSidecar.content = bodyToWrite }
+        if updatedContent != nil {
+            noteForSidecar.content = bodyToWrite
+        }
         upsertSidecarEntry(for: noteForSidecar, filename: newFilename)
 
         let savedAt = modificationDate(for: noteForSidecar) ?? Date()
@@ -630,7 +632,9 @@ enum FileStorage {
         for key in keysToRemove {
             SidecarStore.shared.data.trash.removeValue(forKey: key)
         }
-        if !keysToRemove.isEmpty { try? SidecarStore.shared.save() }
+        if !keysToRemove.isEmpty {
+            try? SidecarStore.shared.save()
+        }
     }
 
     /// Load trashed folders from `.trash/` (directories with `.folder.md` metadata).

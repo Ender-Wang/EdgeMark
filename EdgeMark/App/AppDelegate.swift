@@ -268,10 +268,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             for item in contents {
                 let name = item.lastPathComponent
                 // Skip macOS metadata — but keep .trash/ and other app-managed hidden dirs
-                if name == ".DS_Store" || name == ".localized" { continue }
+                if name == ".DS_Store" || name == ".localized" {
+                    continue
+                }
                 let destination = newURL.appendingPathComponent(name)
                 // Skip if an item with the same name already exists at the destination
-                if fm.fileExists(atPath: destination.path) { continue }
+                if fm.fileExists(atPath: destination.path) {
+                    continue
+                }
                 try fm.moveItem(at: item, to: destination)
             }
         } catch {

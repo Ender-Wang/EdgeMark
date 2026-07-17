@@ -62,7 +62,11 @@ struct EditorScreen: View {
             l10n["alert.externalChange.title"],
             isPresented: Binding(
                 get: { noteStore.pendingExternalChange != nil },
-                set: { if !$0 { noteStore.pendingExternalChange = nil } },
+                set: {
+                    if !$0 {
+                        noteStore.pendingExternalChange = nil
+                    }
+                },
             ),
         ) {
             Button(l10n["alert.externalChange.keepEdgeMarkEdits"]) {

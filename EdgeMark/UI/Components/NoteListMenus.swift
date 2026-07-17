@@ -98,7 +98,9 @@ enum NoteListMenus {
         let children = noteStore.childFolders(of: folder.name)
 
         if children.isEmpty {
-            if invalidTarget { return }
+            if invalidTarget {
+                return
+            }
             menu.addActionItem(title: folder.displayName, icon: "folder") {
                 noteStore.moveSelection(toFolder: folder.name)
             }

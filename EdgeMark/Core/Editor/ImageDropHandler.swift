@@ -80,7 +80,9 @@ func findEditorTextView(in root: NSView?) -> NSTextView? {
         return tv
     }
     for sub in root.subviews {
-        if let found = findEditorTextView(in: sub) { return found }
+        if let found = findEditorTextView(in: sub) {
+            return found
+        }
     }
     return nil
 }

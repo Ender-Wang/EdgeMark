@@ -109,7 +109,9 @@ final class PeekCoordinator {
         }
 
         // Skip duplicate scheduling from the same row re-entering.
-        if scheduledID == id, controller.isShowing { return }
+        if scheduledID == id, controller.isShowing {
+            return
+        }
 
         cancelDismiss()
         pendingShowWorkItem?.cancel()
@@ -286,8 +288,12 @@ final class PeekCoordinator {
     /// cursor lands anywhere else (header, footer, empty space below rows).
     func isMouseInUnion() -> Bool {
         let cursor = NSEvent.mouseLocation
-        if controller.window?.frame.contains(cursor) == true { return true }
-        if gapStrip().contains(cursor) { return true }
+        if controller.window?.frame.contains(cursor) == true {
+            return true
+        }
+        if gapStrip().contains(cursor) {
+            return true
+        }
         return false
     }
 

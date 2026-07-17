@@ -13,19 +13,35 @@ struct KeyboardShortcut: Codable, Equatable {
     func matches(_ event: NSEvent) -> Bool {
         guard event.keyCode == keyCode else { return false }
         var required: NSEvent.ModifierFlags = []
-        if modifiers & UInt32(cmdKey) != 0 { required.insert(.command) }
-        if modifiers & UInt32(shiftKey) != 0 { required.insert(.shift) }
-        if modifiers & UInt32(optionKey) != 0 { required.insert(.option) }
-        if modifiers & UInt32(controlKey) != 0 { required.insert(.control) }
+        if modifiers & UInt32(cmdKey) != 0 {
+            required.insert(.command)
+        }
+        if modifiers & UInt32(shiftKey) != 0 {
+            required.insert(.shift)
+        }
+        if modifiers & UInt32(optionKey) != 0 {
+            required.insert(.option)
+        }
+        if modifiers & UInt32(controlKey) != 0 {
+            required.insert(.control)
+        }
         return event.modifierFlags.intersection([.command, .shift, .option, .control]) == required
     }
 
     var description: String {
         var parts: [String] = []
-        if modifiers & UInt32(controlKey) != 0 { parts.append("⌃") }
-        if modifiers & UInt32(optionKey) != 0 { parts.append("⌥") }
-        if modifiers & UInt32(shiftKey) != 0 { parts.append("⇧") }
-        if modifiers & UInt32(cmdKey) != 0 { parts.append("⌘") }
+        if modifiers & UInt32(controlKey) != 0 {
+            parts.append("⌃")
+        }
+        if modifiers & UInt32(optionKey) != 0 {
+            parts.append("⌥")
+        }
+        if modifiers & UInt32(shiftKey) != 0 {
+            parts.append("⇧")
+        }
+        if modifiers & UInt32(cmdKey) != 0 {
+            parts.append("⌘")
+        }
         if let keyString = KeyCodeTranslator.shared.string(for: keyCode) {
             parts.append(keyString)
         }
@@ -115,11 +131,15 @@ final class ShortcutSettings {
             ("settings.keyboard.nextNote", nextNoteShortcut),
         ]
         for (key, s) in configurable where key != ownKey {
-            if s == shortcut { return key }
+            if s == shortcut {
+                return key
+            }
         }
         // Fixed shortcuts — always reserved; warn even if the user can't rebind them
         for (key, s) in Self.reservedShortcuts where key != ownKey {
-            if s == shortcut { return key }
+            if s == shortcut {
+                return key
+            }
         }
         return nil
     }

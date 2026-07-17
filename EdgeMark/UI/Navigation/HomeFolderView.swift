@@ -536,8 +536,12 @@ struct HomeFolderView: View {
         var snippetText = String(content[snippetLower ..< snippetUpper])
             .replacingOccurrences(of: "\n", with: " ")
 
-        if snippetLower > content.startIndex { snippetText = "…" + snippetText }
-        if snippetUpper < content.endIndex { snippetText += "…" }
+        if snippetLower > content.startIndex {
+            snippetText = "…" + snippetText
+        }
+        if snippetUpper < content.endIndex {
+            snippetText += "…"
+        }
 
         // Highlight the matched portion
         var attributed = AttributedString(snippetText)

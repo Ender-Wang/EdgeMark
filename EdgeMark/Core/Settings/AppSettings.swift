@@ -230,7 +230,9 @@ final class AppSettings {
         }
         if let raw = UserDefaults.standard.dictionary(forKey: "tagLabels") as? [String: String] {
             tagLabels = raw.reduce(into: [TagColor: String]()) { result, kv in
-                if let color = TagColor(rawValue: kv.key) { result[color] = kv.value }
+                if let color = TagColor(rawValue: kv.key) {
+                    result[color] = kv.value
+                }
             }
         }
     }

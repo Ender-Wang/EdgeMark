@@ -188,12 +188,16 @@ extension Note {
                     html += escapeHTML(codeLines.joined(separator: "\n")) + "</code></pre>"
                     codeLines = []; inCodeBlock = false
                 } else {
-                    if !openList.isEmpty { html += "</\(openList)>"; openList = "" }
+                    if !openList.isEmpty {
+                        html += "</\(openList)>"; openList = ""
+                    }
                     html += "<pre><code>"; inCodeBlock = true
                 }
                 i += 1; continue
             }
-            if inCodeBlock { codeLines.append(line); i += 1; continue }
+            if inCodeBlock {
+                codeLines.append(line); i += 1; continue
+            }
 
             // Close open list unless this line continues it or is blank
             if !openList.isEmpty, !line.isEmpty,
@@ -216,15 +220,21 @@ extension Note {
             } else if line.range(of: "^\\s*[-*+]\\s+\\[[xX ]\\]", options: .regularExpression) != nil {
                 let checked = line.contains("[x]") || line.contains("[X]")
                 let content = line.replacingOccurrences(of: "^\\s*[-*+]\\s+\\[[xX ]?\\]\\s*", with: "", options: .regularExpression)
-                if openList != "ul" { html += "<ul>"; openList = "ul" }
+                if openList != "ul" {
+                    html += "<ul>"; openList = "ul"
+                }
                 html += "<li>" + (checked ? "&#x2611; " : "&#x2610; ") + inlineHTML(content) + "</li>"
             } else if line.range(of: "^\\s*[-*+]\\s", options: .regularExpression) != nil {
                 let content = line.replacingOccurrences(of: "^\\s*[-*+]\\s+", with: "", options: .regularExpression)
-                if openList != "ul" { html += "<ul>"; openList = "ul" }
+                if openList != "ul" {
+                    html += "<ul>"; openList = "ul"
+                }
                 html += "<li>" + inlineHTML(content) + "</li>"
             } else if line.range(of: "^\\s*\\d+\\.\\s", options: .regularExpression) != nil {
                 let content = line.replacingOccurrences(of: "^\\s*\\d+\\.\\s+", with: "", options: .regularExpression)
-                if openList != "ol" { html += "<ol>"; openList = "ol" }
+                if openList != "ol" {
+                    html += "<ol>"; openList = "ol"
+                }
                 html += "<li>" + inlineHTML(content) + "</li>"
             } else if line.range(of: "^[-*_]{3,}\\s*$", options: .regularExpression) != nil {
                 html += "<hr>"
@@ -236,8 +246,12 @@ extension Note {
             i += 1
         }
 
-        if !openList.isEmpty { html += "</\(openList)>" }
-        if inCodeBlock { html += escapeHTML(codeLines.joined(separator: "\n")) + "</code></pre>" }
+        if !openList.isEmpty {
+            html += "</\(openList)>"
+        }
+        if inCodeBlock {
+            html += escapeHTML(codeLines.joined(separator: "\n")) + "</code></pre>"
+        }
         html += "</body></html>"
         return html
     }

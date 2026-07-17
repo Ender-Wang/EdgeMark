@@ -151,8 +151,12 @@ final class SidePanelController: NSWindowController {
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, isShown else { return event }
             // Skip while editing text or browsing the editor / trash.
-            if let fr = window.firstResponder as? NSTextView, fr.isFieldEditor { return event }
-            if noteStore.selectedNote != nil || noteStore.showTrash { return event }
+            if let fr = window.firstResponder as? NSTextView, fr.isFieldEditor {
+                return event
+            }
+            if noteStore.selectedNote != nil || noteStore.showTrash {
+                return event
+            }
             let shift = event.modifierFlags.contains(.shift)
             switch event.keyCode {
             case 125: // ↓
@@ -179,7 +183,9 @@ final class SidePanelController: NSWindowController {
             if s.searchShortcut?.matches(event) == true {
                 // Trash overlay: pass through (navigateToHome while Trash is active leaves
                 // pendingSearchOnHome stuck).
-                if noteStore.showTrash { return event }
+                if noteStore.showTrash {
+                    return event
+                }
                 // Note open: show the in-editor find bar instead of navigating to search.
                 if noteStore.selectedNote != nil {
                     noteStore.pendingEditorFind = true
@@ -660,9 +666,13 @@ final class SidePanelController: NSWindowController {
         guard let window else { return false }
         let cursor = NSEvent.mouseLocation
         // 1. Inside the panel window itself
-        if window.frame.contains(cursor) { return true }
+        if window.frame.contains(cursor) {
+            return true
+        }
         // 2. Inside the peek preview window
-        if let peekFrame = peekCoordinator.peekWindowFrame, peekFrame.contains(cursor) { return true }
+        if let peekFrame = peekCoordinator.peekWindowFrame, peekFrame.contains(cursor) {
+            return true
+        }
         // 3. Inside the 12pt gap strip between the panel and the preview
         let gap = PeekWindowController.gap
         let side = ShortcutSettings.shared.edgeSide
@@ -674,7 +684,9 @@ final class SidePanelController: NSWindowController {
             NSRect(x: window.frame.maxX, y: window.frame.minY,
                    width: gap, height: window.frame.height)
         }
-        if gapStrip.contains(cursor) { return true }
+        if gapStrip.contains(cursor) {
+            return true
+        }
         return false
     }
 

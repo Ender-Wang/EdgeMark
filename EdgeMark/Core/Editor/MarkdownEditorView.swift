@@ -205,8 +205,12 @@ struct MarkdownEditorView: View {
                     }
                 }
                 let s = ShortcutSettings.shared
-                if s.previousNoteShortcut?.matches(event) == true { onNavigatePrevious?(); return nil }
-                if s.nextNoteShortcut?.matches(event) == true { onNavigateNext?(); return nil }
+                if s.previousNoteShortcut?.matches(event) == true {
+                    onNavigatePrevious?(); return nil
+                }
+                if s.nextNoteShortcut?.matches(event) == true {
+                    onNavigateNext?(); return nil
+                }
                 return event
             }
         }
@@ -222,7 +226,9 @@ struct MarkdownEditorView: View {
             let full = hiddenHeadingLine.isEmpty ? storage : hiddenHeadingLine + "\n\n" + storage
             onContentChanged(capturedID, full)
             slashHandler.dismiss()
-            if let m = noteNavMonitor { NSEvent.removeMonitor(m); noteNavMonitor = nil }
+            if let m = noteNavMonitor {
+                NSEvent.removeMonitor(m); noteNavMonitor = nil
+            }
         }
     }
 

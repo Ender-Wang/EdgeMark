@@ -460,7 +460,9 @@ final class NoteStore {
                 && other.folder == folder
                 && (other.savedFilename ?? other.filename).caseInsensitiveCompare(filename) == .orderedSame
         }
-        if collidesInMemory { return true }
+        if collidesInMemory {
+            return true
+        }
         let destURL = folder.isEmpty
             ? FileStorage.rootURL.appendingPathComponent(filename)
             : FileStorage.rootURL.appendingPathComponent(folder).appendingPathComponent(filename)
@@ -479,7 +481,9 @@ final class NoteStore {
             sib.name != folderPath
                 && sib.displayName.caseInsensitiveCompare(displayName) == .orderedSame
         }
-        if collidesInMemory { return true }
+        if collidesInMemory {
+            return true
+        }
         let destURL = newParent.isEmpty
             ? FileStorage.rootURL.appendingPathComponent(displayName)
             : FileStorage.rootURL.appendingPathComponent(newParent).appendingPathComponent(displayName)
@@ -650,7 +654,9 @@ final class NoteStore {
     /// Flat row order matching what the active list view is rendering.
     /// Empty when keyboard navigation shouldn't apply (editor, trash).
     var keyboardNavOrder: [SelectableID] {
-        if selectedNote != nil || showTrash { return [] }
+        if selectedNote != nil || showTrash {
+            return []
+        }
         let s = AppSettings.shared
         if let parent = selectedFolder?.name {
             let kidFolders = sortedFolders(childFolders(of: parent), by: s.sortBy, ascending: s.sortAscending)
@@ -736,10 +742,18 @@ final class NoteStore {
         guard !selection.isEmpty else { return }
         let snapshot = selection
         let noteIDs: [UUID] = snapshot.compactMap {
-            if case let .note(id) = $0 { id } else { nil }
+            if case let .note(id) = $0 {
+                id
+            } else {
+                nil
+            }
         }
         let folderPaths: [String] = snapshot.compactMap {
-            if case let .folder(path) = $0 { path } else { nil }
+            if case let .folder(path) = $0 {
+                path
+            } else {
+                nil
+            }
         }
         Log.storage.info("[NoteStore] trashSelection — \(noteIDs.count) notes, \(folderPaths.count) folders")
         for id in noteIDs {
@@ -766,7 +780,11 @@ final class NoteStore {
     /// Folders currently in the selection.
     var selectedFolderPaths: [String] {
         selection.compactMap {
-            if case let .folder(path) = $0 { path } else { nil }
+            if case let .folder(path) = $0 {
+                path
+            } else {
+                nil
+            }
         }
     }
 
@@ -784,7 +802,9 @@ final class NoteStore {
         }
         for path in folderSnapshot {
             // Skip moving a folder into itself or any of its own descendants.
-            if targetFolder == path || targetFolder.hasPrefix(path + "/") { continue }
+            if targetFolder == path || targetFolder.hasPrefix(path + "/") {
+                continue
+            }
             moveFolder(path, toParent: targetFolder)
         }
         let queuedNotes = pendingNoteMoveConflicts.count - noteConflictsBefore
@@ -802,8 +822,12 @@ final class NoteStore {
         let notes = selectedNotes
         guard !notes.isEmpty else { return .off }
         let withTag = notes.count(where: { $0.tags.contains(tag) })
-        if withTag == 0 { return .off }
-        if withTag == notes.count { return .on }
+        if withTag == 0 {
+            return .off
+        }
+        if withTag == notes.count {
+            return .on
+        }
         return .mixed
     }
 
@@ -912,7 +936,9 @@ final class NoteStore {
         while !pendingNoteMoveConflicts.isEmpty {
             let before = pendingNoteMoveConflicts.count
             resolveNoteMoveConflict(keepBoth: keepBoth)
-            if pendingNoteMoveConflicts.count >= before { break } // safety: ensure forward progress
+            if pendingNoteMoveConflicts.count >= before {
+                break
+            } // safety: ensure forward progress
             resolved += 1
         }
         Log.storage.info("[NoteStore] resolveAllNoteMoveConflicts \(keepBoth ? "keepBoth" : "replace", privacy: .public) — \(resolved) resolved")
@@ -1177,8 +1203,12 @@ final class NoteStore {
             }
             // Update cache: rename oldName and all sub-paths (reuses oldPrefix declared above)
             diskFolderNames = Set(diskFolderNames.map { path in
-                if path == oldName { return newFullPath }
-                if path.hasPrefix(oldPrefix) { return newFullPath + path.dropFirst(oldName.count) }
+                if path == oldName {
+                    return newFullPath
+                }
+                if path.hasPrefix(oldPrefix) {
+                    return newFullPath + path.dropFirst(oldName.count)
+                }
                 return path
             })
             updateSidecarPaths(for: notes)
@@ -1256,7 +1286,9 @@ final class NoteStore {
         while !pendingFolderMoveConflicts.isEmpty {
             let before = pendingFolderMoveConflicts.count
             resolveFolderMoveConflict(keepBoth: keepBoth)
-            if pendingFolderMoveConflicts.count >= before { break }
+            if pendingFolderMoveConflicts.count >= before {
+                break
+            }
             resolved += 1
         }
         Log.storage.info("[NoteStore] resolveAllFolderMoveConflicts \(keepBoth ? "keepBoth" : "replace", privacy: .public) — \(resolved) resolved")
@@ -1298,8 +1330,12 @@ final class NoteStore {
             }
             // Update cache: rename moved folder and all sub-paths (reuses oldPrefix declared above)
             diskFolderNames = Set(diskFolderNames.map { path in
-                if path == name { return newFullPath }
-                if path.hasPrefix(oldPrefix) { return newFullPath + "/" + path.dropFirst(oldPrefix.count) }
+                if path == name {
+                    return newFullPath
+                }
+                if path.hasPrefix(oldPrefix) {
+                    return newFullPath + "/" + path.dropFirst(oldPrefix.count)
+                }
                 return path
             })
             updateSidecarPaths(for: notes)
@@ -1420,7 +1456,9 @@ final class NoteStore {
                 changed = true
             }
         }
-        if changed { try? SidecarStore.shared.save() }
+        if changed {
+            try? SidecarStore.shared.save()
+        }
     }
 
     private static func extractTitle(from content: String) -> String {

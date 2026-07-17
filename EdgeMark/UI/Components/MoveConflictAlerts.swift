@@ -12,7 +12,11 @@ extension View {
             l10n["alert.nameConflict"],
             isPresented: Binding(
                 get: { !noteStore.pendingNoteMoveConflicts.isEmpty },
-                set: { if !$0 { noteStore.cancelAllNoteMoveConflicts() } },
+                set: {
+                    if !$0 {
+                        noteStore.cancelAllNoteMoveConflicts()
+                    }
+                },
             ),
         ) {
             if noteStore.pendingNoteMoveConflicts.count > 1 {
@@ -46,7 +50,11 @@ extension View {
             l10n["alert.nameConflict"],
             isPresented: Binding(
                 get: { !noteStore.pendingFolderMoveConflicts.isEmpty },
-                set: { if !$0 { noteStore.cancelAllFolderMoveConflicts() } },
+                set: {
+                    if !$0 {
+                        noteStore.cancelAllFolderMoveConflicts()
+                    }
+                },
             ),
         ) {
             if noteStore.pendingFolderMoveConflicts.count > 1 {

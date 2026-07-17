@@ -110,7 +110,9 @@ final class SlashCommandHandler {
     }
 
     func dismiss() {
-        if let monitor = keyMonitor { NSEvent.removeMonitor(monitor); keyMonitor = nil }
+        if let monitor = keyMonitor {
+            NSEvent.removeMonitor(monitor); keyMonitor = nil
+        }
         popup?.close()
         popup = nil
         triggerLocation = nil
@@ -167,7 +169,11 @@ final class SlashCommandHandler {
         let filtered = Self.commands.filter { cmd in
             cmd.aliases.contains { $0.hasPrefix(filter) } || cmd.title.lowercased().contains(filter)
         }
-        if filtered.isEmpty { dismiss() } else { popup?.updateCommands(filtered) }
+        if filtered.isEmpty {
+            dismiss()
+        } else {
+            popup?.updateCommands(filtered)
+        }
     }
 
     // MARK: - Execution
