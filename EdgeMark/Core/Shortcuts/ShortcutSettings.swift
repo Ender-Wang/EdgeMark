@@ -74,6 +74,24 @@ enum AnimationStyle: String {
     case fade
 }
 
+// MARK: - StorageRoot
+
+/// A configured notes storage location. EdgeMark loads notes from exactly one root at a
+/// time (the active root); `StorageRoot` is just a labeled directory the user can switch to.
+/// `label` is optional — display falls back to `url.lastPathComponent` when nil.
+struct StorageRoot: Codable, Hashable, Identifiable {
+    /// Stable id. The migrated default root uses the fixed string "default"; user-added
+    /// roots get a UUID string. Used as the `activeRootID` to track the persistent default.
+    let id: String
+    let url: URL
+    var label: String?
+
+    /// Display name: the user's label, or the directory's last path component if unlabeled.
+    var displayName: String {
+        label ?? url.lastPathComponent
+    }
+}
+
 // MARK: - ShortcutSettings
 
 final class ShortcutSettings {
@@ -266,8 +284,75 @@ final class ShortcutSettings {
         if let custom = storageDirectory {
             return custom
         }
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        return docs.appendingPathComponent("EdgeMark", isDirectory: true)
+        return Self.defaultStorageDirectory
+    }
+
+    // MARK: - Multiple storage locations (#55)
+
+    /// All configured storage roots. The active one (the one notes are loaded from) is
+    /// resolved by `activeRootID`, overridable at runtime by `sessionRootOverride`.
+    /// See `AppDelegate.switchRoot(to:temporary:)` for the single switch path.
+    var storageRoots: [StorageRoot] {
+        didSet {
+            saveStorageRoots()
+            NotificationCenter.default.post(name: .storageRootChanged, object: nil)
+        }
+    }
+
+    /// The persistent default root — the one EdgeMark opens with. nil falls back to the
+    /// first root at resolve time. Setting this persists; it does NOT take effect at
+    /// runtime until `switchRoot(temporary: false)` is called (which also reloads notes).
+    var activeRootID: String? {
+        didSet {
+            if let id = activeRootID {
+                UserDefaults.standard.set(id, forKey: activeRootIDKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: activeRootIDKey)
+            }
+            NotificationCenter.default.post(name: .storageRootChanged, object: nil)
+        }
+    }
+
+    /// Opt-in: on launch with ≥2 roots, show a non-blocking picker to choose this
+    /// session's root. Default off (UX continuity for existing single-root users).
+    var askOnLaunch: Bool {
+        didSet { UserDefaults.standard.set(askOnLaunch, forKey: askOnLaunchKey) }
+    }
+
+    /// In-memory session override — set by the menu-bar temporary switch and the
+    /// ask-on-launch pick. NOT persisted; clears on restart so the app reverts to the
+    /// `activeRootID` default. Takes precedence over `activeRootID` when resolving.
+    var sessionRootOverride: StorageRoot? {
+        didSet { NotificationCenter.default.post(name: .storageRootChanged, object: nil) }
+    }
+
+    /// The root the app currently shows: session override, else the persistent active
+    /// root, else the first configured root. nil only when no roots are configured.
+    var activeStorageRoot: StorageRoot? {
+        if let override = sessionRootOverride {
+            return override
+        }
+        if let id = activeRootID, let root = storageRoots.first(where: { $0.id == id }) {
+            return root
+        }
+        return storageRoots.first
+    }
+
+    /// True when a temporary session override is active (used by the menu-bar UI to mark
+    /// the switch as temporary / reverting on restart).
+    var hasSessionOverride: Bool {
+        sessionRootOverride != nil
+    }
+
+    static var defaultStorageDirectory: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("EdgeMark", isDirectory: true)
+    }
+
+    private func saveStorageRoots() {
+        if let data = try? JSONEncoder().encode(storageRoots) {
+            UserDefaults.standard.set(data, forKey: storageRootsKey)
+        }
     }
 
     // MARK: - Keys
@@ -293,6 +378,9 @@ final class ShortcutSettings {
     private let autoCheckUpdatesKey = "autoCheckUpdates"
     private let launchAtLoginKey = "launchAtLogin"
     private let storageDirectoryKey = "storageDirectory"
+    private let storageRootsKey = "storageRoots"
+    private let activeRootIDKey = "activeRootID"
+    private let askOnLaunchKey = "askOnLaunch"
     private let appearanceModeKey = "appearanceMode"
     private let animationStyleKey = "animationStyle"
     private let panelWidthKey = "panelWidth"
@@ -349,6 +437,37 @@ final class ShortcutSettings {
         // Panel width (stored as Double since UserDefaults doesn't have CGFloat)
         let savedWidth = UserDefaults.standard.object(forKey: panelWidthKey) as? Double
         panelWidth = savedWidth.map { CGFloat($0) } ?? 400
+
+        // Multiple storage locations (#55). The roots model is populated here but does
+        // NOT become authoritative until `AppDelegate.switchRoot` flips the resolve path
+        // (commit 2); for now `resolvedStorageDirectory` still reads `storageDirectory`,
+        // so behavior is unchanged on this commit.
+        if let data = UserDefaults.standard.data(forKey: storageRootsKey),
+           let roots = try? JSONDecoder().decode([StorageRoot].self, from: data)
+        {
+            storageRoots = roots
+        } else {
+            storageRoots = []
+        }
+        activeRootID = UserDefaults.standard.string(forKey: activeRootIDKey)
+        askOnLaunch = UserDefaults.standard.object(forKey: askOnLaunchKey) as? Bool ?? false
+        sessionRootOverride = nil
+
+        // Migration: seed one root from the legacy `storageDirectory` (or the default
+        // path) the first time the new model runs, so existing users keep their current
+        // storage location as a labeled "Default" root. Property observers don't fire
+        // during init, so persist explicitly.
+        if storageRoots.isEmpty {
+            let seedURL = storageDirectory ?? Self.defaultStorageDirectory
+            storageRoots = [StorageRoot(id: "default", url: seedURL, label: "Default")]
+            if activeRootID == nil {
+                activeRootID = "default"
+            }
+            saveStorageRoots()
+            if let id = activeRootID {
+                UserDefaults.standard.set(id, forKey: activeRootIDKey)
+            }
+        }
 
         loadShortcuts()
         loadLocalShortcuts()
@@ -432,4 +551,8 @@ final class ShortcutSettings {
 extension Notification.Name {
     static let shortcutSettingsChanged = Notification.Name("shortcutSettingsChanged")
     static let panelPinStateChanged = Notification.Name("panelPinStateChanged")
+    /// Posted when the active storage root changes (switch, settings edit, or session
+    /// override). Distinct from the overloaded `shortcutSettingsChanged` so note-list
+    /// reload and the switcher UI can react cleanly.
+    static let storageRootChanged = Notification.Name("storageRootChanged")
 }
