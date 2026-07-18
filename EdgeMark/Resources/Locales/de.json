@@ -181,6 +181,13 @@
   "settings.general.showInFinder": "Im Finder anzeigen",
   "settings.general.changeFolder": "Notizen-Ordner ändern…",
   "settings.general.chooseFolderMessage": "Wähle einen Ordner für deine Notizen",
+  "settings.general.addLocation": "Ort hinzufügen…",
+  "settings.general.addLocationMessage": "Wähle einen Ordner für den neuen Speicherort",
+  "settings.general.setAsDefault": "Als Standard festlegen",
+  "settings.general.removeLocation": "Entfernen",
+  "settings.general.cantRemoveLast": "Behalte mindestens einen Speicherort.",
+  "settings.general.askOnLaunch": "Beim Start auswählen",
+  "settings.general.askOnLaunchHint": "Nur mit zwei oder mehr Orten verfügbar",
 
   "settings.language.system": "System",
 

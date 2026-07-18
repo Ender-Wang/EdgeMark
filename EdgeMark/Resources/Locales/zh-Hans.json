@@ -181,6 +181,13 @@
   "settings.general.showInFinder": "在访达中显示",
   "settings.general.changeFolder": "更改笔记文件夹…",
   "settings.general.chooseFolderMessage": "选择一个文件夹来存储笔记",
+  "settings.general.addLocation": "添加位置…",
+  "settings.general.addLocationMessage": "为新的存储位置选择一个文件夹",
+  "settings.general.setAsDefault": "设为默认",
+  "settings.general.removeLocation": "移除",
+  "settings.general.cantRemoveLast": "至少保留一个存储位置。",
+  "settings.general.askOnLaunch": "启动时选择",
+  "settings.general.askOnLaunchHint": "仅在有两个或更多位置时可用",
 
   "settings.language.system": "跟随系统",
 

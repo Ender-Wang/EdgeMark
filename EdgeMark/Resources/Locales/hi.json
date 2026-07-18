@@ -181,6 +181,13 @@
   "settings.general.showInFinder": "Finder में दिखाएं",
   "settings.general.changeFolder": "नोट्स फ़ोल्डर बदलें…",
   "settings.general.chooseFolderMessage": "नोट्स सेव करने के लिए फ़ोल्डर चुनें",
+  "settings.general.addLocation": "स्थान जोड़ें…",
+  "settings.general.addLocationMessage": "नए स्टोरेज स्थान के लिए फ़ोल्डर चुनें",
+  "settings.general.setAsDefault": "डिफ़ॉल्ट पर सेट करें",
+  "settings.general.removeLocation": "हटाएं",
+  "settings.general.cantRemoveLast": "कम से कम एक स्टोरेज स्थान रखें।",
+  "settings.general.askOnLaunch": "लॉन्च होने पर चुनें",
+  "settings.general.askOnLaunchHint": "केवल दो या अधिक स्थान होने पर उपलब्ध",
 
   "settings.language.system": "सिस्टम",
 

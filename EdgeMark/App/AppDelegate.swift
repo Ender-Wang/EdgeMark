@@ -4,6 +4,11 @@ import SwiftUI
 import UserNotifications
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// Strong single instance set on launch, so SwiftUI views (e.g. GeneralSettingsTab)
+    /// can reach switchRoot without relying on `NSApp.delegate` casts, which can be nil
+    /// inside a SwiftUI `Settings` scene.
+    static var shared: AppDelegate?
+
     var panelController: SidePanelController?
     var statusItem: NSStatusItem?
     private var updateWindowController: UpdateWindowController?
@@ -15,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let updateState = UpdateState()
 
     func applicationDidFinishLaunching(_: Notification) {
+        Self.shared = self
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
         Log.app.info("[AppDelegate] launched v\(version, privacy: .public) (build \(build, privacy: .public))")

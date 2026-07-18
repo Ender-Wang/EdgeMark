@@ -181,6 +181,13 @@
   "settings.general.showInFinder": "Mostrar en Finder",
   "settings.general.changeFolder": "Cambiar carpeta de notas\u2026",
   "settings.general.chooseFolderMessage": "Elige una carpeta para almacenar tus notas",
+  "settings.general.addLocation": "Añadir ubicación…",
+  "settings.general.addLocationMessage": "Elige una carpeta para la nueva ubicación de almacenamiento",
+  "settings.general.setAsDefault": "Establecer como predeterminado",
+  "settings.general.removeLocation": "Quitar",
+  "settings.general.cantRemoveLast": "Conserva al menos una ubicación de almacenamiento.",
+  "settings.general.askOnLaunch": "Elegir al iniciar",
+  "settings.general.askOnLaunchHint": "Solo disponible con dos o más ubicaciones",
 
   "settings.language.system": "Sistema",
 

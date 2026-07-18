@@ -1,3 +1,4 @@
+import OSLog
 import SwiftUI
 
 struct GeneralSettingsTab: View {
@@ -7,15 +8,22 @@ struct GeneralSettingsTab: View {
     @State private var appearanceMode: AppearanceMode
     @State private var autoCheckUpdates: Bool
     @State private var launchAtLogin: Bool
-    @State private var storagePath: String
     @State private var selectedLocale: String
+    // Multiple storage locations (#55). Mirrored from ShortcutSettings (a plain class,
+    // not @Observable) and refreshed on .storageRootChanged.
+    @State private var roots: [StorageRoot]
+    @State private var activeRootID: String?
+    @State private var askOnLaunch: Bool
+    @State private var removalBlockedMessage: String?
 
     init() {
         let s = ShortcutSettings.shared
         _appearanceMode = State(initialValue: s.appearanceMode)
         _autoCheckUpdates = State(initialValue: s.autoCheckUpdates)
         _launchAtLogin = State(initialValue: s.launchAtLogin)
-        _storagePath = State(initialValue: s.resolvedStorageDirectory.path(percentEncoded: false))
+        _roots = State(initialValue: s.storageRoots)
+        _activeRootID = State(initialValue: s.activeRootID)
+        _askOnLaunch = State(initialValue: s.askOnLaunch)
         _selectedLocale = State(initialValue: L10n.shared.locale)
     }
 
@@ -140,38 +148,163 @@ struct GeneralSettingsTab: View {
             }
 
             Section {
-                LabeledContent(l10n["settings.general.location"]) {
-                    Text(storagePath)
-                        .font(.system(.caption, design: .monospaced))
-                        .lineLimit(2)
-                        .truncationMode(.middle)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
+                ForEach(roots) { root in
+                    storageRootRow(root)
                 }
 
-                HStack {
-                    Button(l10n["settings.general.showInFinder"]) {
-                        NSWorkspace.shared.open(ShortcutSettings.shared.resolvedStorageDirectory)
-                    }
-                    Spacer()
-                    Button(l10n["settings.general.changeFolder"]) {
-                        NSApp.sendAction(#selector(AppDelegate.changeNotesFolder), to: nil, from: nil)
-                    }
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(l10n["settings.general.askOnLaunch"], isOn: $askOnLaunch)
+                        .disabled(roots.count < 2)
+                        .onChange(of: askOnLaunch) { _, v in
+                            ShortcutSettings.shared.askOnLaunch = v
+                        }
+                    Text(l10n["settings.general.askOnLaunchHint"])
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             } header: {
-                Label(l10n["settings.general.storage"], systemImage: "folder")
+                HStack {
+                    Label(l10n["settings.general.storage"], systemImage: "folder")
+                    Spacer()
+                    Button {
+                        addLocation()
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .buttonStyle(.borderless)
+                    .help(l10n["settings.general.addLocation"])
+                }
             }
         }
         .formStyle(.grouped)
-        .onReceive(NotificationCenter.default.publisher(for: .shortcutSettingsChanged)) { _ in
-            storagePath = ShortcutSettings.shared.resolvedStorageDirectory.path(percentEncoded: false)
-        }
-        // Also refresh when the active storage root changes (migrate / switchRoot) —
-        // the roots model posts .storageRootChanged, not .shortcutSettingsChanged.
-        // Commit 3 replaces this whole section with a multi-root list; this keeps the
-        // displayed path correct in the interim.
         .onReceive(NotificationCenter.default.publisher(for: .storageRootChanged)) { _ in
-            storagePath = ShortcutSettings.shared.resolvedStorageDirectory.path(percentEncoded: false)
+            roots = ShortcutSettings.shared.storageRoots
+            activeRootID = ShortcutSettings.shared.activeRootID
+            askOnLaunch = ShortcutSettings.shared.askOnLaunch
+        }
+        .alert("Cannot remove", isPresented: .constant(removalBlockedMessage != nil)) {
+            Button(l10n["common.ok"]) { removalBlockedMessage = nil }
+        } message: {
+            Text(removalBlockedMessage ?? "")
+        }
+    }
+
+    @ViewBuilder
+    private func storageRootRow(_ root: StorageRoot) -> some View {
+        let isActive = activeRootID == root.id
+        HStack(alignment: .center, spacing: 10) {
+            Button {
+                AppDelegate.shared?.switchRoot(to: root, temporary: false)
+            } label: {
+                Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isActive ? Color.accentColor : .secondary)
+                    .font(.title3)
+            }
+            .buttonStyle(.borderless)
+            .disabled(isActive)
+            .help(isActive ? "" : l10n["settings.general.setAsDefault"])
+
+            VStack(alignment: .leading, spacing: 2) {
+                TextField(
+                    l10n["common.rename"],
+                    text: labelBinding(forID: root.id),
+                )
+                .textFieldStyle(.plain)
+                .font(.body)
+                .labelsHidden()
+                Text(root.url.path(percentEncoded: false))
+                    .font(.system(.caption, design: .monospaced))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+
+            Spacer()
+
+            Button {
+                NSWorkspace.shared.open(root.url)
+            } label: {
+                Image(systemName: "folder")
+            }
+            .buttonStyle(.borderless)
+            .help(l10n["settings.general.showInFinder"])
+            Button {
+                NSApp.sendAction(#selector(AppDelegate.changeNotesFolder), to: nil, from: nil)
+            } label: {
+                Image(systemName: "arrow.right.arrow.left")
+            }
+            .buttonStyle(.borderless)
+            .help(l10n["settings.general.changeFolder"])
+            Button(role: .destructive) {
+                removeRoot(root)
+            } label: {
+                Image(systemName: "trash")
+            }
+            .buttonStyle(.borderless)
+            .help(l10n["settings.general.removeLocation"])
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func labelBinding(forID id: String) -> Binding<String> {
+        Binding(
+            get: {
+                if let r = ShortcutSettings.shared.storageRoots.first(where: { $0.id == id }) {
+                    return r.label ?? r.url.lastPathComponent
+                }
+                return ""
+            },
+            set: { newVal in
+                var current = ShortcutSettings.shared.storageRoots
+                if let idx = current.firstIndex(where: { $0.id == id }) {
+                    current[idx].label = newVal.isEmpty ? nil : newVal
+                }
+                ShortcutSettings.shared.storageRoots = current
+                roots = current
+            },
+        )
+    }
+
+    private func addLocation() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.message = l10n["settings.general.addLocationMessage"]
+        panel.prompt = l10n["common.select"]
+        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents")
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            var current = ShortcutSettings.shared.storageRoots
+            guard !current.contains(where: { $0.url == url }) else { return }
+            do {
+                try FileStorage.ensureRootStructure(at: url)
+            } catch {
+                let msg = error.localizedDescription
+                Log.storage.error("[Settings] ensureRootStructure failed: \(msg)")
+                return
+            }
+            current.append(StorageRoot(id: UUID().uuidString, url: url, label: nil))
+            ShortcutSettings.shared.storageRoots = current
+            roots = current
+        }
+    }
+
+    private func removeRoot(_ root: StorageRoot) {
+        var current = ShortcutSettings.shared.storageRoots
+        guard current.count > 1 else {
+            removalBlockedMessage = l10n["settings.general.cantRemoveLast"]
+            return
+        }
+        let wasActive = ShortcutSettings.shared.activeRootID == root.id
+            || ShortcutSettings.shared.sessionRootOverride?.id == root.id
+        current.removeAll { $0.id == root.id }
+        ShortcutSettings.shared.storageRoots = current
+        roots = current
+        if wasActive, let next = current.first {
+            AppDelegate.shared?.switchRoot(to: next, temporary: false)
         }
     }
 }

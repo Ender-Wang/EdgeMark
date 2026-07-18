@@ -24,6 +24,17 @@ enum FileStorage {
         try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
     }
 
+    /// Create the directory structure for a storage root: the root dir itself plus the
+    /// `.edgemark/` (sidecar) and `.trash/` subdirs. Used when adding a new location
+    /// (commit 3). Safe to call on an existing root — `withIntermediateDirectories`
+    /// and the trash creation are no-ops if present.
+    static func ensureRootStructure(at url: URL) throws {
+        let fm = FileManager.default
+        try fm.createDirectory(at: url, withIntermediateDirectories: true)
+        try fm.createDirectory(at: url.appendingPathComponent(".edgemark", isDirectory: true), withIntermediateDirectories: true)
+        try fm.createDirectory(at: url.appendingPathComponent(".trash", isDirectory: true), withIntermediateDirectories: true)
+    }
+
     static func ensureTrashExists() throws {
         try FileManager.default.createDirectory(at: trashURL, withIntermediateDirectories: true)
     }
