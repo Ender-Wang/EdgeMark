@@ -8,7 +8,7 @@ final class EdgeDetector {
 
     private var globalMouseMonitor: Any?
     private var localMouseMonitor: Any?
-    private var wasAtEdge = false
+    private var lastHit: EdgeHit = .none
     private var activationTimer: Timer?
     private var isPaused = false
     private var isMenuOpen = false
@@ -57,9 +57,9 @@ final class EdgeDetector {
         isPaused = false
         let mouseLocation = NSEvent.mouseLocation
         if let screen = screenForPoint(mouseLocation) {
-            wasAtEdge = isAtEdge(mouseLocation: mouseLocation, visibleFrame: screen.visibleFrame)
+            lastHit = edgeHit(mouseLocation: mouseLocation, screen: screen)
         } else {
-            wasAtEdge = false
+            lastHit = .none
         }
     }
 
@@ -94,12 +94,10 @@ final class EdgeDetector {
         let mouseLocation = NSEvent.mouseLocation
 
         guard let screen = screenForPoint(mouseLocation) else { return }
-        let visibleFrame = screen.visibleFrame
+        let hit = edgeHit(mouseLocation: mouseLocation, screen: screen)
 
-        let atEdge = isAtEdge(mouseLocation: mouseLocation, visibleFrame: visibleFrame)
-
-        if atEdge, !wasAtEdge {
-            // Just arrived at edge — start activation delay
+        if hit == .exterior, lastHit != .exterior {
+            // Just arrived at a trigger edge — start activation delay
             let delay = ShortcutSettings.shared.activationDelay
             if delay <= 0 {
                 Log.window.debug("[EdgeDetector] edge hit — immediate activation")
@@ -108,12 +106,20 @@ final class EdgeDetector {
                 Log.window.debug("[EdgeDetector] edge hit — activation timer (\(delay)s)")
                 startActivation(delay: delay, screen: screen)
             }
-        } else if !atEdge, wasAtEdge {
+        } else if hit != .exterior, lastHit == .exterior {
             Log.window.debug("[EdgeDetector] left edge — cancelled")
             cancelActivation()
         }
 
-        wasAtEdge = atEdge
+        // Discriminating log: cursor reached the configured side's edge but
+        // it's between two displays — not a desktop boundary, so no trigger.
+        // Lets Console.app prove the gate fired (vs. the cursor just not
+        // being near any edge). Fires once per arrival, not per mouseMove.
+        if hit == .interior, lastHit != .interior {
+            Log.window.debug("[EdgeDetector] interior edge ignored — not a desktop boundary")
+        }
+
+        lastHit = hit
 
         let elapsed = (CACurrentMediaTime() - t0) * 1000
         if elapsed > 2 {
@@ -131,29 +137,60 @@ final class EdgeDetector {
         }
     }
 
-    private func isAtEdge(mouseLocation: NSPoint, visibleFrame: NSRect) -> Bool {
-        let settings = ShortcutSettings.shared
-        guard settings.edgeActivationEnabled else { return false }
+    /// Three-state result of an edge check:
+    /// - `none`: cursor not at the configured side's edge (or corner-excluded).
+    /// - `interior`: at the side's edge, but it lies *between* two displays —
+    ///   not a desktop boundary, so it must not trigger.
+    /// - `exterior`: at a trigger edge on the global desktop boundary.
+    enum EdgeHit: Equatable {
+        case none
+        case interior
+        case exterior
+    }
 
-        let atEdge: Bool = switch settings.edgeSide {
+    /// Returns the edge state for the cursor. Interior edges (the seam between
+    /// two side-by-side displays) never trigger — moving the mouse from one
+    /// display to another shouldn't pop the panel on the display you're
+    /// leaving.
+    ///
+    /// Single-display behavior is unchanged: the one screen's edge is the
+    /// global boundary, so it returns `.exterior` as before.
+    private func edgeHit(mouseLocation: NSPoint, screen: NSScreen) -> EdgeHit {
+        let settings = ShortcutSettings.shared
+        guard settings.edgeActivationEnabled else { return .none }
+
+        let visibleFrame = screen.visibleFrame
+
+        // Global desktop bounds (union of all screen frames). Only a screen
+        // whose edge coincides with this boundary is an exterior trigger edge.
+        let screenFrames = NSScreen.screens.map(\.frame)
+        let globalMinX = screenFrames.map(\.minX).min() ?? screen.frame.minX
+        let globalMaxX = screenFrames.map(\.maxX).max() ?? screen.frame.maxX
+
+        let atSideEdge: Bool
+        let onExterior: Bool
+        switch settings.edgeSide {
         case .right:
-            mouseLocation.x >= visibleFrame.maxX - edgeThreshold
+            atSideEdge = mouseLocation.x >= visibleFrame.maxX - edgeThreshold
+            onExterior = abs(screen.frame.maxX - globalMaxX) < 1
         case .left:
-            mouseLocation.x <= visibleFrame.minX + edgeThreshold
+            atSideEdge = mouseLocation.x <= visibleFrame.minX + edgeThreshold
+            onExterior = abs(screen.frame.minX - globalMinX) < 1
         }
 
-        guard atEdge else { return false }
+        guard atSideEdge else { return .none }
+        guard onExterior else { return .interior }
 
         // Corner exclusion: skip if cursor is within cornerExclusion of screen corners
         if settings.excludeCorners {
             let distFromBottom = mouseLocation.y - visibleFrame.minY
             let distFromTop = visibleFrame.maxY - mouseLocation.y
             if distFromBottom < cornerExclusion || distFromTop < cornerExclusion {
-                return false
+                return .none
             }
         }
 
-        return true
+        return .exterior
     }
 
     // MARK: - Activation Timer
