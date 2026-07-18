@@ -19,6 +19,11 @@ final class NoteStore {
     /// note list; picking a root clears this and switches (temporary) to that root.
     var awaitingRootChoice: Bool = false
 
+    /// Bumped on every storage-root switch. List views animate row changes off this
+    /// (`.animation(value:)`) so the note/folder rows fade out and in while the panel
+    /// chrome (card, header) stays stable — content fades, not the panel.
+    var rootSwitchToken: Int = 0
+
     // MARK: - List Selection (multi-select)
 
     /// Identity for a row in the note list. Notes use UUID; folders use path.

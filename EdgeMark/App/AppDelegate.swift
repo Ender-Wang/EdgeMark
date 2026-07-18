@@ -216,6 +216,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // path reloaded notes but not the sidecar — a latent bug fixed here).
             try? SidecarStore.shared.load()
             self?.panelController?.noteStore.loadFromDisk()
+            withAnimation(.easeInOut(duration: 0.2)) {
+                self?.panelController?.noteStore.rootSwitchToken &+= 1
+            }
             Log.app.info("[AppDelegate] migration complete")
         }
     }
@@ -230,9 +233,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///   - temporary: if true, sets an in-memory session override that reverts to the
     ///     persistent `activeRootID` on restart (menu-bar switch). If false, persists
     ///     `root.id` as the active root (settings "set as default").
-    func switchRoot(to root: StorageRoot, temporary: Bool) {
-        // Any switch dismisses the ask-on-launch picker if it's showing.
-        panelController?.noteStore.awaitingRootChoice = false
+    func switchRoot(to root: StorageRoot, temporary: Bool, dismissPicker: Bool = true) {
+        // Any switch dismisses the ask-on-launch picker if it's showing — unless the
+        // caller is driving the picker's own grow→crossfade handoff (preload mode),
+        // in which case it manages awaitingRootChoice itself.
+        if dismissPicker {
+            panelController?.noteStore.awaitingRootChoice = false
+        }
         // Don't no-op-switch to the already-active root.
         if ShortcutSettings.shared.activeStorageRoot?.id == root.id {
             return
@@ -248,14 +255,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ShortcutSettings.shared.activeRootID = root.id
         }
 
-        // Reload sidecar (per-root meta.json) and notes for the new root.
-        try? SidecarStore.shared.load()
-        panelController?.noteStore.loadFromDisk()
+        // Reload sidecar (per-root meta.json) and notes for the new root, inside
+        // withAnimation so the row changes (old root's rows out, new root's in)
+        // animate while the panel chrome stays stable.
+        withAnimation(.easeInOut(duration: 0.2)) {
+            try? SidecarStore.shared.load()
+            panelController?.noteStore.loadFromDisk()
 
-        // Reset selection so stale note/folder references from the old root don't
-        // resolve against the new root's relative paths.
-        panelController?.noteStore.selectedNote = nil
-        panelController?.noteStore.selectedFolder = nil
+            // Reset selection so stale note/folder references from the old root don't
+            // resolve against the new root's relative paths.
+            panelController?.noteStore.selectedNote = nil
+            panelController?.noteStore.selectedFolder = nil
+
+            // Bump the token so list views that key off it also re-trigger.
+            panelController?.noteStore.rootSwitchToken &+= 1
+        }
 
         NotificationCenter.default.post(name: .storageRootChanged, object: nil)
         let name = root.displayName

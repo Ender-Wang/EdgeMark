@@ -47,31 +47,30 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            if noteStore.awaitingRootChoice {
-                StorageRootPicker()
-                    .transition(.opacity)
-            } else if showHome {
+            // HomeFolderView hosts the storage-root picker as an in-card mode
+            // (header + content swap), so when awaitingRootChoice it shows the
+            // picker rows; picking crossfades to the folder list within the same
+            // stable card. No separate picker view / card-over-card layer.
+            if showHome {
                 HomeFolderView()
                     .transition(pageTransition)
             }
 
-            if !noteStore.awaitingRootChoice {
-                if showNoteList {
-                    NoteListView()
-                        .id(noteStore.selectedFolder?.name)
-                        .transition(pageTransition)
-                }
+            if showNoteList {
+                NoteListView()
+                    .id(noteStore.selectedFolder?.name)
+                    .transition(pageTransition)
+            }
 
-                if showEditor {
-                    EditorScreen()
-                        .id(noteStore.selectedNote?.id)
-                        .transition(pageTransition)
-                }
+            if showEditor {
+                EditorScreen()
+                    .id(noteStore.selectedNote?.id)
+                    .transition(pageTransition)
+            }
 
-                if noteStore.showTrash {
-                    TrashView()
-                        .transition(trashTransition)
-                }
+            if noteStore.showTrash {
+                TrashView()
+                    .transition(trashTransition)
             }
         }
         .clipped()

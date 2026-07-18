@@ -22,7 +22,7 @@ struct GeneralSettingsTab: View {
         _autoCheckUpdates = State(initialValue: s.autoCheckUpdates)
         _launchAtLogin = State(initialValue: s.launchAtLogin)
         _roots = State(initialValue: s.storageRoots)
-        _activeRootID = State(initialValue: s.activeRootID)
+        _activeRootID = State(initialValue: s.activeStorageRoot?.id)
         _askOnLaunch = State(initialValue: s.askOnLaunch)
         _selectedLocale = State(initialValue: L10n.shared.locale)
     }
@@ -179,7 +179,7 @@ struct GeneralSettingsTab: View {
         .formStyle(.grouped)
         .onReceive(NotificationCenter.default.publisher(for: .storageRootChanged)) { _ in
             roots = ShortcutSettings.shared.storageRoots
-            activeRootID = ShortcutSettings.shared.activeRootID
+            activeRootID = ShortcutSettings.shared.activeStorageRoot?.id
             askOnLaunch = ShortcutSettings.shared.askOnLaunch
         }
         .alert("Cannot remove", isPresented: .constant(removalBlockedMessage != nil)) {

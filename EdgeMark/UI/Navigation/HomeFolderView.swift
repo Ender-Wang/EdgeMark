@@ -19,6 +19,14 @@ struct HomeFolderView: View {
     @State private var deletingFolderName: String?
     @State private var showDeleteFolderConfirm = false
 
+    /// Picker mode: root rows are small-centered; flipped to true on pick so they
+    /// grow to fill the content card before crossfading to the folder list.
+    @State private var pickerExpanded = false
+
+    /// The root the user just tapped — its circle fills (checkmark) for a brief
+    /// moment before the grow, so the user sees which item was chosen.
+    @State private var pickedRootID: String?
+
     private var trimmedQuery: String {
         searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -109,19 +117,29 @@ struct HomeFolderView: View {
         } content: {
             VStack(spacing: 0) {
                 ZStack {
-                    folderList
-                        .opacity(isSearching ? 0 : 1)
-                        .allowsHitTesting(!isSearching)
+                    if noteStore.awaitingRootChoice {
+                        // Picker mode: small-centered root rows (no own card bg — the
+                        // PageLayout content card is the stable bg). Grows on pick, then
+                        // crossfades to the folder list (content crossfade, card stable).
+                        pickerRows
+                            .transition(.opacity)
+                    } else {
+                        folderList
+                            .opacity(isSearching ? 0 : 1)
+                            .allowsHitTesting(!isSearching)
 
-                    searchResultsList
-                        .opacity(isSearching ? 1 : 0)
-                        .allowsHitTesting(isSearching)
+                        searchResultsList
+                            .opacity(isSearching ? 1 : 0)
+                            .allowsHitTesting(isSearching)
+                    }
                 }
 
-                Divider()
-                    .padding(.horizontal, 12)
+                if !noteStore.awaitingRootChoice {
+                    Divider()
+                        .padding(.horizontal, 12)
 
-                ContentFooterBar()
+                    ContentFooterBar()
+                }
             }
         }
         .moveConflictAlerts(noteStore: noteStore, l10n: l10n)
@@ -143,6 +161,13 @@ struct HomeFolderView: View {
             isSearching = true
             DispatchQueue.main.async { isSearchFieldFocused = true }
         }
+        .onChange(of: noteStore.awaitingRootChoice) { _, isAwaiting in
+            // Reset the picker grow + chosen-circle state when the picker re-shows.
+            if isAwaiting {
+                pickerExpanded = false
+                pickedRootID = nil
+            }
+        }
         .onAppear {
             if noteStore.pendingSearchOnHome {
                 Log.navigation.debug("[HomeFolderView] consuming pendingSearchOnHome (onAppear)")
@@ -157,6 +182,19 @@ struct HomeFolderView: View {
 
     private var header: some View {
         ZStack {
+            // Picker header — shown when awaiting a storage choice.
+            VStack(spacing: 2) {
+                Label(l10n["picker.chooseStorageLocation"], systemImage: "folder")
+                    .font(.headline)
+                Text(l10n["menu.storageTemporary"])
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .opacity(noteStore.awaitingRootChoice ? 1 : 0)
+            .allowsHitTesting(false)
+
             // Search bar
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
@@ -174,8 +212,8 @@ struct HomeFolderView: View {
                 .help(l10n["search.close"])
             }
             .onExitCommand { dismissSearch() }
-            .opacity(isSearching ? 1 : 0)
-            .allowsHitTesting(isSearching)
+            .opacity(isSearching && !noteStore.awaitingRootChoice ? 1 : 0)
+            .allowsHitTesting(isSearching && !noteStore.awaitingRootChoice)
 
             // Title bar
             HStack {
@@ -208,8 +246,66 @@ struct HomeFolderView: View {
                     createRootNote()
                 }
             }
-            .opacity(isSearching ? 0 : 1)
-            .allowsHitTesting(!isSearching)
+            .opacity(!isSearching && !noteStore.awaitingRootChoice ? 1 : 0)
+            .allowsHitTesting(!isSearching && !noteStore.awaitingRootChoice)
+        }
+    }
+
+    // MARK: - Storage Picker (in-card mode)
+
+    /// Root-option rows shown in the content card when `awaitingRootChoice`. No own
+    /// card background — the PageLayout content card is the stable bg, so on pick the
+    /// rows can crossfade to the folder list without a card-over-card double layer.
+    /// Small-centered by default; `pickerExpanded` grows them to fill on pick.
+    private var pickerRows: some View {
+        VStack(spacing: 0) {
+            ForEach(ShortcutSettings.shared.storageRoots) { root in
+                let chosen = pickedRootID == root.id
+                Button {
+                    pickRoot(root)
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: chosen ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(chosen ? Color.accentColor : .secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(root.displayName)
+                                .font(.body)
+                            Text(root.url.path(percentEncoded: false))
+                                .font(.system(.caption, design: .monospaced))
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 4)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 12)
+        .padding(.leading, 8)
+        .frame(maxWidth: .infinity, maxHeight: pickerExpanded ? .infinity : nil, alignment: pickerExpanded ? .top : .center)
+    }
+
+    /// Pick a storage root from the picker: fill the chosen row's circle, hold a beat
+    /// so the user sees the selection, then grow the rows + preload the new root +
+    /// crossfade to the folder list (content crossfade, card stable).
+    private func pickRoot(_ root: StorageRoot) {
+        withAnimation(.easeInOut(duration: 0.15)) {
+            pickedRootID = root.id
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            withAnimation(.easeInOut(duration: 0.22)) {
+                pickerExpanded = true
+            } completion: {
+                AppDelegate.shared?.switchRoot(to: root, temporary: true, dismissPicker: false)
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    noteStore.awaitingRootChoice = false
+                }
+            }
         }
     }
 
@@ -241,6 +337,9 @@ struct HomeFolderView: View {
                 }
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .top)
+                // Animate row changes on a storage-root switch: old root's rows fade
+                // out, new root's fade in — the panel chrome stays stable.
+                .animation(.easeInOut(duration: 0.2), value: noteStore.rootSwitchToken)
                 // Empty-area click clears selection; drag draws a marquee that selects
                 // every row whose frame intersects the rectangle. Row clicks are claimed
                 // by `.rowClick` first, so this overlay only sees empty-area input.
