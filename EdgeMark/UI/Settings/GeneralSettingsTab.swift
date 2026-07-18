@@ -166,5 +166,12 @@ struct GeneralSettingsTab: View {
         .onReceive(NotificationCenter.default.publisher(for: .shortcutSettingsChanged)) { _ in
             storagePath = ShortcutSettings.shared.resolvedStorageDirectory.path(percentEncoded: false)
         }
+        // Also refresh when the active storage root changes (migrate / switchRoot) —
+        // the roots model posts .storageRootChanged, not .shortcutSettingsChanged.
+        // Commit 3 replaces this whole section with a multi-root list; this keeps the
+        // displayed path correct in the interim.
+        .onReceive(NotificationCenter.default.publisher(for: .storageRootChanged)) { _ in
+            storagePath = ShortcutSettings.shared.resolvedStorageDirectory.path(percentEncoded: false)
+        }
     }
 }

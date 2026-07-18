@@ -279,8 +279,15 @@ final class ShortcutSettings {
         }
     }
 
-    /// Resolved storage directory — custom if set, otherwise `~/Documents/EdgeMark/`.
+    /// Resolved storage directory — the active storage root, else the legacy
+    /// `storageDirectory`, else `~/Documents/EdgeMark/`. Now authoritative from the
+    /// roots model: session override (temporary switch) → persistent active root →
+    /// legacy single-dir → default. Flipping the active root re-points the whole
+    /// storage layer (`FileStorage.rootURL`, `SidecarStore`, `.trash/`) live.
     var resolvedStorageDirectory: URL {
+        if let root = activeStorageRoot {
+            return root.url
+        }
         if let custom = storageDirectory {
             return custom
         }

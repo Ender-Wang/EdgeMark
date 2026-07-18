@@ -134,12 +134,66 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Log.app.info("[AppDelegate] migrating storage to \(newURL.path, privacy: .public)")
             Self.migrateStorageContents(from: oldURL, to: newURL)
 
-            // Update the setting
-            ShortcutSettings.shared.storageDirectory = newURL
-            // Reload notes from the new location
+            // Update the roots model: the migrated-to dir becomes the active root.
+            var roots = ShortcutSettings.shared.storageRoots
+            let activeID: String
+            if let existing = roots.first(where: { $0.url == newURL }) {
+                activeID = existing.id
+            } else {
+                let root = StorageRoot(id: UUID().uuidString, url: newURL, label: nil)
+                roots.append(root)
+                activeID = root.id
+            }
+            ShortcutSettings.shared.storageRoots = roots
+            ShortcutSettings.shared.activeRootID = activeID
+            ShortcutSettings.shared.sessionRootOverride = nil
+            // Reload notes AND sidecar from the new location (the old changeNotesFolder
+            // path reloaded notes but not the sidecar — a latent bug fixed here).
+            try? SidecarStore.shared.load()
             self?.panelController?.noteStore.loadFromDisk()
             Log.app.info("[AppDelegate] migration complete")
         }
+    }
+
+    /// The single path for switching the active storage root. Used by the menu-bar
+    /// temporary switch (commit 4), the ask-on-launch picker (commit 4), and the
+    /// settings "set as default" action (commit 3). Unloads the current root's notes
+    /// and loads the new root's — NOT an app restart.
+    ///
+    /// - Parameters:
+    ///   - root: the storage root to activate.
+    ///   - temporary: if true, sets an in-memory session override that reverts to the
+    ///     persistent `activeRootID` on restart (menu-bar switch). If false, persists
+    ///     `root.id` as the active root (settings "set as default").
+    func switchRoot(to root: StorageRoot, temporary: Bool) {
+        // Don't no-op-switch to the already-active root.
+        if ShortcutSettings.shared.activeStorageRoot?.id == root.id {
+            return
+        }
+
+        // Flush unsaved edits in the outgoing root before switching.
+        panelController?.noteStore.saveDirtyNotes()
+
+        if temporary {
+            ShortcutSettings.shared.sessionRootOverride = root
+        } else {
+            ShortcutSettings.shared.sessionRootOverride = nil
+            ShortcutSettings.shared.activeRootID = root.id
+        }
+
+        // Reload sidecar (per-root meta.json) and notes for the new root.
+        try? SidecarStore.shared.load()
+        panelController?.noteStore.loadFromDisk()
+
+        // Reset selection so stale note/folder references from the old root don't
+        // resolve against the new root's relative paths.
+        panelController?.noteStore.selectedNote = nil
+        panelController?.noteStore.selectedFolder = nil
+
+        NotificationCenter.default.post(name: .storageRootChanged, object: nil)
+        let name = root.displayName
+        let suffix = temporary ? " (temporary)" : ""
+        Log.app.info("[AppDelegate] switched storage root to \(name, privacy: .public)\(suffix, privacy: .public)")
     }
 
     @objc func openSettings() {
