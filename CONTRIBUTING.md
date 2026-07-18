@@ -48,7 +48,7 @@ graph TD
 EdgeMark/
 ├── App/                            # Entry point + global state
 │   ├── EdgeMarkApp.swift           #   @main, menu bar utility (LSUIElement)
-│   ├── AppDelegate.swift           #   Lifecycle, sidecar migration, shortcut setup
+│   ├── AppDelegate.swift           #   Lifecycle, sidecar migration, shortcut setup, switchRoot + menu-bar storage submenu
 │   └── ContentView.swift           #   Navigation shell (folders → notes → editor)
 │
 ├── Core/                           # Business logic — no SwiftUI imports
@@ -65,7 +65,7 @@ EdgeMark/
 │   │   └── AppSettings.swift       #   @Observable — sort order, date format, panel style/tint, spell-check prefs
 │   ├── Shortcuts/
 │   │   ├── ShortcutManager.swift   #   Carbon RegisterEventHotKey global shortcut
-│   │   ├── ShortcutSettings.swift  #   6 customizable local shortcuts + persistence
+│   │   ├── ShortcutSettings.swift  #   6 customizable local shortcuts + storage roots (multi-location) + persistence
 │   │   └── KeyCodeTranslator.swift #   Virtual key code → display string mapping
 │   ├── Storage/
 │   │   ├── NoteStore.swift         #   @Observable — note CRUD, trash, folders, tag filter, multi-selection + batch ops, move-conflict queue
@@ -92,7 +92,7 @@ EdgeMark/
 ├── UI/                             # SwiftUI views
 │   ├── EditorScreen.swift          #   Editor chrome (header, editor, footer)
 │   ├── Navigation/
-│   │   ├── HomeFolderView.swift    #   Folder list with create/rename/trash
+│   │   ├── HomeFolderView.swift    #   Folder list with create/rename/trash; hosts the ask-on-launch storage picker (in-card mode)
 │   │   ├── NoteListView.swift      #   Note cards with search, sort, context menus
 │   │   └── TrashView.swift         #   Trash browser with restore/delete/empty
 │   ├── Components/
@@ -115,7 +115,7 @@ EdgeMark/
 │   │   └── VisualEffectView.swift  #   NSVisualEffectView wrapper with optional tint sublayer
 │   └── Settings/
 │       ├── SettingsView.swift      #   Tab container (General, Behavior, Tags, Keyboard, About)
-│       ├── GeneralSettingsTab.swift #   Appearance (incl. panel style/tint), editor font, language, storage
+│       ├── GeneralSettingsTab.swift #   Appearance (incl. panel style/tint), editor font, language, multi-root storage list
 │       ├── BehaviorSettingsTab.swift#   Panel position, edge activation, auto-hide
 │       ├── TagsSettingsTab.swift   #   Rename color tag labels
 │       ├── KeyboardSettingsTab.swift#   Global + 6 customizable local shortcut recorders
@@ -147,6 +147,7 @@ EdgeMark/
 | **Sidecar metadata** | Notes are plain `.md` files with no headers. Metadata (UUID, timestamps, tags, trash state) lives in `.edgemark/meta.json` keyed by UUID. `SidecarMigration` strips YAML on first launch and restores original file timestamps. `savedAt` (last EdgeMark write) is the external-change sentinel; `modifiedAt` only advances on real content edits. |
 | **Image asset co-location** | Images are stored in a hidden dot-prefix directory next to the note (`.NoteTitle/IMG-uuid.png`). Paths in `.md` files are standard `![](path)` — relative, readable in any external editor. The editor display layer converts them to `![[path]]` for rendering via `EmbeddedImageProvider`. `FileStorage` handles create/rename/move/trash/delete of asset dirs alongside their note. |
 | **Carbon hotkeys** | Global shortcut uses `RegisterEventHotKey` (Carbon API) since `NSEvent.addGlobalMonitorForEvents` can't intercept key events |
+| **Multiple storage locations** | `ShortcutSettings` owns a list of `StorageRoot`s + an `activeRootID` (persistent default) + an in-memory `sessionRootOverride` (menu-bar temporary switch, reverts on restart). `resolvedStorageDirectory` resolves session-override → active root → legacy → default. All storage (`FileStorage.rootURL`, `SidecarStore`, `.trash/`) reads the active root live, so flipping it re-points the whole layer — but in-memory `NoteStore`/`SidecarStore` must be reloaded (`AppDelegate.switchRoot(to:temporary:dismissPicker:)` is the single path: save dirty → set override/activeID → `SidecarStore.load` → `noteStore.loadFromDisk`, wrapped in `withAnimation` for a row crossfade). Per-root isolation: each root has its own sidecar, trash, and external-edit scope. |
 | **Local shortcut monitor** | `SidePanelController` installs an `NSEvent.addLocalMonitorForEvents` that checks all six configurable local shortcuts at event time. Settings changes take effect immediately without re-registration. |
 | **JSON i18n** | `L10n` loads locale JSON at runtime. Access: `l10n["key"]` or `l10n.t("key", arg1, arg2)` for interpolation |
 | **OSLog diagnostics** | 6 categorized loggers (app, storage, window, shortcuts, navigation, updates). View in Console.app with `subsystem:io.github.ender-wang.EdgeMark` |
