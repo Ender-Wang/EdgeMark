@@ -79,7 +79,7 @@ xattr -cr /Applications/EdgeMark.app
 - 📄 Plain `.md` files with no injected headers — open in any editor, sync with any service; metadata lives in a hidden `.edgemark/meta.json` sidecar
 - 📁 Folder-based organization with drag-and-drop
 - 🎨 Custom folder colors — tint any folder's icon with a palette color via right-click → Folder Color
-- 📂 Configurable storage directory
+- 📂 Multiple storage locations — switch between separate note folders (e.g. work and personal) from the menu bar (a quick switch that reverts on restart) or Settings; optionally pick one each time the app opens
 - 💾 1-second debounced auto-save
 - 🔍 Search shows all notes sorted by most recently modified when the query is empty — a quick "recent notes" feed
 - 🏷️ Finder-style color tags (Red, Orange, Yellow, Green, Blue, Purple, Gray) with rename-able labels; multi-tag per note
