@@ -5,6 +5,9 @@
   "menu.settings": "Einstellungen…",
   "menu.checkUpdates": "Nach Updates suchen…",
   "menu.quit": "EdgeMark beenden",
+  "picker.chooseStorageLocation": "Speicherort wählen",
+  "menu.storageLocation": "Speicherort",
+  "menu.storageTemporary": "Temporär — wird beim Neustart zurückgesetzt",
 
   "common.cancel": "Abbrechen",
   "common.delete": "Löschen",

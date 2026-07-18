@@ -5,6 +5,9 @@
   "menu.settings": "सेटिंग्स…",
   "menu.checkUpdates": "अपडेट जांचें…",
   "menu.quit": "EdgeMark बंद करें",
+  "picker.chooseStorageLocation": "स्टोरेज स्थान चुनें",
+  "menu.storageLocation": "स्टोरेज स्थान",
+  "menu.storageTemporary": "अस्थायी — रीस्टार्ट पर वापस जाएगा",
 
   "common.cancel": "रद्द करें",
   "common.delete": "हटाएं",

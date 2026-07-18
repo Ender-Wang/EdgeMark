@@ -5,6 +5,9 @@
   "menu.settings": "Ajustes\u2026",
   "menu.checkUpdates": "Buscar actualizaciones\u2026",
   "menu.quit": "Salir de EdgeMark",
+  "picker.chooseStorageLocation": "Elegir ubicación de almacenamiento",
+  "menu.storageLocation": "Ubicación de almacenamiento",
+  "menu.storageTemporary": "Temporal — se revierte al reiniciar",
 
   "common.cancel": "Cancelar",
   "common.delete": "Eliminar",

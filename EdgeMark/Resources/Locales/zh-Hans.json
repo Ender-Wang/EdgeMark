@@ -5,6 +5,9 @@
   "menu.settings": "设置…",
   "menu.checkUpdates": "检查更新…",
   "menu.quit": "退出 EdgeMark",
+  "picker.chooseStorageLocation": "选择存储位置",
+  "menu.storageLocation": "存储位置",
+  "menu.storageTemporary": "临时 — 重启后还原",
 
   "common.cancel": "取消",
   "common.delete": "删除",

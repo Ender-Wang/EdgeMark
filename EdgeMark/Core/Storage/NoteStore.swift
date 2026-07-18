@@ -14,6 +14,11 @@ final class NoteStore {
     var selectedNote: Note?
     var showTrash = false
 
+    /// Set at launch when "Choose on launch" is on and ≥2 storage roots are configured.
+    /// While true, the panel shows a non-blocking storage-root picker instead of the
+    /// note list; picking a root clears this and switches (temporary) to that root.
+    var awaitingRootChoice: Bool = false
+
     // MARK: - List Selection (multi-select)
 
     /// Identity for a row in the note list. Notes use UUID; folders use path.

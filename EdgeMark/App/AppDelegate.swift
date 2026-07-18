@@ -14,6 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var updateWindowController: UpdateWindowController?
     private var localeObserver: Any?
     private var updateTimer: Timer?
+    private var storageSubmenu: NSMenu?
+    private var storageMenuItem: NSMenuItem?
 
     // MARK: - Updates
 
@@ -31,6 +33,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         try? SidecarStore.shared.load()
         panelController?.noteStore.loadFromDisk()
         ShortcutManager.shared.setup(panelController: panelController!)
+
+        // "Choose on launch": if the toggle is on and ≥2 roots are configured, show the
+        // non-blocking storage-root picker as the panel's empty state instead of the
+        // note list. The persistent active root's notes are loaded already; picking a
+        // root in the picker switches to it for the session (temporary override).
+        if ShortcutSettings.shared.askOnLaunch, ShortcutSettings.shared.storageRoots.count >= 2 {
+            panelController?.noteStore.awaitingRootChoice = true
+        }
 
         // Rebuild menu bar when locale changes
         localeObserver = NotificationCenter.default.addObserver(
@@ -92,6 +102,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         menu.addItem(settingsItem)
 
+        // Storage Location submenu (temporary switch) — items repopulated in menuWillOpen.
+        let storageItem = NSMenuItem(
+            title: l10n["menu.storageLocation"],
+            action: nil,
+            keyEquivalent: "",
+        )
+        let submenu = NSMenu()
+        storageItem.submenu = submenu
+        storageSubmenu = submenu
+        storageMenuItem = storageItem
+        populateStorageSubmenu()
+        menu.addItem(storageItem)
+
         menu.addItem(NSMenuItem.separator())
 
         menu.addItem(NSMenuItem(
@@ -114,6 +137,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func togglePanel() {
         panelController?.togglePanel()
+    }
+
+    /// Rebuild the Storage Location submenu's items from the current roots. Called at
+    /// menu build and on every menuWillOpen so the checkmark + list stay live.
+    private func populateStorageSubmenu() {
+        guard let submenu = storageSubmenu else { return }
+        submenu.removeAllItems()
+        // While the ask-on-launch picker is up, no root has been chosen for the session
+        // yet (sessionRootOverride is nil) — show no checkmark until one is picked.
+        let awaiting = panelController?.noteStore.awaitingRootChoice ?? false
+        let activeID = awaiting ? nil : ShortcutSettings.shared.activeStorageRoot?.id
+        for root in ShortcutSettings.shared.storageRoots {
+            let item = NSMenuItem(
+                title: root.displayName,
+                action: #selector(switchToStorageRoot(sender:)),
+                keyEquivalent: "",
+            )
+            item.target = self
+            item.representedObject = root.id as NSString
+            item.state = (root.id == activeID) ? .on : .off
+            submenu.addItem(item)
+        }
+        if !ShortcutSettings.shared.storageRoots.isEmpty {
+            submenu.addItem(.separator())
+            let hint = NSMenuItem(title: L10n.shared["menu.storageTemporary"], action: nil, keyEquivalent: "")
+            hint.isEnabled = false
+            submenu.addItem(hint)
+        }
+        storageMenuItem?.isHidden = ShortcutSettings.shared.storageRoots.count < 2
+    }
+
+    @objc private func switchToStorageRoot(sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String,
+              let root = ShortcutSettings.shared.storageRoots.first(where: { $0.id == id })
+        else { return }
+        switchRoot(to: root, temporary: true)
     }
 
     @objc func changeNotesFolder() {
@@ -172,6 +231,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///     persistent `activeRootID` on restart (menu-bar switch). If false, persists
     ///     `root.id` as the active root (settings "set as default").
     func switchRoot(to root: StorageRoot, temporary: Bool) {
+        // Any switch dismisses the ask-on-launch picker if it's showing.
+        panelController?.noteStore.awaitingRootChoice = false
         // Don't no-op-switch to the already-active root.
         if ShortcutSettings.shared.activeStorageRoot?.id == root.id {
             return
@@ -374,6 +435,7 @@ extension AppDelegate: NSMenuDelegate {
     /// monitor doesn't compete with menu hover events on slower hardware.
     func menuWillOpen(_: NSMenu) {
         Log.app.debug("[MenuBar] menu opened — pausing edge detector")
+        populateStorageSubmenu()
         panelController?.edgeDetector.menuWillOpen()
     }
 
