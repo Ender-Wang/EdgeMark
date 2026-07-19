@@ -56,6 +56,7 @@ xattr -cr /Applications/EdgeMark.app
 - 📌 Fija el panel para mantenerlo abierto — sobrevive cambios de foco, salida del ratón y cambio de Espacios (ideal para copiar y pegar)
 - 📐 Soporte multi-monitor con borde izquierdo o derecho configurable
 - ↔️ Ancho ajustable — arrastra el borde interno para redimensionar, guardado entre reinicios
+- 🪟 Estilo del panel — alterna entre fondos de panel translúcido y opaco
 - 🎨 Tono del panel — elige de una paleta curada (System, Graphite, Slate, Sand, Sage, Rose)
 
 ✍️ **Edición Markdown**
@@ -78,7 +79,7 @@ xattr -cr /Applications/EdgeMark.app
 - 📄 Archivos `.md` simples sin encabezados inyectados — ábrelos en cualquier editor, sincronízalos con cualquier servicio; los metadatos viven en un sidecar oculto `.edgemark/meta.json`
 - 📁 Organización por carpetas con arrastrar y soltar
 - 🎨 Colores de carpeta personalizados — tiñe el ícono de cualquier carpeta con un color de la paleta mediante clic derecho → Folder Color
-- 📂 Directorio de almacenamiento configurable
+- 📂 Múltiples ubicaciones de almacenamiento — cambia entre carpetas de notas separadas (p. ej. trabajo y personal) desde la barra de menú (un cambio rápido que se revierte al reiniciar) o en Ajustes; opcionalmente elige una cada vez que se abre la app
 - 💾 Auto-guardado con anti-rebote de 1 segundo
 - 🔍 La búsqueda muestra todas las notas ordenadas por última modificación cuando la consulta está vacía — un feed rápido de "notas recientes"
 - 🏷️ Etiquetas de color estilo Finder (Rojo, Naranja, Amarillo, Verde, Azul, Púrpura, Gris) con nombres editables; múltiples etiquetas por nota
