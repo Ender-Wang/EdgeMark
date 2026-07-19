@@ -118,14 +118,37 @@ final class SidePanelController: NSWindowController {
         setupTrackingArea()
 
         edgeDetector.onEdgeActivated = { [weak self] screen in
-            self?.showPanel(on: screen)
+            guard let self else { return }
+            // Edge-toggle: a re-touch while shown dismisses. The activation-delay
+            // dwell already elapsed before we get here (EdgeDetector fires
+            // onEdgeActivated only after the timer), so a flick through the edge
+            // doesn't kill the panel — only a deliberate push-and-hold does.
+            // Auto mode: a re-touch while shown is a no-op (showPanel early-returns).
+            if ShortcutSettings.shared.dismissalMode == .toggle, isShown {
+                hidePanel()
+            } else {
+                showPanel(on: screen)
+            }
         }
         edgeDetector.startMonitoring()
+
+        // In Edge-toggle mode, a re-touch while shown is a dismiss — use the
+        // (floored) toggle-dismiss delay instead of the show activation delay,
+        // so a brush across the edge can't instantly kill the panel.
+        edgeDetector.activationDelayProvider = { [weak self] in
+            guard let self else { return ShortcutSettings.shared.activationDelay }
+            let s = ShortcutSettings.shared
+            if s.dismissalMode == .toggle, isShown {
+                return max(s.toggleDismissDelay, 0.05)
+            }
+            return s.activationDelay
+        }
 
         // Click-outside dismissal
         NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown) { [weak self] _ in
             guard let self, isShown, !self.isMouseInPanel(),
                   ShortcutSettings.shared.hideOnClickOutside,
+                  ShortcutSettings.shared.dismissalMode == .auto,
                   !ShortcutSettings.shared.isPanelPinned else { return }
             hidePanel()
         }
@@ -331,7 +354,8 @@ final class SidePanelController: NSWindowController {
         // If the panel is shown and the mouse is outside, restart the auto-hide
         // timer with a short delay so the animation plays after the Space
         // transition settles (animations don't render mid-transition).
-        guard isShown, !ShortcutSettings.shared.isPanelPinned else { return }
+        guard isShown, !ShortcutSettings.shared.isPanelPinned,
+              ShortcutSettings.shared.dismissalMode == .auto else { return }
         cancelHideTimer()
         if !isMouseInPanel() {
             let delay = max(ShortcutSettings.shared.hideDelay, 0.5)
@@ -392,6 +416,7 @@ final class SidePanelController: NSWindowController {
     override func mouseExited(with _: NSEvent) {
         guard isShown, !isAnimating, !isEditorFocused,
               ShortcutSettings.shared.autoHideOnMouseExit,
+              ShortcutSettings.shared.dismissalMode == .auto,
               !ShortcutSettings.shared.isPanelPinned else { return }
         let delay = ShortcutSettings.shared.hideDelay
         if delay == 0 {

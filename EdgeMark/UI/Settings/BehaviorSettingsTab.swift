@@ -4,8 +4,10 @@ struct BehaviorSettingsTab: View {
     @Environment(L10n.self) var l10n
 
     @State private var edgeSide: EdgeSide
+    @State private var dismissalMode: DismissalMode
     @State private var edgeActivationEnabled: Bool
     @State private var activationDelay: Double
+    @State private var toggleDismissDelay: Double
     @State private var excludeCorners: Bool
     @State private var autoHideOnMouseExit: Bool
     @State private var hideDelay: Double
@@ -18,8 +20,10 @@ struct BehaviorSettingsTab: View {
     init() {
         let s = ShortcutSettings.shared
         _edgeSide = State(initialValue: s.edgeSide)
+        _dismissalMode = State(initialValue: s.dismissalMode)
         _edgeActivationEnabled = State(initialValue: s.edgeActivationEnabled)
         _activationDelay = State(initialValue: s.activationDelay)
+        _toggleDismissDelay = State(initialValue: s.toggleDismissDelay)
         _excludeCorners = State(initialValue: s.excludeCorners)
         _autoHideOnMouseExit = State(initialValue: s.autoHideOnMouseExit)
         _hideDelay = State(initialValue: s.hideDelay)
@@ -128,33 +132,61 @@ struct BehaviorSettingsTab: View {
             }
 
             Section {
-                Toggle(l10n["settings.general.autoHideOnExit"], isOn: $autoHideOnMouseExit)
-                    .onChange(of: autoHideOnMouseExit) { _, v in
-                        ShortcutSettings.shared.autoHideOnMouseExit = v
-                    }
-
-                if autoHideOnMouseExit {
-                    HStack {
-                        Text(l10n["settings.general.hideDelay"])
-                        Slider(value: $hideDelay, in: 0 ... 3, step: 0.1)
-                            .onChange(of: hideDelay) { _, v in
-                                ShortcutSettings.shared.hideDelay = v
-                            }
-                        Text(String(format: "%.1fs", hideDelay))
-                            .monospacedDigit()
-                            .frame(width: 36, alignment: .trailing)
-                    }
+                Picker(l10n["settings.dismissal.mode"], selection: $dismissalMode) {
+                    Text(l10n["settings.dismissal.auto"]).tag(DismissalMode.auto)
+                    Text(l10n["settings.dismissal.toggle"]).tag(DismissalMode.toggle)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .onChange(of: dismissalMode) { _, v in
+                    ShortcutSettings.shared.dismissalMode = v
                 }
 
-                Toggle(l10n["settings.general.hideOnClickOutside"], isOn: $hideOnClickOutside)
-                    .onChange(of: hideOnClickOutside) { _, v in
-                        ShortcutSettings.shared.hideOnClickOutside = v
+                if dismissalMode == .auto {
+                    Toggle(l10n["settings.general.autoHideOnExit"], isOn: $autoHideOnMouseExit)
+                        .onChange(of: autoHideOnMouseExit) { _, v in
+                            ShortcutSettings.shared.autoHideOnMouseExit = v
+                        }
+
+                    if autoHideOnMouseExit {
+                        HStack {
+                            Text(l10n["settings.general.hideDelay"])
+                            Slider(value: $hideDelay, in: 0 ... 3, step: 0.1)
+                                .onChange(of: hideDelay) { _, v in
+                                    ShortcutSettings.shared.hideDelay = v
+                                }
+                            Text(String(format: "%.1fs", hideDelay))
+                                .monospacedDigit()
+                                .frame(width: 36, alignment: .trailing)
+                        }
                     }
+
+                    Toggle(l10n["settings.general.hideOnClickOutside"], isOn: $hideOnClickOutside)
+                        .onChange(of: hideOnClickOutside) { _, v in
+                            ShortcutSettings.shared.hideOnClickOutside = v
+                        }
+                } else {
+                    Text(l10n["settings.dismissal.toggleHint"])
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    HStack {
+                        Text(l10n["settings.dismissal.toggleDelay"])
+                        Slider(value: $toggleDismissDelay, in: 0.05 ... 2.0, step: 0.05)
+                            .onChange(of: toggleDismissDelay) { _, v in
+                                ShortcutSettings.shared.toggleDismissDelay = v
+                            }
+                        Text(String(format: "%.2fs", toggleDismissDelay))
+                            .monospacedDigit()
+                            .frame(width: 42, alignment: .trailing)
+                    }
+                }
             } header: {
-                Label(l10n["settings.general.autoHide"], systemImage: "eye.slash")
+                Label(l10n["settings.dismissal.section"], systemImage: "eye.slash")
             }
         }
         .formStyle(.grouped)
+        .animation(.easeInOut(duration: 0.2), value: dismissalMode)
         .animation(.easeInOut(duration: 0.2), value: edgeActivationEnabled)
         .animation(.easeInOut(duration: 0.2), value: autoHideOnMouseExit)
         .animation(.easeInOut(duration: 0.2), value: swipeToNavigateEnabled)

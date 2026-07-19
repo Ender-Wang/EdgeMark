@@ -56,6 +56,20 @@ enum EdgeSide: String {
     case right
 }
 
+// MARK: - DismissalMode
+
+/// How the panel dismisses.
+/// - `.auto`: hide on mouse exit / click-outside / Space change (current
+///   behavior; `isPanelPinned` still overrides all of those).
+/// - `.toggle`: edge activation shows *and* sticks the panel; touching the
+///   activating edge again dismisses it (after the activation-delay dwell, so
+///   a flick through the edge doesn't kill the panel). Serves the
+///   copy-back-and-forth case without remembering the pin shortcut.
+enum DismissalMode: String {
+    case auto
+    case toggle
+}
+
 // MARK: - AppearanceMode
 
 enum AppearanceMode: String {
@@ -189,10 +203,25 @@ final class ShortcutSettings {
         didSet { UserDefaults.standard.set(activationDelay, forKey: activationDelayKey) }
     }
 
+    /// Dwell (in seconds) at the activating edge before a toggle-mode re-touch
+    /// dismisses the panel. UI enforces a 0.05s floor so a brush across the edge
+    /// can't instantly kill the panel. Show still uses `activationDelay`.
+    var toggleDismissDelay: Double {
+        didSet { UserDefaults.standard.set(toggleDismissDelay, forKey: toggleDismissDelayKey) }
+    }
+
     /// Which screen edge the panel appears from.
     var edgeSide: EdgeSide {
         didSet {
             UserDefaults.standard.set(edgeSide.rawValue, forKey: edgeSideKey)
+            NotificationCenter.default.post(name: .shortcutSettingsChanged, object: nil)
+        }
+    }
+
+    /// How the panel dismisses — auto-hide or edge-toggle. See `DismissalMode`.
+    var dismissalMode: DismissalMode {
+        didSet {
+            UserDefaults.standard.set(dismissalMode.rawValue, forKey: dismissalModeKey)
             NotificationCenter.default.post(name: .shortcutSettingsChanged, object: nil)
         }
     }
@@ -374,7 +403,9 @@ final class ShortcutSettings {
     private let autoHideKey = "autoHideOnMouseExit"
     private let hideDelayKey = "hideDelay"
     private let activationDelayKey = "activationDelay"
+    private let toggleDismissDelayKey = "toggleDismissDelay"
     private let edgeSideKey = "edgeSide"
+    private let dismissalModeKey = "dismissalMode"
     private let edgeActivationEnabledKey = "edgeActivationEnabled"
     private let excludeCornersKey = "excludeCorners"
     private let hideOnClickOutsideKey = "hideOnClickOutside"
@@ -399,6 +430,7 @@ final class ShortcutSettings {
         autoHideOnMouseExit = UserDefaults.standard.object(forKey: autoHideKey) as? Bool ?? true
         hideDelay = UserDefaults.standard.object(forKey: hideDelayKey) as? Double ?? 0.5
         activationDelay = UserDefaults.standard.object(forKey: activationDelayKey) as? Double ?? 0.0
+        toggleDismissDelay = UserDefaults.standard.object(forKey: toggleDismissDelayKey) as? Double ?? 0.3
 
         // New settings
         if let raw = UserDefaults.standard.string(forKey: edgeSideKey),
@@ -407,6 +439,13 @@ final class ShortcutSettings {
             edgeSide = side
         } else {
             edgeSide = .right
+        }
+        if let raw = UserDefaults.standard.string(forKey: dismissalModeKey),
+           let mode = DismissalMode(rawValue: raw)
+        {
+            dismissalMode = mode
+        } else {
+            dismissalMode = .auto
         }
         edgeActivationEnabled = UserDefaults.standard.object(forKey: edgeActivationEnabledKey) as? Bool ?? true
         excludeCorners = UserDefaults.standard.object(forKey: excludeCornersKey) as? Bool ?? true

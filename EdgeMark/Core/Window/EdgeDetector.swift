@@ -6,6 +6,15 @@ final class EdgeDetector {
     /// Called when the user dwells at the configured edge long enough. Passes the screen.
     var onEdgeActivated: ((NSScreen) -> Void)?
 
+    /// Dwell (seconds) to apply before firing `onEdgeActivated`. Defaults to
+    /// `activationDelay`; `SidePanelController` overrides this to use the
+    /// toggle-dismiss delay when the panel is already shown in Edge-toggle
+    /// mode (a re-touch is a dismiss, not a show). Keeps edge detection
+    /// decoupled from panel state — the policy lives in the controller.
+    var activationDelayProvider: () -> Double = {
+        ShortcutSettings.shared.activationDelay
+    }
+
     private var globalMouseMonitor: Any?
     private var localMouseMonitor: Any?
     private var lastHit: EdgeHit = .none
@@ -103,7 +112,7 @@ final class EdgeDetector {
 
         if hit == .exterior, lastHit != .exterior {
             // Just arrived at a trigger edge — start activation delay
-            let delay = ShortcutSettings.shared.activationDelay
+            let delay = activationDelayProvider()
             if delay <= 0 {
                 Log.window.debug("[EdgeDetector] edge hit — immediate activation")
                 onEdgeActivated?(screen)
