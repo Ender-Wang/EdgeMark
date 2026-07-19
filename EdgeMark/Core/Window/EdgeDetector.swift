@@ -16,6 +16,11 @@ final class EdgeDetector {
     /// How close to the edge (in points) the cursor must be to trigger activation.
     private let edgeThreshold: CGFloat = 2
 
+    /// Tolerance for treating two adjacent displays' edges as a shared seam
+    /// (touching or near-touching) vs. a real gap. Two side-by-side displays
+    /// placed with no gap share an exact edge; this absorbs sub-pixel rounding.
+    private let seamTolerance: CGFloat = 2
+
     /// Height (in points) of corner exclusion zones to avoid macOS hot-corner conflicts.
     private let cornerExclusion: CGFloat = 50
 
@@ -151,31 +156,34 @@ final class EdgeDetector {
     /// Returns the edge state for the cursor. Interior edges (the seam between
     /// two side-by-side displays) never trigger — moving the mouse from one
     /// display to another shouldn't pop the panel on the display you're
-    /// leaving.
+    /// leaving. A display's edge is "interior" only when another display sits
+    /// on the other side of it at an overlapping y-range; offset /
+    /// vertically-stacked layouts are handled, since an edge with no neighbor
+    /// beside it is exterior even if it isn't the global x-extreme.
     ///
-    /// Single-display behavior is unchanged: the one screen's edge is the
-    /// global boundary, so it returns `.exterior` as before.
+    /// Single-display behavior is unchanged: the one screen has no neighbor,
+    /// so its edge returns `.exterior` as before.
     private func edgeHit(mouseLocation: NSPoint, screen: NSScreen) -> EdgeHit {
         let settings = ShortcutSettings.shared
         guard settings.edgeActivationEnabled else { return .none }
 
         let visibleFrame = screen.visibleFrame
 
-        // Global desktop bounds (union of all screen frames). Only a screen
-        // whose edge coincides with this boundary is an exterior trigger edge.
-        let screenFrames = NSScreen.screens.map(\.frame)
-        let globalMinX = screenFrames.map(\.minX).min() ?? screen.frame.minX
-        let globalMaxX = screenFrames.map(\.maxX).max() ?? screen.frame.maxX
-
+        // An edge is a *seam* (interior) if another display sits on the other
+        // side of it with an overlapping y-range — i.e. the user crosses from
+        // this screen onto that one. Otherwise it's a real desktop boundary
+        // (exterior). This handles aligned side-by-side layouts *and* offset /
+        // vertically-stacked arrangements where a screen's edge isn't the
+        // global x-extreme but still has nothing beside it at its y-range.
         let atSideEdge: Bool
         let onExterior: Bool
         switch settings.edgeSide {
         case .right:
             atSideEdge = mouseLocation.x >= visibleFrame.maxX - edgeThreshold
-            onExterior = abs(screen.frame.maxX - globalMaxX) < 1
+            onExterior = !rightEdgeIsInterior(screen)
         case .left:
             atSideEdge = mouseLocation.x <= visibleFrame.minX + edgeThreshold
-            onExterior = abs(screen.frame.minX - globalMinX) < 1
+            onExterior = !leftEdgeIsInterior(screen)
         }
 
         guard atSideEdge else { return .none }
@@ -191,6 +199,32 @@ final class EdgeDetector {
         }
 
         return .exterior
+    }
+
+    /// True if another screen's left edge sits at this screen's right edge
+    /// with an overlapping y-range — the seam you cross when moving the
+    /// cursor from this display to the one on its right.
+    private func rightEdgeIsInterior(_ screen: NSScreen) -> Bool {
+        let s = screen.frame
+        return NSScreen.screens.contains { other in
+            guard other !== screen else { return false }
+            let o = other.frame
+            let leftEdgeAtOurRight = abs(o.minX - s.maxX) <= seamTolerance
+            let yOverlap = min(o.maxY, s.maxY) - max(o.minY, s.minY) > seamTolerance
+            return leftEdgeAtOurRight && yOverlap
+        }
+    }
+
+    /// Symmetric to `rightEdgeIsInterior` for the left edge.
+    private func leftEdgeIsInterior(_ screen: NSScreen) -> Bool {
+        let s = screen.frame
+        return NSScreen.screens.contains { other in
+            guard other !== screen else { return false }
+            let o = other.frame
+            let rightEdgeAtOurLeft = abs(o.maxX - s.minX) <= seamTolerance
+            let yOverlap = min(o.maxY, s.maxY) - max(o.minY, s.minY) > seamTolerance
+            return rightEdgeAtOurLeft && yOverlap
+        }
     }
 
     // MARK: - Activation Timer
