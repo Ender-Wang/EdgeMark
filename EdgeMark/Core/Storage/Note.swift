@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import OSLog
 
 struct Note: Identifiable {
     let id: UUID
@@ -89,10 +90,26 @@ extension Note: Hashable {
 
 extension Note {
     /// Plain-text preview from the note body, stripping the title heading and markdown syntax.
+    ///
+    /// The body is capped before any split/regex: a pathological or very large note can
+    /// otherwise pin the main thread in `String.index` / `String.distance` for seconds
+    /// when the note list renders (e.g. at launch, when the panel's view tree is built
+    /// eagerly even while hidden). See devlog-0721, issue #56. 4 000 graphemes is far
+    /// beyond any real title line, so dropping the first line (the H1 heading) still
+    /// works; the 120-char preview output is unchanged.
     var previewText: String {
-        let lines = content.split(separator: "\n", omittingEmptySubsequences: true)
-        let bodyLines = lines.dropFirst()
-        let raw = bodyLines.prefix(3).joined(separator: " ")
+        let head = content.prefix(4000)
+        // If the first line alone exceeds the cap, the title heading never fits in the
+        // window — `dropFirst()` then empties the preview. Surface that so a reported
+        // blank-subtitle can be pinpointed from Console.app (see devlog-0721, #56).
+        // Cheap by construction: both checks are bounded to the ≤4 000-grapheme window
+        // (no full-content walk).
+        if head.firstIndex(of: "\n") == nil, head.endIndex != content.endIndex {
+            let path = relativePath
+            Log.storage.debug("[Note] preview capped — first line exceeds 4000 graphemes: \(path, privacy: .public)")
+        }
+        let lines = head.split(separator: "\n", omittingEmptySubsequences: true)
+        let raw = lines.dropFirst().prefix(3).joined(separator: " ")
         return raw
             .replacingOccurrences(of: "#{1,6}\\s", with: "", options: .regularExpression)
             .replacingOccurrences(of: "\\*{1,2}([^*]+)\\*{1,2}", with: "$1", options: .regularExpression)
