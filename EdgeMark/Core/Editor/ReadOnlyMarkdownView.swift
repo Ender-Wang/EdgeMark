@@ -10,21 +10,15 @@ struct ReadOnlyMarkdownView: View {
     var noteFolder: String = ""
 
     var body: some View {
-        var config = MarkdownEditorConfiguration.default
-        config.textInsets = TextInsets(horizontal: 16, vertical: 12)
-        // Register highlight (==text==) and strikethrough (~~text~~). Opt-in since
-        // swift-markdown-engine 0.10; without this, trashed/peeked notes render the
-        // markers as literal text.
-        config.extensions = [HighlightExtension(), StrikethroughExtension()]
-        config.services = MarkdownEditorServices(
-            images: EdgeMarkImageProvider(noteFolder: noteFolder),
-            syntaxHighlighter: HighlighterSwiftBridge(),
-            latex: SwiftMathBridge(),
-        )
+        // Shared with the live editor so previews match. `.id` rebuilds the view
+        // (makeNSView) when the task-checkbox style changes — updateNSView doesn't
+        // sync taskCheckbox, so only a full re-apply picks up the new symbols.
+        let config = MarkdownEditorConfiguration.makeEdgeMarkConfig(noteFolder: noteFolder)
         return NativeTextViewWrapper(
             text: .constant(content),
             configuration: config,
             isEditable: false,
         )
+        .id(AppSettings.shared.taskCheckboxPreset)
     }
 }

@@ -15,6 +15,7 @@ struct GeneralSettingsTab: View {
     @State private var activeRootID: String?
     @State private var askOnLaunch: Bool
     @State private var removalBlockedMessage: String?
+    @State private var hoveredCheckboxPreset: AppSettings.TaskCheckboxPreset?
 
     init() {
         let s = ShortcutSettings.shared
@@ -101,6 +102,41 @@ struct GeneralSettingsTab: View {
                                 settings.editorFontSize = 16
                             }
                         }
+                    }
+                }
+
+                LabeledContent(l10n["settings.editor.checkboxStyle"]) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(AppSettings.TaskCheckboxPreset.allCases, id: \.self) { preset in
+                                let isSelected = settings.taskCheckboxPreset == preset
+                                let isHovered = hoveredCheckboxPreset == preset
+                                Button {
+                                    settings.taskCheckboxPreset = preset
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: preset.uncheckedSymbolName)
+                                        Image(systemName: preset.checkedSymbolName)
+                                    }
+                                    .font(.title3)
+                                    .foregroundStyle(isSelected ? Color.accentColor : (isHovered ? .primary : .secondary))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(.primary.opacity(isSelected ? 0.12 : (isHovered ? 0.08 : 0))),
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .strokeBorder(Color.accentColor, lineWidth: isSelected ? 1.5 : 0),
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                                .onHover { hoveredCheckboxPreset = $0 ? preset : nil }
+                                .help(l10n["settings.editor.checkboxStyle.\(preset.rawValue)"])
+                            }
+                        }
+                        .animation(.easeInOut(duration: 0.15), value: hoveredCheckboxPreset)
                     }
                 }
 

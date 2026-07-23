@@ -88,22 +88,8 @@ struct MarkdownEditorView: View {
         let appSettings = AppSettings.shared
         let fontName = Self.resolvedFontFamily(from: appSettings.editorFontName) ?? "SF Pro"
 
-        var config = MarkdownEditorConfiguration.default
-        config.textInsets = TextInsets(horizontal: 16, vertical: 12)
-        config.spellChecking = SpellCheckingPolicy(
-            continuousSpellChecking: appSettings.spellCheckingEnabled,
-            grammarChecking: appSettings.grammarCheckingEnabled,
-            automaticSpellingCorrection: appSettings.automaticSpellingCorrectionEnabled,
-        )
-        // Register the highlight (==text==) and strikethrough (~~text~~) extensions.
-        // As of swift-markdown-engine 0.10 these are opt-in — unregistered, the
-        // syntax stays literal text (regressing the v2.5.0 highlight feature and
-        // the ⇧⌘X strikethrough shortcut restored in 3e3a86c).
-        config.extensions = [HighlightExtension(), StrikethroughExtension()]
-        config.services = MarkdownEditorServices(
-            images: EdgeMarkImageProvider(noteFolder: noteFolder),
-            syntaxHighlighter: HighlighterSwiftBridge(),
-            latex: SwiftMathBridge(),
+        var config = MarkdownEditorConfiguration.makeEdgeMarkConfig(
+            noteFolder: noteFolder,
             bus: MarkdownEditorBus(
                 // Formatting-request channels — posting these drives the engine's
                 // didMarkdown* actions (bold/italic/code/link/strikethrough), which in
@@ -116,6 +102,11 @@ struct MarkdownEditorView: View {
                 findScrollToRange: .editorFindScrollToRange,
                 findClearHighlights: .editorFindClearHighlights,
             ),
+        )
+        config.spellChecking = SpellCheckingPolicy(
+            continuousSpellChecking: appSettings.spellCheckingEnabled,
+            grammarChecking: appSettings.grammarCheckingEnabled,
+            automaticSpellingCorrection: appSettings.automaticSpellingCorrectionEnabled,
         )
 
         return ZStack(alignment: .bottom) {
@@ -140,6 +131,10 @@ struct MarkdownEditorView: View {
                     AppSettings.shared.automaticSpellingCorrectionEnabled = policy.automaticSpellingCorrection
                 },
             )
+            // Force the text view to rebuild (makeNSView) when the task-checkbox style
+            // changes — the engine's updateNSView doesn't sync taskCheckbox, so only a
+            // full config re-application picks up the new SF Symbols.
+            .id(appSettings.taskCheckboxPreset)
             .onChange(of: text) { _, newText in
                 let cursorPos = (NSApp.keyWindow?.firstResponder as? NSTextView)?.selectedRange().location ?? 0
                 slashHandler.contentDidChange(content: newText, cursorPos: cursorPos)

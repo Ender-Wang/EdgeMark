@@ -68,6 +68,57 @@ final class AppSettings {
         }
     }
 
+    // MARK: - Task checkbox symbols
+
+    /// SF Symbol presets drawn for `- [ ]` / `- [x]` task-list items. Display-only —
+    /// the underlying markdown stays standard GitHub task-list syntax; this only
+    /// changes which glyph the engine draws over `[ ]` / `[x]`. Backed by
+    /// `swift-markdown-engine` 0.10.1's `TaskCheckboxStyle`; names that fail to
+    /// resolve fall back to the stock look at draw time.
+    enum TaskCheckboxPreset: String, CaseIterable, Codable {
+        case square
+        case circle
+        case diamond
+        case shield
+        case triangle
+        case star
+        case hexagon
+        case heart
+
+        var uncheckedSymbolName: String {
+            switch self {
+            case .square: "square"
+            case .circle: "circle"
+            case .diamond: "diamond"
+            case .shield: "shield"
+            case .triangle: "triangle"
+            case .star: "star"
+            case .hexagon: "hexagon"
+            case .heart: "heart"
+            }
+        }
+
+        var checkedSymbolName: String {
+            switch self {
+            case .square: "checkmark.square.fill"
+            case .circle: "checkmark.circle.fill"
+            case .diamond: "checkmark.diamond.fill"
+            case .shield: "checkmark.shield.fill"
+            case .triangle: "triangle.fill"
+            case .star: "star.fill"
+            case .hexagon: "hexagon.fill"
+            case .heart: "heart.fill"
+            }
+        }
+    }
+
+    /// Default `.square` matches the engine default — no visual change for existing users.
+    /// Live re-render of the editor is driven by `@Observable` tracking (the editor
+    /// reads this via `.id(...)` in its body, so a change recreates the text view).
+    var taskCheckboxPreset: TaskCheckboxPreset = .square {
+        didSet { UserDefaults.standard.set(taskCheckboxPreset.rawValue, forKey: "taskCheckboxPreset") }
+    }
+
     // MARK: - Panel opacity
 
     enum PanelStyle: String, CaseIterable {
@@ -208,6 +259,11 @@ final class AppSettings {
         }
         let savedSize = UserDefaults.standard.object(forKey: "editorFontSize") as? Double
         editorFontSize = savedSize ?? 16
+        if let raw = UserDefaults.standard.string(forKey: "taskCheckboxPreset"),
+           let value = TaskCheckboxPreset(rawValue: raw)
+        {
+            taskCheckboxPreset = value
+        }
         if let raw = UserDefaults.standard.object(forKey: "spellCheckingEnabled") as? Bool {
             spellCheckingEnabled = raw
         }
