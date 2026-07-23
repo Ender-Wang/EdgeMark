@@ -3,8 +3,8 @@ import OSLog
 import SwiftUI
 
 /// Transparent overlay that detects two-finger trackpad horizontal swipes
-/// via NSEvent scroll monitoring. Only fires when the cursor is inside this view's bounds.
-/// Mouse clicks pass through (hitTest returns nil).
+/// via NSEvent scroll monitoring. Only fires when the scroll belongs to this
+/// view's window and the cursor is inside its bounds. Mouse clicks pass through.
 struct SwipeDetectorView: NSViewRepresentable {
     var onSwipeBack: (() -> Void)?
     var onSwipeForward: (() -> Void)?
@@ -60,7 +60,12 @@ final class SwipeDetectorNSView: NSView {
     }
 
     private func handleScroll(_ event: NSEvent) {
-        guard window != nil else { return }
+        // A local scrollWheel monitor fires for every app window, not just this one.
+        // Ignore scrolls that belong to a different window (e.g. the Settings panel) —
+        // otherwise a horizontal scroll in Settings can navigate the open note when the
+        // Settings window overlaps the panel (event.locationInWindow is in the other
+        // window's coordinate space, so the bounds check below is meaningless for it).
+        guard let viewWindow = window, event.window === viewWindow else { return }
 
         // Only respond to events where the cursor is inside this view (the header card)
         let locationInSelf = convert(event.locationInWindow, from: nil)
