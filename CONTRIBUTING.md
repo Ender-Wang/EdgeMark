@@ -57,12 +57,15 @@ EdgeMark/
 │   │   │                                #   (swift-markdown-engine). Heading strip,
 │   │   │                                #   debounced save, image conversion layer,
 │   │   │                                #   slash command integration.
+│   │   ├── EditorConfigFactory.swift      # Shared MarkdownEditorConfiguration (insets,
+│   │   │                                #   highlight/strikethrough extensions, task-checkbox
+│   │   │                                #   symbols, image/syntax/latex services) for both editors
 │   │   ├── ReadOnlyMarkdownView.swift    # Non-editable preview (trash)
 │   │   ├── SlashCommandHandler.swift     # /h1, /todo, /code, /quote — NSTextView insertion
 │   │   ├── SlashCommandPopup.swift       # Floating autocomplete panel
 │   │   └── ImageDropHandler.swift        # Transparent NSView overlay for image drag-and-drop
 │   ├── Settings/
-│   │   └── AppSettings.swift       #   @Observable — sort order, date format, panel style/tint, spell-check prefs
+│   │   └── AppSettings.swift       #   @Observable — sort order, date format, panel style/tint, spell-check prefs, task-checkbox symbols
 │   ├── Shortcuts/
 │   │   ├── ShortcutManager.swift   #   Carbon RegisterEventHotKey global shortcut
 │   │   ├── ShortcutSettings.swift  #   6 customizable local shortcuts + storage roots (multi-location) + persistence
@@ -143,7 +146,7 @@ EdgeMark/
 | **@Observable** | `NoteStore`, `AppSettings`, and `UpdateState` use the `@Observable` macro — views read properties directly, no `@Published` needed |
 | **MainActor by default** | `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`. All types are `@MainActor` unless explicitly opted out |
 | **AppKit + SwiftUI hybrid** | `NSHostingView` embeds SwiftUI inside a borderless `NSWindow`. Panel lifecycle managed by `SidePanelController` (AppKit), UI rendered by SwiftUI |
-| **Native editor (swift-markdown-engine)** | `MarkdownEditorView` wraps `NativeTextViewWrapper` (NSViewRepresentable from swift-markdown-engine). Text flows via `@Binding<String>`. Heading stripping, image display-layer conversion (`![](path)` ↔ `![[path]]`), and save debouncing are handled in `MarkdownEditorView`. |
+| **Native editor (swift-markdown-engine)** | `MarkdownEditorView` wraps `NativeTextViewWrapper` (NSViewRepresentable from swift-markdown-engine). Text flows via `@Binding<String>`. Heading stripping, image display-layer conversion (`![](path)` ↔ `![[path]]`), and save debouncing are handled in `MarkdownEditorView`. Both editors build their `MarkdownEditorConfiguration` via `EditorConfigFactory.makeEdgeMarkConfig` (shared insets, highlight/strikethrough extensions, task-checkbox symbols from `AppSettings.taskCheckboxPreset`, and image/syntax/latex services) — so previews match the editor. Changing the checkbox preset rebuilds the view via `.id()` because the engine's `updateNSView` doesn't sync `taskCheckbox` live. |
 | **Sidecar metadata** | Notes are plain `.md` files with no headers. Metadata (UUID, timestamps, tags, trash state) lives in `.edgemark/meta.json` keyed by UUID. `SidecarMigration` strips YAML on first launch and restores original file timestamps. `savedAt` (last EdgeMark write) is the external-change sentinel; `modifiedAt` only advances on real content edits. |
 | **Image asset co-location** | Images are stored in a hidden dot-prefix directory next to the note (`.NoteTitle/IMG-uuid.png`). Paths in `.md` files are standard `![](path)` — relative, readable in any external editor. The editor display layer converts them to `![[path]]` for rendering via `EmbeddedImageProvider`. `FileStorage` handles create/rename/move/trash/delete of asset dirs alongside their note. |
 | **Carbon hotkeys** | Global shortcut uses `RegisterEventHotKey` (Carbon API) since `NSEvent.addGlobalMonitorForEvents` can't intercept key events |
