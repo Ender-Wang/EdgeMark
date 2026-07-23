@@ -54,7 +54,8 @@ xattr -cr /Applications/EdgeMark.app
 - ✨ Smooth slide-in/out or fade animation (configurable) with edge activation — move mouse to screen edge to reveal
 - 🖱️ Click outside, Escape, or auto-hide dismissal
 - 📌 Pin to keep the panel open — survives focus changes, mouse exit, and Space switches (great for copy-pasting back and forth)
-- 📐 Multi-monitor support with configurable left or right edge
+- 🔘 Edge-toggle mode — touch the edge to open and keep the panel open while you copy text back and forth, touch again to close (no ⌘P needed); Auto-hide stays the default
+- 📐 Multi-monitor support with configurable left or right edge — only the outer screen edge triggers, so moving between displays won't pop it by accident
 - ↔️ Adjustable width — drag the inner edge to resize, saved across restarts
 - 🪟 Panel style — toggle between Translucent and Opaque panel backgrounds
 - 🎨 Panel tint — pick from a curated palette (System, Graphite, Slate, Sand, Sage, Rose)
@@ -65,6 +66,7 @@ xattr -cr /Applications/EdgeMark.app
 - 📝 Full Markdown: headings, bold, italic, code, lists, task lists, blockquotes, links, tables, wiki-links
 - 🖼️ Inline images — paste (`⌘V`) or drag to embed; stored as co-located asset files alongside the note
 - ✅ Checked task items are automatically struck through; uncheck to restore
+- ▫️ Custom task-list checkbox symbols — pick the shape for `- [ ]`/`- [x]` items (Square, Circle, Diamond, Shield, Triangle, Star, Hexagon, Heart); display-only, notes stay standard Markdown
 - 📋 One-click Copy button on fenced code blocks
 - 🔴 Native spell check, grammar check, and autocorrect (macOS system dictionary)
 - ⚡ Slash commands (`/h1`, `/todo`, `/code`, `/quote`, `/table`, `/divider`, and more)

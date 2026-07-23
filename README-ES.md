@@ -54,7 +54,8 @@ xattr -cr /Applications/EdgeMark.app
 - ✨ Animación suave de deslizamiento o desvanecimiento (configurable) con activación por borde — mueve el ratón al borde de la pantalla para revelarlo
 - 🖱️ Haz clic fuera, Escape, o desactivación automática al ocultar
 - 📌 Fija el panel para mantenerlo abierto — sobrevive cambios de foco, salida del ratón y cambio de Espacios (ideal para copiar y pegar)
-- 📐 Soporte multi-monitor con borde izquierdo o derecho configurable
+- 🔘 Modo Edge-toggle — toca el borde para abrir y mantener el panel abierto mientras copias texto de un lado a otro, toca de nuevo para cerrar (sin ⌘P); Auto-hide sigue siendo el predeterminado
+- 📐 Soporte multi-monitor con borde izquierdo o derecho configurable — solo el borde exterior de la pantalla activa, así mover el ratón entre pantallas no lo abrirá por accidente
 - ↔️ Ancho ajustable — arrastra el borde interno para redimensionar, guardado entre reinicios
 - 🪟 Estilo del panel — alterna entre fondos de panel translúcido y opaco
 - 🎨 Tono del panel — elige de una paleta curada (System, Graphite, Slate, Sand, Sage, Rose)
@@ -65,6 +66,7 @@ xattr -cr /Applications/EdgeMark.app
 - 📝 Markdown completo: encabezados, negrita, cursiva, código, listas, listas de tareas, citas, enlaces, tablas, wiki-links
 - 🖼️ Imágenes en línea — pega (`⌘V`) o arrastra para insertar; almacenadas como archivos de recursos junto a la nota
 - ✅ Las tareas completadas se tachan automáticamente; desmarca para restaurar
+- ▫️ Símbolos personalizados para casillas de tareas — elige la forma para los ítems `- [ ]`/`- [x]` (Cuadrado, Círculo, Diamante, Escudo, Triángulo, Estrella, Hexágono, Corazón) en Ajustes; solo visual, las notas siguen siendo Markdown estándar
 - 📋 Botón de Copiar con un clic en bloques de código delimitados
 - 🔴 Corrección ortográfica, gramatical y autocorrección nativas (diccionario del sistema macOS)
 - ⚡ Comandos de barra (`/h1`, `/todo`, `/code`, `/quote`, `/table`, `/divider`, y más)

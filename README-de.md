@@ -54,7 +54,8 @@ xattr -cr /Applications/EdgeMark.app
 - ✨ Sanftes Rein-/Rausfliegen oder Fade-Animation (konfigurierbar) mit Kantenaktivierung — Maus an die Bildschirmkante bewegen, um es einzublenden
 - 🖱️ Schließen per Klick außerhalb, Escape oder Auto-Ausblenden
 - 📌 Anheften, um das Panel offen zu halten — übersteht Fokuswechsel, Maus-Austritt und Space-Wechsel (praktisch für Hin- und Her-Kopieren)
-- 📐 Multi-Monitor-Support mit konfigurierbarer linker oder rechter Kante
+- 🔘 Edge-toggle-Modus — Kante berühren, um das Panel zu öffnen und beim Hin- und Her-Kopieren von Text offen zu halten, erneut berühren zum Schließen (kein ⌘P nötig); Auto-hide bleibt Standard
+- 📐 Multi-Monitor-Support mit konfigurierbarer linker oder rechter Kante — nur die äußere Bildschirmkante löst aus, sodass die Maus zwischen Displays nicht versehentlich öffnet
 - ↔️ Anpassbare Breite — innere Kante ziehen zum Ändern der Größe, wird über Neustarts hinweg gespeichert
 - 🪟 Panel-Stil — Wechsel zwischen Transluzentem und Deckendem Panel-Hintergrund
 - 🎨 Panel-Tönung — wähle aus einer kuratierten Palette (System, Graphit, Schiefer, Sand, Salbei, Rose)
@@ -65,6 +66,7 @@ xattr -cr /Applications/EdgeMark.app
 - 📝 Vollständiges Markdown: Überschriften, Fett, Kursiv, Code, Listen, Aufgabenlisten, Zitate, Links, Tabellen, Wiki-Links
 - 🖼️ Inline-Bilder — einfügen (`⌘V`) oder hineinziehen; als mitgelagerte Asset-Dateien neben der Notiz gespeichert
 - ✅ Abgehakte Aufgaben werden automatisch durchgestrichen; Abhacken aufheben, um wiederherzustellen
+- ▫️ Eigene Task-Checkbox-Symbole — wähle die Form für `- [ ]`/`- [x]`-Aufgaben (Quadrat, Kreis, Raute, Schild, Dreieck, Stern, Sechseck, Herz) in den Einstellungen; nur Anzeige, Notizen bleiben Standard-Markdown
 - 📋 Ein-Klick-Kopieren-Button auf Code-Blöcken
 - 🔴 Native Rechtschreib-, Grammatikprüfung und Autokorrektur (macOS-Systemwörterbuch)
 - ⚡ Slash-Befehle (`/h1`, `/todo`, `/code`, `/quote`, `/table`, `/divider` und mehr)
