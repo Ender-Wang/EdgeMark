@@ -259,7 +259,7 @@ struct HomeFolderView: View {
     /// Small-centered by default; `pickerExpanded` grows them to fill on pick.
     private var pickerRows: some View {
         VStack(spacing: 0) {
-            ForEach(ShortcutSettings.shared.storageRoots) { root in
+            ForEach(StorageSettings.shared.storageRoots) { root in
                 let chosen = pickedRootID == root.id
                 Button {
                     pickRoot(root)

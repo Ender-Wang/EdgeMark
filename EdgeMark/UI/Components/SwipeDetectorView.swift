@@ -71,7 +71,7 @@ final class SwipeDetectorNSView: NSView {
         let locationInSelf = convert(event.locationInWindow, from: nil)
         guard bounds.contains(locationInSelf) else { return }
 
-        let settings = ShortcutSettings.shared
+        let settings = PanelSettings.shared
         guard settings.swipeToNavigateEnabled,
               onSwipeBack != nil || onSwipeForward != nil
         else { return }

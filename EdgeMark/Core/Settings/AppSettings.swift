@@ -1,5 +1,7 @@
 import AppKit
 import Foundation
+import OSLog
+import ServiceManagement
 
 @Observable
 final class AppSettings {
@@ -117,6 +119,59 @@ final class AppSettings {
     /// reads this via `.id(...)` in its body, so a change recreates the text view).
     var taskCheckboxPreset: TaskCheckboxPreset = .square {
         didSet { UserDefaults.standard.set(taskCheckboxPreset.rawValue, forKey: "taskCheckboxPreset") }
+    }
+
+    // MARK: - Appearance, updates, launch
+
+    enum AppearanceMode: String {
+        case system
+        case light
+        case dark
+    }
+
+    /// Appearance mode: system, light, or dark.
+    var appearanceMode: AppearanceMode = .system {
+        didSet {
+            UserDefaults.standard.set(appearanceMode.rawValue, forKey: "appearanceMode")
+            applyAppearance()
+        }
+    }
+
+    /// Whether to automatically check for updates on launch (24h throttle).
+    var autoCheckUpdates: Bool = true {
+        didSet { UserDefaults.standard.set(autoCheckUpdates, forKey: "autoCheckUpdates") }
+    }
+
+    /// Whether the app launches at login.
+    var launchAtLogin: Bool = false {
+        didSet {
+            UserDefaults.standard.set(launchAtLogin, forKey: "launchAtLogin")
+            updateLoginItem()
+        }
+    }
+
+    func applyAppearance() {
+        switch appearanceMode {
+        case .system:
+            NSApp.appearance = nil
+        case .light:
+            NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark:
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
+    }
+
+    private func updateLoginItem() {
+        do {
+            if launchAtLogin {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+        } catch {
+            let msg = error.localizedDescription
+            Log.app.error("Failed to update login item: \(msg)")
+        }
     }
 
     // MARK: - Panel opacity
@@ -264,6 +319,14 @@ final class AppSettings {
         {
             taskCheckboxPreset = value
         }
+        // Appearance, updates, launch (moved from ShortcutSettings)
+        if let raw = UserDefaults.standard.string(forKey: "appearanceMode"),
+           let mode = AppearanceMode(rawValue: raw)
+        {
+            appearanceMode = mode
+        }
+        autoCheckUpdates = UserDefaults.standard.object(forKey: "autoCheckUpdates") as? Bool ?? true
+        launchAtLogin = UserDefaults.standard.object(forKey: "launchAtLogin") as? Bool ?? false
         if let raw = UserDefaults.standard.object(forKey: "spellCheckingEnabled") as? Bool {
             spellCheckingEnabled = raw
         }

@@ -18,7 +18,7 @@ struct BehaviorSettingsTab: View {
     @State private var animationStyle: AnimationStyle
 
     init() {
-        let s = ShortcutSettings.shared
+        let s = PanelSettings.shared
         _edgeSide = State(initialValue: s.edgeSide)
         _dismissalMode = State(initialValue: s.dismissalMode)
         _edgeActivationEnabled = State(initialValue: s.edgeActivationEnabled)
@@ -44,7 +44,7 @@ struct BehaviorSettingsTab: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .onChange(of: animationStyle) { _, v in
-                    ShortcutSettings.shared.animationStyle = v
+                    PanelSettings.shared.animationStyle = v
                 }
 
                 Text(l10n["settings.animation.note"])
@@ -62,7 +62,7 @@ struct BehaviorSettingsTab: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .onChange(of: edgeSide) { _, newValue in
-                    ShortcutSettings.shared.edgeSide = newValue
+                    PanelSettings.shared.edgeSide = newValue
                 }
             } header: {
                 Label(l10n["settings.general.panelPosition"], systemImage: "sidebar.right")
@@ -71,7 +71,7 @@ struct BehaviorSettingsTab: View {
             Section {
                 Toggle(l10n["settings.gesture.enableSwipe"], isOn: $swipeToNavigateEnabled)
                     .onChange(of: swipeToNavigateEnabled) { _, v in
-                        ShortcutSettings.shared.swipeToNavigateEnabled = v
+                        PanelSettings.shared.swipeToNavigateEnabled = v
                     }
 
                 Text(l10n["settings.desc.swipeBack"])
@@ -80,7 +80,7 @@ struct BehaviorSettingsTab: View {
 
                 Toggle(l10n["settings.gesture.enableEditorSwipe"], isOn: $editorSwipeToNavigateEnabled)
                     .onChange(of: editorSwipeToNavigateEnabled) { _, v in
-                        ShortcutSettings.shared.editorSwipeToNavigateEnabled = v
+                        PanelSettings.shared.editorSwipeToNavigateEnabled = v
                     }
 
                 Text(l10n["settings.desc.editorSwipe"])
@@ -92,7 +92,7 @@ struct BehaviorSettingsTab: View {
                         Text(l10n["settings.gesture.sensitivity"])
                         Slider(value: $swipeGestureSensitivity, in: 0 ... 1, step: 0.1)
                             .onChange(of: swipeGestureSensitivity) { _, v in
-                                ShortcutSettings.shared.swipeGestureSensitivity = v
+                                PanelSettings.shared.swipeGestureSensitivity = v
                             }
                         Text(String(format: "%.0f%%", swipeGestureSensitivity * 100))
                             .monospacedDigit()
@@ -107,7 +107,7 @@ struct BehaviorSettingsTab: View {
             Section {
                 Toggle(l10n["settings.general.enableEdgeActivation"], isOn: $edgeActivationEnabled)
                     .onChange(of: edgeActivationEnabled) { _, v in
-                        ShortcutSettings.shared.edgeActivationEnabled = v
+                        PanelSettings.shared.edgeActivationEnabled = v
                     }
 
                 if edgeActivationEnabled {
@@ -115,7 +115,7 @@ struct BehaviorSettingsTab: View {
                         Text(l10n["settings.general.activationDelay"])
                         Slider(value: $activationDelay, in: 0 ... 1, step: 0.1)
                             .onChange(of: activationDelay) { _, v in
-                                ShortcutSettings.shared.activationDelay = v
+                                PanelSettings.shared.activationDelay = v
                             }
                         Text(String(format: "%.1fs", activationDelay))
                             .monospacedDigit()
@@ -124,7 +124,7 @@ struct BehaviorSettingsTab: View {
 
                     Toggle(l10n["settings.general.excludeCorners"], isOn: $excludeCorners)
                         .onChange(of: excludeCorners) { _, v in
-                            ShortcutSettings.shared.excludeCorners = v
+                            PanelSettings.shared.excludeCorners = v
                         }
                 }
             } header: {
@@ -139,13 +139,13 @@ struct BehaviorSettingsTab: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .onChange(of: dismissalMode) { _, v in
-                    ShortcutSettings.shared.dismissalMode = v
+                    PanelSettings.shared.dismissalMode = v
                 }
 
                 if dismissalMode == .auto {
                     Toggle(l10n["settings.general.autoHideOnExit"], isOn: $autoHideOnMouseExit)
                         .onChange(of: autoHideOnMouseExit) { _, v in
-                            ShortcutSettings.shared.autoHideOnMouseExit = v
+                            PanelSettings.shared.autoHideOnMouseExit = v
                         }
 
                     if autoHideOnMouseExit {
@@ -153,7 +153,7 @@ struct BehaviorSettingsTab: View {
                             Text(l10n["settings.general.hideDelay"])
                             Slider(value: $hideDelay, in: 0 ... 3, step: 0.1)
                                 .onChange(of: hideDelay) { _, v in
-                                    ShortcutSettings.shared.hideDelay = v
+                                    PanelSettings.shared.hideDelay = v
                                 }
                             Text(String(format: "%.1fs", hideDelay))
                                 .monospacedDigit()
@@ -163,7 +163,7 @@ struct BehaviorSettingsTab: View {
 
                     Toggle(l10n["settings.general.hideOnClickOutside"], isOn: $hideOnClickOutside)
                         .onChange(of: hideOnClickOutside) { _, v in
-                            ShortcutSettings.shared.hideOnClickOutside = v
+                            PanelSettings.shared.hideOnClickOutside = v
                         }
                 } else {
                     Text(l10n["settings.dismissal.toggleHint"])
@@ -174,7 +174,7 @@ struct BehaviorSettingsTab: View {
                         Text(l10n["settings.dismissal.toggleDelay"])
                         Slider(value: $toggleDismissDelay, in: 0.05 ... 2.0, step: 0.05)
                             .onChange(of: toggleDismissDelay) { _, v in
-                                ShortcutSettings.shared.toggleDismissDelay = v
+                                PanelSettings.shared.toggleDismissDelay = v
                             }
                         Text(String(format: "%.2fs", toggleDismissDelay))
                             .monospacedDigit()

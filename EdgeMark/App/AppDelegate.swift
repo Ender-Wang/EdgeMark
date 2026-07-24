@@ -26,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
         Log.app.info("[AppDelegate] launched v\(version, privacy: .public) (build \(build, privacy: .public))")
-        ShortcutSettings.shared.applyAppearance()
+        AppSettings.shared.applyAppearance()
         setupMenuBar()
         panelController = SidePanelController()
         SidecarMigration.runIfNeeded()
@@ -38,7 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // non-blocking storage-root picker as the panel's empty state instead of the
         // note list. The persistent active root's notes are loaded already; picking a
         // root in the picker switches to it for the session (temporary override).
-        if ShortcutSettings.shared.askOnLaunch, ShortcutSettings.shared.storageRoots.count >= 2 {
+        if StorageSettings.shared.askOnLaunch, StorageSettings.shared.storageRoots.count >= 2 {
             panelController?.noteStore.awaitingRootChoice = true
         }
 
@@ -52,7 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Auto-check for updates on launch (24h throttle, respects user setting)
-        if ShortcutSettings.shared.autoCheckUpdates {
+        if AppSettings.shared.autoCheckUpdates {
             Task {
                 await checkForUpdatesOnLaunch()
             }
@@ -147,8 +147,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // While the ask-on-launch picker is up, no root has been chosen for the session
         // yet (sessionRootOverride is nil) — show no checkmark until one is picked.
         let awaiting = panelController?.noteStore.awaitingRootChoice ?? false
-        let activeID = awaiting ? nil : ShortcutSettings.shared.activeStorageRoot?.id
-        for root in ShortcutSettings.shared.storageRoots {
+        let activeID = awaiting ? nil : StorageSettings.shared.activeStorageRoot?.id
+        for root in StorageSettings.shared.storageRoots {
             let item = NSMenuItem(
                 title: root.displayName,
                 action: #selector(switchToStorageRoot(sender:)),
@@ -159,18 +159,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             item.state = (root.id == activeID) ? .on : .off
             submenu.addItem(item)
         }
-        if !ShortcutSettings.shared.storageRoots.isEmpty {
+        if !StorageSettings.shared.storageRoots.isEmpty {
             submenu.addItem(.separator())
             let hint = NSMenuItem(title: L10n.shared["menu.storageTemporary"], action: nil, keyEquivalent: "")
             hint.isEnabled = false
             submenu.addItem(hint)
         }
-        storageMenuItem?.isHidden = ShortcutSettings.shared.storageRoots.count < 2
+        storageMenuItem?.isHidden = StorageSettings.shared.storageRoots.count < 2
     }
 
     @objc private func switchToStorageRoot(sender: NSMenuItem) {
         guard let id = sender.representedObject as? String,
-              let root = ShortcutSettings.shared.storageRoots.first(where: { $0.id == id })
+              let root = StorageSettings.shared.storageRoots.first(where: { $0.id == id })
         else { return }
         switchRoot(to: root, temporary: true)
     }
@@ -185,11 +185,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.prompt = L10n.shared["common.select"]
 
         // Pre-select current storage directory
-        panel.directoryURL = ShortcutSettings.shared.resolvedStorageDirectory
+        panel.directoryURL = StorageSettings.shared.resolvedStorageDirectory
 
         panel.begin { [weak self] response in
             guard response == .OK, let newURL = panel.url else { return }
-            let oldURL = ShortcutSettings.shared.resolvedStorageDirectory
+            let oldURL = StorageSettings.shared.resolvedStorageDirectory
             guard newURL != oldURL else { return }
 
             // Save dirty notes to old location first
@@ -200,7 +200,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Self.migrateStorageContents(from: oldURL, to: newURL)
 
             // Update the roots model: the migrated-to dir becomes the active root.
-            var roots = ShortcutSettings.shared.storageRoots
+            var roots = StorageSettings.shared.storageRoots
             let activeID: String
             if let existing = roots.first(where: { $0.url == newURL }) {
                 activeID = existing.id
@@ -209,9 +209,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 roots.append(root)
                 activeID = root.id
             }
-            ShortcutSettings.shared.storageRoots = roots
-            ShortcutSettings.shared.activeRootID = activeID
-            ShortcutSettings.shared.sessionRootOverride = nil
+            StorageSettings.shared.storageRoots = roots
+            StorageSettings.shared.activeRootID = activeID
+            StorageSettings.shared.sessionRootOverride = nil
             // Reload notes AND sidecar from the new location (the old changeNotesFolder
             // path reloaded notes but not the sidecar — a latent bug fixed here).
             try? SidecarStore.shared.load()
@@ -241,7 +241,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             panelController?.noteStore.awaitingRootChoice = false
         }
         // Don't no-op-switch to the already-active root.
-        if ShortcutSettings.shared.activeStorageRoot?.id == root.id {
+        if StorageSettings.shared.activeStorageRoot?.id == root.id {
             return
         }
 
@@ -249,10 +249,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panelController?.noteStore.saveDirtyNotes()
 
         if temporary {
-            ShortcutSettings.shared.sessionRootOverride = root
+            StorageSettings.shared.sessionRootOverride = root
         } else {
-            ShortcutSettings.shared.sessionRootOverride = nil
-            ShortcutSettings.shared.activeRootID = root.id
+            StorageSettings.shared.sessionRootOverride = nil
+            StorageSettings.shared.activeRootID = root.id
         }
 
         // Reload sidecar (per-root meta.json) and notes for the new root, inside
@@ -318,7 +318,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func fireBackgroundCheck() {
-        guard ShortcutSettings.shared.autoCheckUpdates else { return }
+        guard AppSettings.shared.autoCheckUpdates else { return }
         Task {
             await updateState.check(source: .launch)
             if case let .available(release) = updateState.status {

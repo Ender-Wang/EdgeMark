@@ -159,7 +159,7 @@ final class PeekTrackingNSView: NSView {
         // Capture cursor position at enter time as a reliable screen-space reference.
         let cursorAtEnter = NSEvent.mouseLocation
 
-        let side = ShortcutSettings.shared.edgeSide
+        let side = PanelSettings.shared.edgeSide
         Log.peek.debug("[PeekTracking] mouseEntered — calling scheduleShow id=\(String(describing: state.id)) side=\(side.rawValue) screenRect=\(screenRect.debugDescription) cursor=\(cursorAtEnter.debugDescription) panel=\(panelFrame.debugDescription)")
         peekCoordinator.scheduleShow(
             id: state.id,

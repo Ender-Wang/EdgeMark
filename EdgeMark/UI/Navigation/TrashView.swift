@@ -22,7 +22,7 @@ struct TrashView: View {
     /// Internal transition based on navigation direction within trash.
     /// Falls back to opacity when the user has chosen Fade animation style.
     private var internalTransition: AnyTransition {
-        guard ShortcutSettings.shared.animationStyle == .slide else { return .opacity }
+        guard PanelSettings.shared.animationStyle == .slide else { return .opacity }
         switch internalDirection {
         case .forward:
             return .asymmetric(

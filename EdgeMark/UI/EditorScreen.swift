@@ -16,9 +16,9 @@ struct EditorScreen: View {
     var body: some View {
         PageLayout(
             onSwipeBack: { goBack() },
-            onContentSwipeRight: ShortcutSettings.shared.editorSwipeToNavigateEnabled
+            onContentSwipeRight: PanelSettings.shared.editorSwipeToNavigateEnabled
                 ? { noteStore.navigateToPreviousNote(sortedBy: appSettings) } : nil,
-            onContentSwipeLeft: ShortcutSettings.shared.editorSwipeToNavigateEnabled
+            onContentSwipeLeft: PanelSettings.shared.editorSwipeToNavigateEnabled
                 ? { noteStore.navigateToNextNote(sortedBy: appSettings) } : nil,
         ) {
             headerContent

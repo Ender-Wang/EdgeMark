@@ -19,7 +19,7 @@ struct ContentView: View {
     /// Horizontal page transition based on navigation direction.
     /// Falls back to opacity when the user has chosen Fade animation style.
     private var pageTransition: AnyTransition {
-        guard ShortcutSettings.shared.animationStyle == .slide else { return .opacity }
+        guard PanelSettings.shared.animationStyle == .slide else { return .opacity }
         switch noteStore.navigationDirection {
         case .forward:
             return .asymmetric(
@@ -38,7 +38,7 @@ struct ContentView: View {
 
     /// Trash uses vertical slide (from bottom), or opacity in Fade mode.
     private var trashTransition: AnyTransition {
-        guard ShortcutSettings.shared.animationStyle == .slide else { return .opacity }
+        guard PanelSettings.shared.animationStyle == .slide else { return .opacity }
         return .asymmetric(
             insertion: .move(edge: .bottom),
             removal: .move(edge: .bottom),

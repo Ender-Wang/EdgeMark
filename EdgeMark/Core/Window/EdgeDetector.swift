@@ -12,7 +12,7 @@ final class EdgeDetector {
     /// mode (a re-touch is a dismiss, not a show). Keeps edge detection
     /// decoupled from panel state — the policy lives in the controller.
     var activationDelayProvider: () -> Double = {
-        ShortcutSettings.shared.activationDelay
+        PanelSettings.shared.activationDelay
     }
 
     private var globalMouseMonitor: Any?
@@ -173,7 +173,7 @@ final class EdgeDetector {
     /// Single-display behavior is unchanged: the one screen has no neighbor,
     /// so its edge returns `.exterior` as before.
     private func edgeHit(mouseLocation: NSPoint, screen: NSScreen) -> EdgeHit {
-        let settings = ShortcutSettings.shared
+        let settings = PanelSettings.shared
         guard settings.edgeActivationEnabled else { return .none }
 
         let visibleFrame = screen.visibleFrame

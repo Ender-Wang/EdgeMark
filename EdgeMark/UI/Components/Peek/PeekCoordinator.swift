@@ -244,7 +244,7 @@ final class PeekCoordinator {
         scheduledID = content.id
         isKeyboardTriggered = true
 
-        let side = ShortcutSettings.shared.edgeSide
+        let side = PanelSettings.shared.edgeSide
         let screen = NSScreen.main ?? NSScreen.screens.first!
         let tint = AppSettings.shared.panelTint.color
         // anchorRow is unused by computeFrame; pass panelFrame as a placeholder.
@@ -268,7 +268,7 @@ final class PeekCoordinator {
         cancelDismiss()
         scheduledID = content.id
         let tint = AppSettings.shared.panelTint.color
-        let side = ShortcutSettings.shared.edgeSide
+        let side = PanelSettings.shared.edgeSide
         let screen = NSScreen.main ?? NSScreen.screens.first!
         controller.show(
             content: content,
@@ -315,7 +315,7 @@ final class PeekCoordinator {
     /// window's outer edge. Keeps the hover alive while the cursor crosses.
     private func gapStrip() -> NSRect {
         guard !panelFrame.isEmpty else { return .zero }
-        let side = ShortcutSettings.shared.edgeSide
+        let side = PanelSettings.shared.edgeSide
         let gap = PeekWindowController.gap
         switch side {
         case .right:

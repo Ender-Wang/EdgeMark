@@ -4,7 +4,7 @@ import OSLog
 enum FileStorage {
     /// Storage root — reads from ShortcutSettings so the user can configure a custom directory.
     static var rootURL: URL {
-        ShortcutSettings.shared.resolvedStorageDirectory
+        StorageSettings.shared.resolvedStorageDirectory
     }
 
     private static let dateFormatter: ISO8601DateFormatter = {

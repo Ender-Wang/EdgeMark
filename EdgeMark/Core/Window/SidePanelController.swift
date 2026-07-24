@@ -39,8 +39,8 @@ final class SidePanelController: NSWindowController {
 
     init() {
         let visibleFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        let panelWidth = ShortcutSettings.shared.panelWidth
-        let side = ShortcutSettings.shared.edgeSide
+        let panelWidth = PanelSettings.shared.panelWidth
+        let side = PanelSettings.shared.edgeSide
 
         // Park the window far off-screen so it can't overlap any monitor.
         // Using a large negative coordinate is guaranteed to miss all monitor arrangements.
@@ -124,7 +124,7 @@ final class SidePanelController: NSWindowController {
             // onEdgeActivated only after the timer), so a flick through the edge
             // doesn't kill the panel — only a deliberate push-and-hold does.
             // Auto mode: a re-touch while shown is a no-op (showPanel early-returns).
-            if ShortcutSettings.shared.dismissalMode == .toggle, isShown {
+            if PanelSettings.shared.dismissalMode == .toggle, isShown {
                 hidePanel()
             } else {
                 showPanel(on: screen)
@@ -136,8 +136,8 @@ final class SidePanelController: NSWindowController {
         // (floored) toggle-dismiss delay instead of the show activation delay,
         // so a brush across the edge can't instantly kill the panel.
         edgeDetector.activationDelayProvider = { [weak self] in
-            guard let self else { return ShortcutSettings.shared.activationDelay }
-            let s = ShortcutSettings.shared
+            guard let self else { return PanelSettings.shared.activationDelay }
+            let s = PanelSettings.shared
             if s.dismissalMode == .toggle, isShown {
                 return max(s.toggleDismissDelay, 0.05)
             }
@@ -147,9 +147,9 @@ final class SidePanelController: NSWindowController {
         // Click-outside dismissal
         NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown) { [weak self] _ in
             guard let self, isShown, !self.isMouseInPanel(),
-                  ShortcutSettings.shared.hideOnClickOutside,
-                  ShortcutSettings.shared.dismissalMode == .auto,
-                  !ShortcutSettings.shared.isPanelPinned else { return }
+                  PanelSettings.shared.hideOnClickOutside,
+                  PanelSettings.shared.dismissalMode == .auto,
+                  !PanelSettings.shared.isPanelPinned else { return }
             hidePanel()
         }
 
@@ -220,7 +220,7 @@ final class SidePanelController: NSWindowController {
                 return nil
             }
             if s.pinShortcut?.matches(event) == true {
-                s.isPanelPinned.toggle()
+                PanelSettings.shared.isPanelPinned.toggle()
                 return nil
             }
             if s.newNoteShortcut?.matches(event) == true {
@@ -282,12 +282,12 @@ final class SidePanelController: NSWindowController {
         guard let window, let containerView = window.contentView else { return }
 
         // Update corner radius for new edge side
-        let side = ShortcutSettings.shared.edgeSide
+        let side = PanelSettings.shared.edgeSide
         Log.window.info("[SidePanelController] settings changed — edge: \(side.rawValue, privacy: .public)")
         contentHostingView?.layer?.maskedCorners = Self.maskedCorners(for: side)
 
         // Reposition resize handle for new edge side
-        let panelWidth = ShortcutSettings.shared.panelWidth
+        let panelWidth = PanelSettings.shared.panelWidth
         resizeHandleView?.side = side
         resizeHandleView?.autoresizingMask = Self.resizeHandleAutoresizing(for: side)
         resizeHandleView?.frame = Self.resizeHandleFrame(for: side, containerWidth: panelWidth, height: containerView.bounds.height)
@@ -306,7 +306,7 @@ final class SidePanelController: NSWindowController {
 
     @objc private func handlePinStateChanged() {
         guard let window else { return }
-        let pinned = ShortcutSettings.shared.isPanelPinned
+        let pinned = PanelSettings.shared.isPanelPinned
         // Allow dragging the panel by its header background when pinned.
         // NSView.mouseDownCanMoveWindow = false on buttons and scroll views ensures
         // existing controls remain fully interactive — only background areas drag.
@@ -321,7 +321,7 @@ final class SidePanelController: NSWindowController {
     private func snapToEdge() {
         guard let window, isShown else { return }
         let screen = window.screen ?? NSScreen.main ?? NSScreen.screens.first!
-        let side = ShortcutSettings.shared.edgeSide
+        let side = PanelSettings.shared.edgeSide
         let (edgeFrame, _) = panelFrames(visibleFrame: screen.visibleFrame, side: side)
 
         // Already at the edge — nothing to animate
@@ -354,11 +354,11 @@ final class SidePanelController: NSWindowController {
         // If the panel is shown and the mouse is outside, restart the auto-hide
         // timer with a short delay so the animation plays after the Space
         // transition settles (animations don't render mid-transition).
-        guard isShown, !ShortcutSettings.shared.isPanelPinned,
-              ShortcutSettings.shared.dismissalMode == .auto else { return }
+        guard isShown, !PanelSettings.shared.isPanelPinned,
+              PanelSettings.shared.dismissalMode == .auto else { return }
         cancelHideTimer()
         if !isMouseInPanel() {
-            let delay = max(ShortcutSettings.shared.hideDelay, 0.5)
+            let delay = max(PanelSettings.shared.hideDelay, 0.5)
             startHideTimer(delay: delay)
         }
     }
@@ -415,10 +415,10 @@ final class SidePanelController: NSWindowController {
 
     override func mouseExited(with _: NSEvent) {
         guard isShown, !isAnimating, !isEditorFocused,
-              ShortcutSettings.shared.autoHideOnMouseExit,
-              ShortcutSettings.shared.dismissalMode == .auto,
-              !ShortcutSettings.shared.isPanelPinned else { return }
-        let delay = ShortcutSettings.shared.hideDelay
+              PanelSettings.shared.autoHideOnMouseExit,
+              PanelSettings.shared.dismissalMode == .auto,
+              !PanelSettings.shared.isPanelPinned else { return }
+        let delay = PanelSettings.shared.hideDelay
         if delay == 0 {
             hidePanel()
         } else {
@@ -437,7 +437,7 @@ final class SidePanelController: NSWindowController {
         guard let window, !isShown else { return }
         let targetScreen = screen ?? NSScreen.main ?? NSScreen.screens.first!
         let visibleFrame = targetScreen.visibleFrame
-        let side = ShortcutSettings.shared.edgeSide
+        let side = PanelSettings.shared.edgeSide
         Log.window.info("[SidePanelController] showPanel (\(side.rawValue, privacy: .public) edge)")
 
         // Check for external file changes every time the panel becomes visible
@@ -471,7 +471,7 @@ final class SidePanelController: NSWindowController {
             window.ignoresMouseEvents = false
             window.makeKeyAndOrderFront(nil)
 
-            if ShortcutSettings.shared.animationStyle == .slide {
+            if PanelSettings.shared.animationStyle == .slide {
                 // Slide: teleport to the off-screen start position, then animate the frame inward.
                 // Note: on multi-monitor setups the start position may overlap the adjacent display,
                 // causing a brief ghost during the 0.2s travel. Use Fade in Settings to avoid this.
@@ -524,7 +524,7 @@ final class SidePanelController: NSWindowController {
         let panelWidth = window.frame.width
         let targetScreen = window.screen ?? NSScreen.main ?? NSScreen.screens.first!
         let visibleFrame = targetScreen.visibleFrame
-        let side = ShortcutSettings.shared.edgeSide
+        let side = PanelSettings.shared.edgeSide
         let (_, hiddenFrame) = panelFrames(visibleFrame: visibleFrame, side: side)
 
         if isAnimating {
@@ -540,7 +540,7 @@ final class SidePanelController: NSWindowController {
             isAnimating = true
             window.ignoresMouseEvents = true
 
-            if ShortcutSettings.shared.animationStyle == .slide {
+            if PanelSettings.shared.animationStyle == .slide {
                 // Slide out, then park far off-screen so the invisible window can't block clicks.
                 NSAnimationContext.runAnimationGroup { context in
                     context.duration = 0.2
@@ -585,7 +585,7 @@ final class SidePanelController: NSWindowController {
 
     private func panelDidResize(to newWidth: CGFloat) {
         guard let window else { return }
-        let side = ShortcutSettings.shared.edgeSide
+        let side = PanelSettings.shared.edgeSide
         let targetScreen = window.screen ?? NSScreen.main ?? NSScreen.screens.first!
         let maxWidth = targetScreen.visibleFrame.width - 100
         let clampedWidth = min(max(newWidth, ResizeHandleView.minWidth), maxWidth)
@@ -601,8 +601,8 @@ final class SidePanelController: NSWindowController {
     }
 
     private func panelResizeEnded(width: CGFloat) {
-        ShortcutSettings.shared.panelWidth = window?.frame.width ?? width
-        Log.window.info("[SidePanelController] panel resized to \(ShortcutSettings.shared.panelWidth, privacy: .public)pt")
+        PanelSettings.shared.panelWidth = window?.frame.width ?? width
+        Log.window.info("[SidePanelController] panel resized to \(PanelSettings.shared.panelWidth, privacy: .public)pt")
     }
 
     // MARK: - Frame Calculation
@@ -615,7 +615,7 @@ final class SidePanelController: NSWindowController {
 
     /// Returns (shown, hidden) frames for the given edge side using the persisted panel width.
     private func panelFrames(visibleFrame: NSRect, side: EdgeSide) -> (shown: NSRect, hidden: NSRect) {
-        let width = ShortcutSettings.shared.panelWidth
+        let width = PanelSettings.shared.panelWidth
         let shown: NSRect
         let hidden: NSRect
         switch side {
@@ -700,7 +700,7 @@ final class SidePanelController: NSWindowController {
         }
         // 3. Inside the 12pt gap strip between the panel and the preview
         let gap = PeekWindowController.gap
-        let side = ShortcutSettings.shared.edgeSide
+        let side = PanelSettings.shared.edgeSide
         let gapStrip = switch side {
         case .right:
             NSRect(x: window.frame.minX - gap, y: window.frame.minY,
@@ -790,7 +790,7 @@ private final class ResizeHandleView: NSView {
 
     override func mouseDown(with _: NSEvent) {
         dragStartX = NSEvent.mouseLocation.x
-        dragStartWidth = window?.frame.width ?? ShortcutSettings.shared.panelWidth
+        dragStartWidth = window?.frame.width ?? PanelSettings.shared.panelWidth
         let w = dragStartWidth
         let s = side.rawValue
         Log.window.debug("[ResizeHandleView] drag began — startWidth: \(w, privacy: .public)pt side: \(s, privacy: .public)")
@@ -810,7 +810,7 @@ private final class ResizeHandleView: NSView {
     }
 
     override func mouseUp(with _: NSEvent) {
-        let finalWidth = window?.frame.width ?? ShortcutSettings.shared.panelWidth
+        let finalWidth = window?.frame.width ?? PanelSettings.shared.panelWidth
         Log.window.debug("[ResizeHandleView] drag ended — finalWidth: \(finalWidth, privacy: .public)pt")
         onDragEnded?(finalWidth)
         NSCursor.arrow.set()

@@ -5,11 +5,11 @@ struct GeneralSettingsTab: View {
     @Environment(L10n.self) var l10n
     @Environment(AppSettings.self) var appSettings
 
-    @State private var appearanceMode: AppearanceMode
+    @State private var appearanceMode: AppSettings.AppearanceMode
     @State private var autoCheckUpdates: Bool
     @State private var launchAtLogin: Bool
     @State private var selectedLocale: String
-    // Multiple storage locations (#55). Mirrored from ShortcutSettings (a plain class,
+    // Multiple storage locations (#55). Mirrored from StorageSettings (a plain class,
     // not @Observable) and refreshed on .storageRootChanged.
     @State private var roots: [StorageRoot]
     @State private var activeRootID: String?
@@ -18,13 +18,12 @@ struct GeneralSettingsTab: View {
     @State private var hoveredCheckboxPreset: AppSettings.TaskCheckboxPreset?
 
     init() {
-        let s = ShortcutSettings.shared
-        _appearanceMode = State(initialValue: s.appearanceMode)
-        _autoCheckUpdates = State(initialValue: s.autoCheckUpdates)
-        _launchAtLogin = State(initialValue: s.launchAtLogin)
-        _roots = State(initialValue: s.storageRoots)
-        _activeRootID = State(initialValue: s.activeStorageRoot?.id)
-        _askOnLaunch = State(initialValue: s.askOnLaunch)
+        _appearanceMode = State(initialValue: AppSettings.shared.appearanceMode)
+        _autoCheckUpdates = State(initialValue: AppSettings.shared.autoCheckUpdates)
+        _launchAtLogin = State(initialValue: AppSettings.shared.launchAtLogin)
+        _roots = State(initialValue: StorageSettings.shared.storageRoots)
+        _activeRootID = State(initialValue: StorageSettings.shared.activeStorageRoot?.id)
+        _askOnLaunch = State(initialValue: StorageSettings.shared.askOnLaunch)
         _selectedLocale = State(initialValue: L10n.shared.locale)
     }
 
@@ -45,15 +44,15 @@ struct GeneralSettingsTab: View {
         Form {
             Section {
                 Picker(l10n["settings.general.appearance"], selection: $appearanceMode) {
-                    Text(l10n["settings.appearance.system"]).tag(AppearanceMode.system)
-                    Text(l10n["settings.appearance.light"]).tag(AppearanceMode.light)
-                    Text(l10n["settings.appearance.dark"]).tag(AppearanceMode.dark)
+                    Text(l10n["settings.appearance.system"]).tag(AppSettings.AppearanceMode.system)
+                    Text(l10n["settings.appearance.light"]).tag(AppSettings.AppearanceMode.light)
+                    Text(l10n["settings.appearance.dark"]).tag(AppSettings.AppearanceMode.dark)
                 }
                 .pickerStyle(.segmented)
                 .fixedSize()
                 .labelsHidden()
                 .onChange(of: appearanceMode) { _, newValue in
-                    ShortcutSettings.shared.appearanceMode = newValue
+                    AppSettings.shared.appearanceMode = newValue
                 }
 
                 Picker(l10n["settings.general.panelStyle"], selection: $settings.panelStyle) {
@@ -172,12 +171,12 @@ struct GeneralSettingsTab: View {
             Section {
                 Toggle(l10n["settings.general.autoCheckUpdates"], isOn: $autoCheckUpdates)
                     .onChange(of: autoCheckUpdates) { _, v in
-                        ShortcutSettings.shared.autoCheckUpdates = v
+                        AppSettings.shared.autoCheckUpdates = v
                     }
 
                 Toggle(l10n["settings.general.launchAtLogin"], isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, v in
-                        ShortcutSettings.shared.launchAtLogin = v
+                        AppSettings.shared.launchAtLogin = v
                     }
             } header: {
                 Label(l10n["settings.general.system"], systemImage: "gearshape.2")
@@ -192,7 +191,7 @@ struct GeneralSettingsTab: View {
                     Toggle(l10n["settings.general.askOnLaunch"], isOn: $askOnLaunch)
                         .disabled(roots.count < 2)
                         .onChange(of: askOnLaunch) { _, v in
-                            ShortcutSettings.shared.askOnLaunch = v
+                            StorageSettings.shared.askOnLaunch = v
                         }
                     Text(l10n["settings.general.askOnLaunchHint"])
                         .font(.caption)
@@ -214,9 +213,9 @@ struct GeneralSettingsTab: View {
         }
         .formStyle(.grouped)
         .onReceive(NotificationCenter.default.publisher(for: .storageRootChanged)) { _ in
-            roots = ShortcutSettings.shared.storageRoots
-            activeRootID = ShortcutSettings.shared.activeStorageRoot?.id
-            askOnLaunch = ShortcutSettings.shared.askOnLaunch
+            roots = StorageSettings.shared.storageRoots
+            activeRootID = StorageSettings.shared.activeStorageRoot?.id
+            askOnLaunch = StorageSettings.shared.askOnLaunch
         }
         .alert("Cannot remove", isPresented: .constant(removalBlockedMessage != nil)) {
             Button(l10n["common.ok"]) { removalBlockedMessage = nil }
@@ -286,17 +285,17 @@ struct GeneralSettingsTab: View {
     private func labelBinding(forID id: String) -> Binding<String> {
         Binding(
             get: {
-                if let r = ShortcutSettings.shared.storageRoots.first(where: { $0.id == id }) {
+                if let r = StorageSettings.shared.storageRoots.first(where: { $0.id == id }) {
                     return r.label ?? r.url.lastPathComponent
                 }
                 return ""
             },
             set: { newVal in
-                var current = ShortcutSettings.shared.storageRoots
+                var current = StorageSettings.shared.storageRoots
                 if let idx = current.firstIndex(where: { $0.id == id }) {
                     current[idx].label = newVal.isEmpty ? nil : newVal
                 }
-                ShortcutSettings.shared.storageRoots = current
+                StorageSettings.shared.storageRoots = current
                 roots = current
             },
         )
@@ -313,7 +312,7 @@ struct GeneralSettingsTab: View {
         panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents")
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
-            var current = ShortcutSettings.shared.storageRoots
+            var current = StorageSettings.shared.storageRoots
             guard !current.contains(where: { $0.url == url }) else { return }
             do {
                 try FileStorage.ensureRootStructure(at: url)
@@ -323,21 +322,21 @@ struct GeneralSettingsTab: View {
                 return
             }
             current.append(StorageRoot(id: UUID().uuidString, url: url, label: nil))
-            ShortcutSettings.shared.storageRoots = current
+            StorageSettings.shared.storageRoots = current
             roots = current
         }
     }
 
     private func removeRoot(_ root: StorageRoot) {
-        var current = ShortcutSettings.shared.storageRoots
+        var current = StorageSettings.shared.storageRoots
         guard current.count > 1 else {
             removalBlockedMessage = l10n["settings.general.cantRemoveLast"]
             return
         }
-        let wasActive = ShortcutSettings.shared.activeRootID == root.id
-            || ShortcutSettings.shared.sessionRootOverride?.id == root.id
+        let wasActive = StorageSettings.shared.activeRootID == root.id
+            || StorageSettings.shared.sessionRootOverride?.id == root.id
         current.removeAll { $0.id == root.id }
-        ShortcutSettings.shared.storageRoots = current
+        StorageSettings.shared.storageRoots = current
         roots = current
         if wasActive, let next = current.first {
             AppDelegate.shared?.switchRoot(to: next, temporary: false)
