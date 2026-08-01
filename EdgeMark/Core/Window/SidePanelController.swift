@@ -150,7 +150,10 @@ final class SidePanelController: NSWindowController {
                   PanelSettings.shared.hideOnClickOutside,
                   PanelSettings.shared.dismissalMode == .auto,
                   !PanelSettings.shared.isPanelPinned else { return }
-            hidePanel()
+            // Don't restore previousApp on click-outside — the click itself is moving
+            // focus to the clicked app; re-activating previousApp would yank focus back
+            // and race the click, so the user had to click several times (#58).
+            hidePanel(restoreFocus: false)
         }
 
         // Escape key dismissal
@@ -510,7 +513,7 @@ final class SidePanelController: NSWindowController {
         }
     }
 
-    func hidePanel() {
+    func hidePanel(restoreFocus: Bool = true) {
         guard let window, isShown else { return }
         Log.window.info("[SidePanelController] hidePanel")
         noteStore.saveDirtyNotes()
@@ -534,7 +537,9 @@ final class SidePanelController: NSWindowController {
             window.alphaValue = 0
             window.ignoresMouseEvents = true
             window.setFrame(parkedFrame(panelWidth: panelWidth), display: false)
-            restorePreviousApp()
+            if restoreFocus {
+                restorePreviousApp()
+            }
             edgeDetector.resumeDetection()
         } else {
             isAnimating = true
@@ -551,7 +556,9 @@ final class SidePanelController: NSWindowController {
                     window.alphaValue = 0
                     window.setFrame(parkedFrame(panelWidth: panelWidth), display: false)
                     isAnimating = false
-                    restorePreviousApp()
+                    if restoreFocus {
+                        restorePreviousApp()
+                    }
                     edgeDetector.resumeDetection()
                 }
             } else {
@@ -564,7 +571,9 @@ final class SidePanelController: NSWindowController {
                     guard let self, animationGeneration == gen else { return }
                     window.setFrame(parkedFrame(panelWidth: panelWidth), display: false)
                     isAnimating = false
-                    restorePreviousApp()
+                    if restoreFocus {
+                        restorePreviousApp()
+                    }
                     edgeDetector.resumeDetection()
                 }
             }
