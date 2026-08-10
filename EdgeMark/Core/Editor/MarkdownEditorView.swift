@@ -50,6 +50,11 @@ struct MarkdownEditorView: View {
     @State private var saveDebouncer = Debouncer(delay: 1.0)
     @State private var slashHandler = SlashCommandHandler()
     @State private var noteNavMonitor: Any?
+
+    /// Per-note scroll offsets persisted across editor unmount/remount (engine 0.12.0
+    /// `onPersistScrollOffset` / `restoreScrollOffset`). Session-level — not persisted
+    /// to disk (matches the engine's original coordinator-level offsets). Keyed by noteID.
+    private static var scrollOffsets: [String: CGFloat] = [:]
     /// Latched at init — never updated on re-render. Guards against @Observable pushing
     /// a new selectedNote into the animating-out EditorScreen, which would overwrite
     /// onContentChanged's captured note ID while @State text still holds the old note's content.
@@ -129,6 +134,12 @@ struct MarkdownEditorView: View {
                     AppSettings.shared.spellCheckingEnabled = policy.continuousSpellChecking
                     AppSettings.shared.grammarCheckingEnabled = policy.grammarChecking
                     AppSettings.shared.automaticSpellingCorrectionEnabled = policy.automaticSpellingCorrection
+                },
+                onPersistScrollOffset: { docId, offset in
+                    Self.scrollOffsets[docId] = offset
+                },
+                restoreScrollOffset: { docId in
+                    Self.scrollOffsets[docId]
                 },
             )
             // Force the text view to rebuild (makeNSView) when the task-checkbox style
