@@ -219,7 +219,10 @@ struct NoteListView: View {
                     )
                 },
                 onDouble: { noteStore.navigateToSubfolder(folder) },
+                dragItem: .folder(folder.name),
+                dragPreviewLabel: folder.displayName,
             )
+            .edgeMarkDropTarget(.folder(folder.name))
             .reportRowFrame(id)
             .hoverableRow(id: id, content: .folder(folder, noteStore.subfolders(of: folder), noteStore.recentNotes(in: folder)))
             .nsContextMenu {
@@ -266,7 +269,10 @@ struct NoteListView: View {
                     )
                 },
                 onDouble: { noteStore.openNote(note) },
+                dragItem: .note(note.id),
+                dragPreviewLabel: note.title,
             )
+            .edgeMarkDropTarget(.note(note.id, folder: note.folder))
             .reportRowFrame(id)
             .hoverableRow(id: id, content: .note(note))
             .nsContextMenu {

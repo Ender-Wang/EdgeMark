@@ -32,6 +32,16 @@ final class NoteStore {
         case folder(String)
     }
 
+    enum DragItem: Equatable {
+        case note(UUID)
+        case folder(String)
+    }
+
+    enum DropTarget: Equatable {
+        case folder(String)
+        case note(UUID, folder: String)
+    }
+
     /// What's selected in the visible list — distinct from `selectedNote` /
     /// `selectedFolder` (which represent what's *open*). Empty after navigation.
     var selection: Set<SelectableID> = []
@@ -871,6 +881,7 @@ final class NoteStore {
 
     func moveNote(_ note: Note, to folder: String) {
         guard let index = notes.firstIndex(where: { $0.id == note.id }) else { return }
+        guard notes[index].folder != folder else { return }
         let actualFilename = notes[index].savedFilename ?? notes[index].filename
         if noteFilenameWouldCollide(actualFilename, in: folder, excluding: note.id) {
             pendingNoteMoveConflicts.append(PendingNoteMoveConflict(noteID: note.id, targetFolder: folder))
@@ -981,6 +992,119 @@ final class NoteStore {
             refreshFolders()
         } catch {
             Log.storage.error("[NoteStore] moveNote failed — \(error)")
+        }
+    }
+
+    func moveDraggedItem(_ item: DragItem, onto target: DropTarget) {
+        guard canDrop(item, onto: target) else { return }
+        switch (item, target) {
+        case let (.note(noteID), .folder(folder)):
+            guard let note = notes.first(where: { $0.id == noteID }) else { return }
+            moveNote(note, to: folder)
+        case let (.folder(folder), .folder(targetParent)):
+            moveFolder(folder, toParent: targetParent)
+        case let (.note(sourceID), .note(targetID, folder)):
+            groupNotes(sourceID: sourceID, targetID: targetID, in: folder)
+        default:
+            break
+        }
+    }
+
+    func canDrop(_ item: DragItem, onto target: DropTarget) -> Bool {
+        switch (item, target) {
+        case let (.note(noteID), .folder(folder)):
+            return notes.first(where: { $0.id == noteID })?.folder != folder
+                && folders.contains(where: { $0.name == folder })
+        case let (.folder(source), .folder(targetParent)):
+            let currentParent = (source as NSString).deletingLastPathComponent
+            let normalizedCurrentParent = currentParent == "." ? "" : currentParent
+            return folders.contains(where: { $0.name == source })
+                && folders.contains(where: { $0.name == targetParent })
+                && source != targetParent
+                && !targetParent.hasPrefix(source + "/")
+                && normalizedCurrentParent != targetParent
+        case let (.note(sourceID), .note(targetID, folder)):
+            guard sourceID != targetID,
+                  let source = notes.first(where: { $0.id == sourceID }),
+                  let targetNote = notes.first(where: { $0.id == targetID })
+            else { return false }
+            return source.folder == folder && targetNote.folder == folder
+        default:
+            return false
+        }
+    }
+
+    private func groupNotes(sourceID: UUID, targetID: UUID, in folder: String) {
+        guard sourceID != targetID,
+              let sourceIndex = notes.firstIndex(where: { $0.id == sourceID }),
+              let targetIndex = notes.firstIndex(where: { $0.id == targetID }),
+              notes[sourceIndex].folder == folder,
+              notes[targetIndex].folder == folder
+        else { return }
+
+        let baseName = FileStorage.sanitizeForFilename(notes[targetIndex].title)
+        var displayName = baseName
+        var counter = 2
+        while folderWouldCollide(displayName: displayName, in: folder) {
+            displayName = "\(baseName) \(counter)"
+            counter += 1
+        }
+        let groupFolder = folder.isEmpty ? displayName : "\(folder)/\(displayName)"
+
+        do {
+            try FileStorage.ensureFolderExists(groupFolder)
+            diskFolderNames.insert(groupFolder)
+
+            let ids = [sourceID, targetID]
+            for id in ids {
+                guard let index = notes.firstIndex(where: { $0.id == id }) else { throw CocoaError(.fileNoSuchFile) }
+                let note = notes[index]
+                let movedSavedAt = try FileStorage.moveNote(note, toFolder: groupFolder)
+                notes[index].folder = groupFolder
+                notes[index].savedAt = movedSavedAt
+            }
+            if let selectedNoteID = selectedNote?.id,
+               let selectedNoteIndex = notes.firstIndex(where: { $0.id == selectedNoteID })
+            {
+                selectedNote = notes[selectedNoteIndex]
+            }
+            selection.subtract(ids.map(SelectableID.note))
+            selection.insert(.folder(groupFolder))
+            selectionAnchor = .folder(groupFolder)
+            selectionExtensionEnd = .folder(groupFolder)
+            updateSidecarPaths(for: notes)
+            try? SidecarStore.shared.save()
+            refreshFolders()
+            Log.storage.info("[NoteStore] grouped notes into '\(groupFolder, privacy: .public)'")
+        } catch {
+            for id in movedIDsReversed(sourceID: sourceID, targetID: targetID, in: groupFolder) {
+                guard let index = notes.firstIndex(where: { $0.id == id }) else { continue }
+                let note = notes[index]
+                do {
+                    let restoredSavedAt = try FileStorage.moveNote(note, toFolder: folder)
+                    notes[index].folder = folder
+                    notes[index].savedAt = restoredSavedAt
+                } catch {
+                    Log.storage.error("[NoteStore] groupNotes rollback failed — \(error)")
+                }
+            }
+            try? FileStorage.deleteFolder(groupFolder)
+            diskFolderNames.remove(groupFolder)
+            updateSidecarPaths(for: notes)
+            try? SidecarStore.shared.save()
+            if let selectedNoteID = selectedNote?.id,
+               let selectedNoteIndex = notes.firstIndex(where: { $0.id == selectedNoteID })
+            {
+                selectedNote = notes[selectedNoteIndex]
+            }
+            refreshFolders()
+            Log.storage.error("[NoteStore] groupNotes failed — \(error)")
+        }
+    }
+
+    private func movedIDsReversed(sourceID: UUID, targetID: UUID, in groupFolder: String) -> [UUID] {
+        [targetID, sourceID].filter { id in
+            notes.first(where: { $0.id == id })?.folder == groupFolder
         }
     }
 
@@ -1335,9 +1459,17 @@ final class NoteStore {
                     notes[i].folder = newFullPath + "/" + String(notes[i].folder.dropFirst(oldPrefix.count))
                 }
             }
-            if selectedFolder?.name == name {
-                selectedFolder = Folder(name: newFullPath, noteCount: selectedFolder?.noteCount ?? 0)
+            if let selectedFolderName = selectedFolder?.name,
+               let remappedFolderName = remappedFolderPath(selectedFolderName, from: name, to: newFullPath)
+            {
+                selectedFolder = Folder(name: remappedFolderName, noteCount: selectedFolder?.noteCount ?? 0)
             }
+            if let selectedNoteID = selectedNote?.id,
+               let selectedNoteIndex = notes.firstIndex(where: { $0.id == selectedNoteID })
+            {
+                selectedNote = notes[selectedNoteIndex]
+            }
+            remapFolderSelection(from: name, to: newFullPath)
             // Update cache: rename moved folder and all sub-paths (reuses oldPrefix declared above)
             diskFolderNames = Set(diskFolderNames.map { path in
                 if path == name {
@@ -1355,6 +1487,27 @@ final class NoteStore {
         } catch {
             Log.storage.error("[NoteStore] moveFolder failed — \(error)")
         }
+    }
+
+    private func remapFolderSelection(from oldPath: String, to newPath: String) {
+        func remap(_ id: SelectableID) -> SelectableID {
+            guard case let .folder(path) = id else { return id }
+            guard let remapped = remappedFolderPath(path, from: oldPath, to: newPath) else { return id }
+            return .folder(remapped)
+        }
+        selection = Set(selection.map(remap))
+        selectionAnchor = selectionAnchor.map(remap)
+        selectionExtensionEnd = selectionExtensionEnd.map(remap)
+    }
+
+    private func remappedFolderPath(_ path: String, from oldPath: String, to newPath: String) -> String? {
+        if path == oldPath {
+            return newPath
+        }
+        if path.hasPrefix(oldPath + "/") {
+            return newPath + path.dropFirst(oldPath.count)
+        }
+        return nil
     }
 
     /// Folders that are direct children of the given parent path.

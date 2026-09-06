@@ -108,10 +108,17 @@ private struct NSContextMenuOverlay: NSViewRepresentable {
 struct RowClickModifier: ViewModifier {
     let onSingle: (NSEvent.ModifierFlags) -> Void
     let onDouble: () -> Void
+    let dragItem: NoteStore.DragItem?
+    let dragPreviewLabel: String?
 
     func body(content: Content) -> some View {
         content.overlay {
-            RowClickOverlay(onSingle: onSingle, onDouble: onDouble)
+            RowClickOverlay(
+                onSingle: onSingle,
+                onDouble: onDouble,
+                dragItem: dragItem,
+                dragPreviewLabel: dragPreviewLabel,
+            )
         }
     }
 }
@@ -123,14 +130,25 @@ extension View {
     func rowClick(
         onSingle: @escaping (NSEvent.ModifierFlags) -> Void,
         onDouble: @escaping () -> Void,
+        dragItem: NoteStore.DragItem? = nil,
+        dragPreviewLabel: String? = nil,
     ) -> some View {
-        modifier(RowClickModifier(onSingle: onSingle, onDouble: onDouble))
+        modifier(
+            RowClickModifier(
+                onSingle: onSingle,
+                onDouble: onDouble,
+                dragItem: dragItem,
+                dragPreviewLabel: dragPreviewLabel,
+            ),
+        )
     }
 }
 
 private struct RowClickOverlay: NSViewRepresentable {
     let onSingle: (NSEvent.ModifierFlags) -> Void
     let onDouble: () -> Void
+    let dragItem: NoteStore.DragItem?
+    let dragPreviewLabel: String?
 
     func makeNSView(context _: Context) -> RowClickCatcher {
         RowClickCatcher()
@@ -139,13 +157,19 @@ private struct RowClickOverlay: NSViewRepresentable {
     func updateNSView(_ nsView: RowClickCatcher, context _: Context) {
         nsView.onSingle = onSingle
         nsView.onDouble = onDouble
+        nsView.dragItem = dragItem
+        nsView.dragPreviewLabel = dragPreviewLabel
     }
 
     /// Transparent NSView that intercepts only left-mouse-down (so right-clicks,
     /// scrolls, hovers and drags continue to flow into SwiftUI as normal).
-    final class RowClickCatcher: NSView {
+    final class RowClickCatcher: NSView, NSDraggingSource {
         var onSingle: ((NSEvent.ModifierFlags) -> Void)?
         var onDouble: (() -> Void)?
+        var dragItem: NoteStore.DragItem?
+        var dragPreviewLabel: String?
+        private var mouseDownLocation: NSPoint?
+        private var startedDragging = false
 
         override func hitTest(_ point: NSPoint) -> NSView? {
             // Only intercept left-clicks; pass everything else through.
@@ -159,6 +183,8 @@ private struct RowClickOverlay: NSViewRepresentable {
         }
 
         override func mouseDown(with event: NSEvent) {
+            mouseDownLocation = convert(event.locationInWindow, from: nil)
+            startedDragging = false
             // clickCount is 1 for the first click and 2 for a quick second click.
             // We fire each immediately — selection is harmless before a follow-up
             // open, and openNote/navigate clear the selection anyway.
@@ -167,6 +193,93 @@ private struct RowClickOverlay: NSViewRepresentable {
             } else {
                 onSingle?(event.modifierFlags)
             }
+        }
+
+        override func mouseDragged(with event: NSEvent) {
+            guard !startedDragging,
+                  let dragItem,
+                  let mouseDownLocation
+            else { return }
+            let currentLocation = convert(event.locationInWindow, from: nil)
+            guard hypot(currentLocation.x - mouseDownLocation.x, currentLocation.y - mouseDownLocation.y) >= 4 else { return }
+
+            startedDragging = true
+            let pasteboardItem = NSPasteboardItem()
+            pasteboardItem.setData(
+                EdgeMarkDragPayload.data(for: dragItem),
+                forType: NSPasteboard.PasteboardType(EdgeMarkDragPayload.typeIdentifier),
+            )
+            let draggingItem = NSDraggingItem(pasteboardWriter: pasteboardItem)
+            let preview = dragPreviewImage(for: dragItem, label: dragPreviewLabel)
+            let location = convert(event.locationInWindow, from: nil)
+            let previewFrame = NSRect(
+                x: location.x + 8,
+                y: location.y - preview.size.height / 2,
+                width: preview.size.width,
+                height: preview.size.height,
+            )
+            draggingItem.setDraggingFrame(previewFrame, contents: preview)
+            let session = beginDraggingSession(with: [draggingItem], event: event, source: self)
+            session.animatesToStartingPositionsOnCancelOrFail = true
+        }
+
+        override func mouseUp(with _: NSEvent) {
+            mouseDownLocation = nil
+            startedDragging = false
+        }
+
+        func draggingSession(_: NSDraggingSession, sourceOperationMaskFor _: NSDraggingContext) -> NSDragOperation {
+            .move
+        }
+
+        func ignoreModifierKeys(for _: NSDraggingSession) -> Bool {
+            true
+        }
+
+        private func dragPreviewImage(for item: NoteStore.DragItem, label: String?) -> NSImage {
+            let size = NSSize(width: 220, height: 34)
+            let image = NSImage(size: size)
+            let iconName: String
+            let fallbackLabel: String
+            switch item {
+            case .note:
+                iconName = "doc.text"
+                fallbackLabel = "Note"
+            case let .folder(path):
+                iconName = "folder.fill"
+                fallbackLabel = (path as NSString).lastPathComponent
+            }
+            let displayLabel = label ?? fallbackLabel
+            image.lockFocus()
+            defer { image.unlockFocus() }
+
+            let background = NSBezierPath(roundedRect: NSRect(origin: .zero, size: size), xRadius: 8, yRadius: 8)
+            NSColor.windowBackgroundColor.withAlphaComponent(0.96).setFill()
+            background.fill()
+            NSColor.separatorColor.withAlphaComponent(0.8).setStroke()
+            background.stroke()
+
+            let iconRect = NSRect(x: 10, y: 8, width: 18, height: 18)
+            NSImage(systemSymbolName: iconName, accessibilityDescription: nil)?.draw(
+                in: iconRect,
+                from: .zero,
+                operation: .sourceOver,
+                fraction: 1,
+                respectFlipped: true,
+                hints: nil,
+            )
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.lineBreakMode = .byTruncatingTail
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: NSFont.systemFont(ofSize: 13, weight: .medium),
+                .foregroundColor: NSColor.labelColor,
+                .paragraphStyle: paragraphStyle,
+            ]
+            NSString(string: displayLabel).draw(
+                in: NSRect(x: 36, y: 8, width: 174, height: 18),
+                withAttributes: attributes,
+            )
+            return image
         }
     }
 }
