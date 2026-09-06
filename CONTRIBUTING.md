@@ -21,6 +21,8 @@ graph TD
     SP -->|"host"| SUI["SwiftUI Views"]
 
     SUI -->|"observe"| NS["NoteStore (@Observable)"]
+    SUI -->|"rows · menus"| LI["List Interactions<br/>(NoteDragDrop / NSContextMenuModifier / NoteListMenus)"]
+    LI -->|"validate · move · group"| NS
     NS -->|"read / write"| FS["FileStorage"]
     FS -->|".md files"| Disk[("~/Documents/EdgeMark/")]
     FS -->|"metadata"| SC["SidecarStore<br/>(.edgemark/meta.json)"]
@@ -51,7 +53,7 @@ EdgeMark/
 │   ├── AppDelegate.swift           #   Lifecycle, sidecar migration, shortcut setup, switchRoot + menu-bar storage submenu
 │   └── ContentView.swift           #   Navigation shell (folders → notes → editor)
 │
-├── Core/                           # Business logic — no SwiftUI imports
+├── Core/                           # Core services, observable state, and editor integration
 │   ├── Editor/
 │   │   ├── MarkdownEditorView.swift      # SwiftUI wrapper around NativeTextViewWrapper
 │   │   │                                #   (swift-markdown-engine). Heading strip,
@@ -73,7 +75,7 @@ EdgeMark/
 │   │   ├── ShortcutManager.swift   #   Carbon RegisterEventHotKey global shortcut
 │   │   └── KeyCodeTranslator.swift #   Virtual key code → display string mapping
 │   ├── Storage/
-│   │   ├── NoteStore.swift         #   @Observable — note CRUD, trash, folders, tag filter, multi-selection + batch ops, move-conflict queue
+│   │   ├── NoteStore.swift         #   @Observable — CRUD, navigation/selection state, drop validation/dispatch, grouping, move-conflict queues
 │   │   ├── FileStorage.swift       #   Plain .md file I/O (no YAML); asset dir management
 │   │   ├── SidecarStore.swift      #   In-memory .edgemark/meta.json store + persistence
 │   │   ├── SidecarMigration.swift  #   One-time migration: strips YAML, restores timestamps
@@ -97,20 +99,24 @@ EdgeMark/
 ├── UI/                             # SwiftUI views
 │   ├── EditorScreen.swift          #   Editor chrome (header, editor, footer)
 │   ├── Navigation/
-│   │   ├── HomeFolderView.swift    #   Folder list with create/rename/trash; hosts the ask-on-launch storage picker (in-card mode)
-│   │   ├── NoteListView.swift      #   Note cards with search, sort, context menus
+│   │   ├── HomeFolderView.swift    #   Root folders + notes, search/storage picker, shared row menus and drag/drop wiring
+│   │   ├── NoteListView.swift      #   Nested folders + notes, search/sort, shared row menus and drag/drop wiring
 │   │   └── TrashView.swift         #   Trash browser with restore/delete/empty
 │   ├── Components/
 │   │   ├── ContentFooterBar.swift  #   Bottom toolbar (word count, copy format picker)
 │   │   ├── DateFormatting.swift    #   Shared date → display string helpers
 │   │   ├── EmptyStateView.swift    #   Icon + title + subtitle placeholder
+│   │   ├── FolderRenameCoordinator.swift # Folder inline-rename state and validation
 │   │   ├── FontPickerButton.swift  #   NSFontPanel button with live changeFont(_:) preview
 │   │   ├── HeaderIconButton.swift  #   Standard icon button with hover UX
 │   │   ├── InlineRenameEditor.swift#   Inline text field with "Name taken" overlay
+│   │   ├── MarqueeSelection.swift  #   Shared click/range/marquee selection helpers
 │   │   ├── MoveConflictAlerts.swift#   View extension: note + folder move conflict dialogs
-│   │   ├── NSContextMenuModifier.swift  # NSMenu context menus with SF Symbol icons
+│   │   ├── NSContextMenuModifier.swift  # AppKit row click handling, NSMenu context menus, drag source + Finder-style preview
 │   │   ├── NoteCardView.swift      #   Note list row (title, preview, date)
-│   │   ├── NoteListMenus.swift     #   Note/folder context menu builders (incl. Tags submenu)
+│   │   ├── NoteDragDrop.swift      #   Internal payloads, synchronous target validation, drop feedback + dispatch
+│   │   ├── NoteListMenus.swift     #   Note/folder menus, recursive Move to tree, tags and batch actions
+│   │   ├── NoteRenameCoordinator.swift # Note inline-rename state and validation
 │   │   ├── PageLayout.swift        #   Navigation page chrome (header + content + footer)
 │   │   ├── PinButton.swift         #   Toggle for PanelSettings.isPanelPinned
 │   │   ├── ShortcutRecorderView.swift   # Key capture field for shortcut settings
@@ -156,7 +162,9 @@ EdgeMark/
 | **Local shortcut monitor** | `SidePanelController` installs an `NSEvent.addLocalMonitorForEvents` that checks all six configurable local shortcuts at event time. Settings changes take effect immediately without re-registration. |
 | **JSON i18n** | `L10n` loads locale JSON at runtime. Access: `l10n["key"]` or `l10n.t("key", arg1, arg2)` for interpolation |
 | **OSLog diagnostics** | 6 categorized loggers (app, storage, window, shortcuts, navigation, updates). View in Console.app with `subsystem:io.github.ender-wang.EdgeMark` |
-| **Move conflict queue** | Name-conflict pre-flight uses filesystem-aware helpers (`noteFilenameWouldCollide`, `folderWouldCollide`) that check both in-memory state and the destination on disk. Conflicts are queued, not singletons — `MoveConflictAlerts` reads the queue head and surfaces batch buttons (Keep Both All / Replace All / Skip / Cancel) when more than one is pending. Resolver branches handle orphan files / directories at the destination. |
+| **Internal drag and drop** | Normal note/folder rows use an AppKit dragging source and destination so click timing, drag thresholds, and target acceptance stay synchronous. Payloads use stable identities (note UUID or complete relative folder path); `NoteStore.canDrop` is the validation boundary and `moveDraggedItem` is the dispatch boundary. Valid targets advertise `.move`, invalid or malformed drops are rejected, and the drag source renders a Finder-style icon-and-label preview. Moves reuse `FileStorage`, selection/navigation remapping, and the existing conflict queues instead of maintaining a parallel path. |
+| **Move destination trees** | `NoteListMenus` recursively renders the complete folder hierarchy. A note's current folder remains visible as a navigation branch so its descendants are reachable; choosing the current folder's checked **Move here** item is an intentional no-op, with `NoteStore.moveNote` providing the same guard. |
+| **Move conflict queue** | Context-menu moves and drag/drop share filesystem-aware pre-flight helpers (`noteFilenameWouldCollide`, `folderWouldCollide`) that check both in-memory state and the destination on disk. Conflicts are queued, not singletons — `MoveConflictAlerts` reads the queue head and surfaces batch buttons (Keep Both All / Replace All / Skip / Cancel) when more than one is pending. Resolver branches handle orphan files / directories at the destination. |
 | **DMG auto-update** | `UpdateChecker` queries GitHub Releases API. `UpdateInstaller`: mount DMG → verify bundle ID → copy → replace → restart |
 
 ---
