@@ -332,7 +332,7 @@ enum NoteListMenus {
             }
         }
 
-        for folder in topLevel where folder.name != note.folder {
+        for folder in topLevel {
             noteMoveTreeItem(folder: folder, note: note, noteStore: noteStore, l10n: l10n, menu: submenu)
         }
 
@@ -347,18 +347,25 @@ enum NoteListMenus {
         menu: NSMenu,
     ) {
         let children = noteStore.childFolders(of: folder.name)
-            .filter { $0.name != note.folder }
 
         if children.isEmpty {
-            menu.addActionItem(title: folder.displayName, icon: "folder") {
+            let item = menu.addActionItem(title: folder.displayName, icon: "folder") {
+                guard folder.name != note.folder else { return }
                 noteStore.moveNote(note, to: folder.name)
+            }
+            if folder.name == note.folder {
+                item.state = .on
             }
         } else {
             let item = NSMenuItem(title: folder.displayName, action: nil, keyEquivalent: "")
             item.image = NSImage(systemSymbolName: "folder", accessibilityDescription: nil)
             let sub = NSMenu()
-            sub.addActionItem(title: l10n["common.moveHere"], icon: "arrow.right") {
+            let moveHere = sub.addActionItem(title: l10n["common.moveHere"], icon: "arrow.right") {
+                guard folder.name != note.folder else { return }
                 noteStore.moveNote(note, to: folder.name)
+            }
+            if folder.name == note.folder {
+                moveHere.state = .on
             }
             sub.addItem(.separator())
             for child in children {
