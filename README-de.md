@@ -79,7 +79,7 @@ xattr -cr /Applications/EdgeMark.app
 🗂️ **Notizen & Speicher**
 
 - 📄 Einfache `.md`-Dateien ohne eingefügte Header — in jedem Editor öffnen, mit jedem Dienst synchronisieren; Metadaten leben in einer versteckten `.edgemark/meta.json`-Sidecar-Datei
-- 📁 Ordnerbasierte Organisation mit Drag-and-Drop
+- 📁 Finder-artige Organisation per Drag-and-Drop — Notizen in Ordner, Ordner in andere Ordner oder eine Notiz auf eine andere ziehen, um sie zu gruppieren; ungültige Ablagen werden abgelehnt, Namenskonflikte verwenden die bestehenden Hinweise und eine kleine Vorschau folgt dem Cursor
 - 🎨 Eigene Ordnerfarben — jedes Ordner-Icon über Rechtsklick → Ordnerfarbe mit einer Palettenfarbe tönen
 - 📂 Mehrere Speicherorte — wechsle zwischen separaten Notizordnern (z. B. Arbeit und Privat) über die Menüleiste (ein schneller Wechsel, der beim Neustart zurückgesetzt wird) oder die Einstellungen; optional bei jedem App-Start einen wählen
 - 💾 1-Sekunden-entbouncstes Auto-Speichern
