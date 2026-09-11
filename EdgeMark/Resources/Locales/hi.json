@@ -40,6 +40,7 @@
   "common.copyPlainText": "सादा टेक्स्ट के रूप में कॉपी करें",
   "common.copyMarkdown": "Markdown के रूप में कॉपी करें",
   "common.copyRTF": "रिच टेक्स्ट के रूप में कॉपी करें",
+  "common.copyAsPathname": "पाथनेम के रूप में कॉपी करें",
   "common.deletePermanently": "हमेशा के लिए हटाएं",
   "common.folderNamePlaceholder": "फ़ोल्डर का नाम",
   "common.noteTitlePlaceholder": "नोट का शीर्षक",
