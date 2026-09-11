@@ -40,6 +40,7 @@
   "common.copyPlainText": "Copy as Plain Text",
   "common.copyMarkdown": "Copy as Markdown",
   "common.copyRTF": "Copy as Rich Text",
+  "common.copyAsPathname": "Copy as Pathname",
   "common.deletePermanently": "Delete Permanently",
   "common.folderNamePlaceholder": "Folder name",
   "common.noteTitlePlaceholder": "Note title",

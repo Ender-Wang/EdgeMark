@@ -206,6 +206,11 @@ enum NoteListMenus {
             ])
         }
 
+        menu.addActionItem(title: l10n["common.copyAsPathname"], icon: "doc.on.clipboard") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(FileStorage.urlForNote(note).path, forType: .string)
+        }
+
         menu.addItem(.separator())
 
         menu.addActionItem(title: l10n["common.delete"], icon: "trash") {
@@ -308,6 +313,11 @@ enum NoteListMenus {
             NSWorkspace.shared.activateFileViewerSelecting([
                 FileStorage.urlForFolder(folder.name),
             ])
+        }
+
+        menu.addActionItem(title: l10n["common.copyAsPathname"], icon: "doc.on.clipboard") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(FileStorage.urlForFolder(folder.name).path, forType: .string)
         }
 
         menu.addItem(.separator())
