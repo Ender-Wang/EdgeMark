@@ -13,6 +13,7 @@ struct KeyboardSettingsTab: View {
     @State private var pinShortcut: KeyboardShortcut?
     @State private var previousNoteShortcut: KeyboardShortcut?
     @State private var nextNoteShortcut: KeyboardShortcut?
+    @State private var copySelectedPathsShortcut: KeyboardShortcut?
 
     init() {
         let s = ShortcutSettings.shared
@@ -23,6 +24,7 @@ struct KeyboardSettingsTab: View {
         _pinShortcut = State(initialValue: s.pinShortcut)
         _previousNoteShortcut = State(initialValue: s.previousNoteShortcut)
         _nextNoteShortcut = State(initialValue: s.nextNoteShortcut)
+        _copySelectedPathsShortcut = State(initialValue: s.copySelectedPathsShortcut)
     }
 
     var body: some View {
@@ -87,6 +89,13 @@ struct KeyboardSettingsTab: View {
                     shortcut: $nextNoteShortcut,
                     defaultValue: ShortcutSettings.defaultNextNote,
                     apply: { ShortcutSettings.shared.nextNoteShortcut = $0 },
+                )
+                editableRow(
+                    ownKey: "settings.keyboard.copyPaths",
+                    label: l10n["settings.keyboard.copyPaths"],
+                    shortcut: $copySelectedPathsShortcut,
+                    defaultValue: ShortcutSettings.defaultCopySelectedPaths,
+                    apply: { ShortcutSettings.shared.copySelectedPathsShortcut = $0 },
                 )
             } header: {
                 Label(l10n["settings.keyboard.localShortcuts"], systemImage: "keyboard")

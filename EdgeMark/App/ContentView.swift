@@ -46,34 +46,44 @@ struct ContentView: View {
     }
 
     var body: some View {
-        ZStack {
-            // HomeFolderView hosts the storage-root picker as an in-card mode
-            // (header + content swap), so when awaitingRootChoice it shows the
-            // picker rows; picking crossfades to the folder list within the same
-            // stable card. No separate picker view / card-over-card layer.
-            if showHome {
-                HomeFolderView()
-                    .transition(pageTransition)
+        ZStack(alignment: .top) {
+            ZStack {
+                // HomeFolderView hosts the storage-root picker as an in-card mode
+                // (header + content swap), so when awaitingRootChoice it shows the
+                // picker rows; picking crossfades to the folder list within the same
+                // stable card. No separate picker view / card-over-card layer.
+                if showHome {
+                    HomeFolderView()
+                        .transition(pageTransition)
+                }
+
+                if showNoteList {
+                    NoteListView()
+                        .id(noteStore.selectedFolder?.name)
+                        .transition(pageTransition)
+                }
+
+                if showEditor {
+                    EditorScreen()
+                        .id(noteStore.selectedNote?.id)
+                        .transition(pageTransition)
+                }
+
+                if noteStore.showTrash {
+                    TrashView()
+                        .transition(trashTransition)
+                }
             }
 
-            if showNoteList {
-                NoteListView()
-                    .id(noteStore.selectedFolder?.name)
-                    .transition(pageTransition)
-            }
-
-            if showEditor {
-                EditorScreen()
-                    .id(noteStore.selectedNote?.id)
-                    .transition(pageTransition)
-            }
-
-            if noteStore.showTrash {
-                TrashView()
-                    .transition(trashTransition)
+            if let count = noteStore.copiedPathsCount {
+                ClipboardFeedbackView(count: count)
+                    .padding(.top, 12)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(1)
             }
         }
         .clipped()
+        .animation(.easeInOut(duration: 0.2), value: noteStore.copiedPathsCount)
         // Dismiss any open hover/Quick-Look preview when the user navigates
         // deeper (open note, enter folder, open trash). The preview is anchored
         // to a row in the list view we're leaving, so it would otherwise float

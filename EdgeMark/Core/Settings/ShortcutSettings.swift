@@ -49,7 +49,7 @@ struct KeyboardShortcut: Codable, Equatable {
 
 // MARK: - ShortcutSettings
 
-/// User-configurable keyboard shortcuts (global toggle + 6 panel-local). The app's
+/// User-configurable keyboard shortcuts (global toggle + 7 panel-local). The app's
 /// other settings domains — edge/dismissal/gestures, storage roots, appearance/updates/
 /// launch — live in `PanelSettings`, `StorageSettings`, and `AppSettings` respectively.
 final class ShortcutSettings {
@@ -83,6 +83,10 @@ final class ShortcutSettings {
         didSet { save(shortcut: nextNoteShortcut, forKey: nextNoteKey) }
     }
 
+    var copySelectedPathsShortcut: KeyboardShortcut? {
+        didSet { save(shortcut: copySelectedPathsShortcut, forKey: copySelectedPathsKey) }
+    }
+
     // MARK: - Defaults
 
     static let defaultNewNote = KeyboardShortcut(keyCode: UInt16(kVK_ANSI_N), modifiers: UInt32(cmdKey))
@@ -91,6 +95,7 @@ final class ShortcutSettings {
     static let defaultPin = KeyboardShortcut(keyCode: UInt16(kVK_ANSI_P), modifiers: UInt32(cmdKey))
     static let defaultPreviousNote = KeyboardShortcut(keyCode: UInt16(kVK_LeftArrow), modifiers: UInt32(cmdKey))
     static let defaultNextNote = KeyboardShortcut(keyCode: UInt16(kVK_RightArrow), modifiers: UInt32(cmdKey))
+    static let defaultCopySelectedPaths = KeyboardShortcut(keyCode: UInt16(kVK_ANSI_C), modifiers: UInt32(cmdKey | shiftKey))
 
     // MARK: - Conflict detection
 
@@ -105,6 +110,7 @@ final class ShortcutSettings {
             ("settings.keyboard.pinPanel", pinShortcut),
             ("settings.keyboard.previousNote", previousNoteShortcut),
             ("settings.keyboard.nextNote", nextNoteShortcut),
+            ("settings.keyboard.copyPaths", copySelectedPathsShortcut),
         ]
         for (key, s) in configurable where key != ownKey {
             if s == shortcut {
@@ -141,6 +147,7 @@ final class ShortcutSettings {
     private let pinKey = "pinShortcut"
     private let previousNoteKey = "previousNoteShortcut"
     private let nextNoteKey = "nextNoteShortcut"
+    private let copySelectedPathsKey = "copySelectedPathsShortcut"
 
     // MARK: - Init
 
@@ -170,6 +177,7 @@ final class ShortcutSettings {
         pinShortcut = load(forKey: pinKey, default: Self.defaultPin)
         previousNoteShortcut = load(forKey: previousNoteKey, default: Self.defaultPreviousNote)
         nextNoteShortcut = load(forKey: nextNoteKey, default: Self.defaultNextNote)
+        copySelectedPathsShortcut = load(forKey: copySelectedPathsKey, default: Self.defaultCopySelectedPaths)
     }
 
     /// Returns the saved shortcut, or `fallback` if the key was never written.

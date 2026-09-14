@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import OSLog
 import SwiftUI
@@ -110,6 +111,9 @@ final class NoteStore {
     /// Set to true by the ⌘F shortcut handler when a note is open — consumed by EditorScreen
     /// to show the in-editor find bar.
     var pendingEditorFind: Bool = false
+
+    var copiedPathsCount: Int?
+    private var copyFeedbackGeneration = 0
 
     /// Folder to return to when the user dismisses search (set when search is triggered from a subfolder).
     var searchReturnFolder: Folder?
@@ -805,6 +809,35 @@ final class NoteStore {
             } else {
                 nil
             }
+        }
+    }
+
+    /// Copies the absolute paths for live selected rows in visible order.
+    /// Leaves the clipboard unchanged when no selected row is visible.
+    func copySelectedPaths() {
+        let paths = keyboardNavOrder.compactMap { item -> String? in
+            guard selection.contains(item) else { return nil }
+            switch item {
+            case let .note(id):
+                guard let note = notes.first(where: { $0.id == id }) else { return nil }
+                return FileStorage.urlForNote(note).path
+            case let .folder(path):
+                guard folders.contains(where: { $0.name == path }) else { return nil }
+                return FileStorage.urlForFolder(path).path
+            }
+        }
+        guard !paths.isEmpty else { return }
+
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(paths.joined(separator: "\n"), forType: .string)
+
+        copyFeedbackGeneration += 1
+        copiedPathsCount = paths.count
+        let feedbackGeneration = copyFeedbackGeneration
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            guard self?.copyFeedbackGeneration == feedbackGeneration else { return }
+            self?.copiedPathsCount = nil
         }
     }
 

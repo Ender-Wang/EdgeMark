@@ -238,6 +238,11 @@ final class SidePanelController: NSWindowController {
                 noteStore.pendingNewFolder = true
                 return nil
             }
+            if s.copySelectedPathsShortcut?.matches(event) == true {
+                guard noteStore.selectedNote == nil, !noteStore.showTrash else { return event }
+                noteStore.copySelectedPaths()
+                return nil
+            }
             return event
         }
 
