@@ -64,7 +64,7 @@ struct NoteListView: View {
 
     var body: some View {
         PageLayout(onSwipeBack: { navigateBack() }) {
-            HStack {
+            HStack(spacing: 8) {
                 HeaderIconButton(
                     systemName: "chevron.left",
                     help: l10n["common.back"],
@@ -72,7 +72,24 @@ struct NoteListView: View {
                     navigateBack()
                 }
 
-                Spacer()
+                HStack(spacing: 4) {
+                    Text(folderLabel)
+                        .font(.headline)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .layoutPriority(1)
+                        .help(folderLabel)
+
+                    Text(folderPath)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(minWidth: 48, maxWidth: .infinity, alignment: .leading)
+                        .help(folderPath)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .clipped()
 
                 PinButton()
 
@@ -98,23 +115,6 @@ struct NoteListView: View {
                 ) {
                     createNote()
                 }
-            }
-            .overlay {
-                HStack(spacing: 4) {
-                    Text(folderLabel)
-                        .font(.headline)
-                        .lineLimit(1)
-                        .layoutPriority(1)
-
-                    Text(folderPath)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                .padding(.leading, 40)
-                .padding(.trailing, 75)
-                .help(folderPath)
             }
         } content: {
             VStack(spacing: 0) {
