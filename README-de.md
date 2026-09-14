@@ -97,6 +97,7 @@ xattr -cr /Applications/EdgeMark.app
 - 🎹 Voll anpassbare lokale Kürzel — neue Notiz, neuer Ordner, Suche, anheften, vorh./nächste Notiz — alle in den Einstellungen neu bindbar mit Konflikterkennung
 - ⏱️ Konfigurierbare Aktivierungsverzögerung und Eckenausschlusszonen
 - 🔑 Standard-Kürzel: `⌘N` neue Notiz, `⇧⌘N` neuer Ordner, `⌘F` Suche, `⌘P` anheften/lösen
+- 📋 `⇧⌘C` Pfade kopieren — kopiert die absoluten Pfade ausgewählter Notizen, Ordner oder gemischter Auswahlen, einen Pfad pro Zeile; ohne Auswahl passiert nichts
 - 👁️ `Leertaste` zur Quick-Look-Vorschau — Notiz oder Ordner auswählen und `Leertaste` drücken; `↑↓` blättern, `Leertaste`/`ESC` schließen
 - 👆 Zweifinger-Wipe nach rechts auf dem Header, um zurückzugehen (umschaltbar mit Empfindlichkeit)
 - 👆 Zweifinger-Wipe nach links/rechts im Editor oder `⌘←`/`⌘→`, um zwischen den Notizen im aktuellen Ordner zu wechseln

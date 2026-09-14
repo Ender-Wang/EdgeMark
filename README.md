@@ -97,6 +97,7 @@ xattr -cr /Applications/EdgeMark.app
 - 🎹 Fully customizable local shortcuts — new note, new folder, search, pin, prev/next note — all rebindable in Settings with conflict detection
 - ⏱️ Configurable activation delay and corner exclusion zones
 - 🔑 Default panel shortcuts: `⌘N` new note, `⇧⌘N` new folder, `⌘F` search, `⌘P` pin/unpin
+- 📋 `⇧⌘C` Copy Paths — copies absolute paths for selected notes, folders, or mixed selections, one path per line; does nothing when no row is selected
 - 👁️ `Space` to Quick Look — select a note or folder and press `Space` to preview; `↑↓` to browse, `Space`/`ESC` to dismiss
 - 👆 Two-finger trackpad swipe right on the header to navigate back (configurable toggle and sensitivity)
 - 👆 Two-finger swipe left/right on the editor or `⌘←`/`⌘→` to navigate between notes in the current folder

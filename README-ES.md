@@ -97,6 +97,7 @@ xattr -cr /Applications/EdgeMark.app
 - 🎹 Atajos locales completamente personalizables — nueva nota, nueva carpeta, buscar, fijar, nota anterior/siguiente — todos reasignables en Ajustes con detección de conflictos
 - ⏱️ Retardo de activación y zonas de exclusión de esquina configurables
 - 🔑 Atajos del panel predeterminados: `⌘N` nueva nota, `⇧⌘N` nueva carpeta, `⌘F` buscar, `⌘P` fijar/desfijar
+- 📋 `⇧⌘C` Copiar rutas — copia las rutas absolutas de las notas, carpetas o selecciones mixtas seleccionadas, una por línea; no hace nada si no hay ninguna fila seleccionada
 - 👁️ `Space` para Vista Rápida — selecciona una nota o carpeta y presiona `Space` para previsualizar; `↑↓` para navegar, `Space`/`ESC` para cerrar
 - 👆 Desliza dos dedos a la derecha en el encabezado para retroceder (toggle y sensibilidad configurables)
 - 👆 Desliza dos dedos a la izquierda/derecha en el editor o `⌘←`/`⌘→` para navegar entre notas en la carpeta actual
