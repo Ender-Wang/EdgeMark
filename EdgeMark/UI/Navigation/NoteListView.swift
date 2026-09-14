@@ -22,13 +22,26 @@ struct NoteListView: View {
         noteStore.selectedFolder?.displayName ?? ""
     }
 
+    private var pendingGroupingNoteIDs: Set<UUID> {
+        guard let pending = noteStore.pendingNoteGrouping else { return [] }
+        return [pending.sourceID, pending.targetID]
+    }
+
+    private func excludingPendingGroupingNotes(_ notes: [Note]) -> [Note] {
+        notes.filter { !pendingGroupingNoteIDs.contains($0.id) }
+    }
+
     private var folderPath: String {
         guard let name = noteStore.selectedFolder?.name else { return "/" }
         return "/\(name)/"
     }
 
     private var sortedNotes: [Note] {
-        noteStore.sortedNotes(noteStore.filteredNotes, by: appSettings.sortBy, ascending: appSettings.sortAscending)
+        noteStore.sortedNotes(
+            excludingPendingGroupingNotes(noteStore.filteredNotes),
+            by: appSettings.sortBy,
+            ascending: appSettings.sortAscending,
+        )
     }
 
     private var childFolders: [Folder] {
@@ -46,7 +59,7 @@ struct NoteListView: View {
     }
 
     private var isEmpty: Bool {
-        noteStore.filteredNotes.isEmpty && childFolders.isEmpty && !folderRename.isCreating
+        sortedNotes.isEmpty && childFolders.isEmpty && !folderRename.isCreating
     }
 
     var body: some View {
@@ -184,6 +197,14 @@ struct NoteListView: View {
             noteStore.pendingNewFolder = false
             startCreatingFolder()
         }
+        .onChange(of: noteStore.pendingNoteGrouping) { _, pending in
+            guard let pending else { return }
+            let defaultName = noteStore.uniqueFolderName(
+                basedOn: l10n["common.newFolder"],
+                in: pending.parentFolder,
+            )
+            startCreatingFolder(initialName: defaultName)
+        }
         .onChange(of: noteStore.pendingRenameNote) { _, note in
             guard let note else { return }
             noteStore.pendingRenameNote = nil
@@ -319,10 +340,52 @@ struct NoteListView: View {
             isFocused: $isFolderFieldFocused,
             isConflicting: folderRename.isCreateConflicting(siblings: childFolders),
             iconWidth: iconWidth,
-            onCommit: { folderRename.commitCreate(parent: noteStore.selectedFolder?.name ?? "", noteStore: noteStore, siblings: childFolders) },
-            onCancel: { folderRename.cancelCreate() },
-            onFocusLost: { folderRename.commitOrCancelCreate(parent: noteStore.selectedFolder?.name ?? "", noteStore: noteStore, siblings: childFolders) },
+            onCommit: { commitFolderCreation() },
+            onCancel: { cancelFolderCreation() },
+            onFocusLost: { commitOrCancelFolderCreation() },
         )
+    }
+
+    private func commitFolderCreation() {
+        let parent = noteStore.selectedFolder?.name ?? ""
+        if noteStore.pendingNoteGrouping != nil {
+            let trimmed = folderRename.creationText.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !folderRename.isCreateConflicting(siblings: childFolders) else { return }
+            if trimmed.isEmpty {
+                cancelFolderCreation()
+            } else {
+                if noteStore.completePendingNoteGrouping(named: trimmed) {
+                    folderRename.cancelCreate()
+                }
+            }
+        } else {
+            folderRename.commitCreate(parent: parent, noteStore: noteStore, siblings: childFolders)
+        }
+    }
+
+    private func cancelFolderCreation() {
+        noteStore.cancelPendingNoteGrouping()
+        folderRename.cancelCreate()
+    }
+
+    private func commitOrCancelFolderCreation() {
+        guard noteStore.pendingNoteGrouping != nil else {
+            folderRename.commitOrCancelCreate(
+                parent: noteStore.selectedFolder?.name ?? "",
+                noteStore: noteStore,
+                siblings: childFolders,
+            )
+            return
+        }
+
+        let trimmed = folderRename.creationText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || folderRename.isCreateConflicting(siblings: childFolders) {
+            cancelFolderCreation()
+        } else {
+            if noteStore.completePendingNoteGrouping(named: trimmed) {
+                folderRename.cancelCreate()
+            }
+        }
     }
 
     // MARK: - Inline Folder Rename Editor
@@ -374,8 +437,11 @@ struct NoteListView: View {
 
     // MARK: - Folder Actions
 
-    private func startCreatingFolder() {
+    private func startCreatingFolder(initialName: String? = nil) {
         folderRename.beginCreate()
+        if let initialName {
+            folderRename.creationText = initialName
+        }
         DispatchQueue.main.async { isFolderFieldFocused = true }
     }
 

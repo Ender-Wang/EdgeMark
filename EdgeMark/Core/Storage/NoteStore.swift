@@ -82,7 +82,15 @@ final class NoteStore {
         let targetParent: String
     }
 
+    struct PendingNoteGrouping: Equatable {
+        let sourceID: UUID
+        let targetID: UUID
+        let parentFolder: String
+    }
+
     var pendingFolderMoveConflicts: [PendingFolderMoveConflict] = []
+
+    var pendingNoteGrouping: PendingNoteGrouping?
 
     /// Conflict when both EdgeMark and an external editor modified the same open note.
     struct PendingExternalChange {
@@ -514,6 +522,19 @@ final class NoteStore {
         var isDir: ObjCBool = false
         let exists = FileManager.default.fileExists(atPath: destURL.path, isDirectory: &isDir)
         return exists && isDir.boolValue
+    }
+
+    func uniqueFolderName(basedOn name: String, in parent: String = "") -> String {
+        let baseName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !baseName.isEmpty else { return name }
+
+        var candidate = baseName
+        var counter = 2
+        while folderWouldCollide(displayName: candidate, in: parent) {
+            candidate = "\(baseName) \(counter)"
+            counter += 1
+        }
+        return candidate
     }
 
     // MARK: - Note CRUD
@@ -1037,10 +1058,37 @@ final class NoteStore {
         case let (.folder(folder), .folder(targetParent)):
             moveFolder(folder, toParent: targetParent)
         case let (.note(sourceID), .note(targetID, folder)):
-            groupNotes(sourceID: sourceID, targetID: targetID, in: folder)
+            pendingNoteGrouping = PendingNoteGrouping(
+                sourceID: sourceID,
+                targetID: targetID,
+                parentFolder: folder,
+            )
         default:
             break
         }
+    }
+
+    @discardableResult
+    func completePendingNoteGrouping(named name: String) -> Bool {
+        guard let pending = pendingNoteGrouping else { return false }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              !folderWouldCollide(displayName: trimmed, in: pending.parentFolder)
+        else { return false }
+        let grouped = groupNotes(
+            sourceID: pending.sourceID,
+            targetID: pending.targetID,
+            in: pending.parentFolder,
+            named: trimmed,
+        )
+        if grouped {
+            pendingNoteGrouping = nil
+        }
+        return grouped
+    }
+
+    func cancelPendingNoteGrouping() {
+        pendingNoteGrouping = nil
     }
 
     func canDrop(_ item: DragItem, onto target: DropTarget) -> Bool {
@@ -1067,21 +1115,15 @@ final class NoteStore {
         }
     }
 
-    private func groupNotes(sourceID: UUID, targetID: UUID, in folder: String) {
+    @discardableResult
+    private func groupNotes(sourceID: UUID, targetID: UUID, in folder: String, named displayName: String) -> Bool {
         guard sourceID != targetID,
               let sourceIndex = notes.firstIndex(where: { $0.id == sourceID }),
               let targetIndex = notes.firstIndex(where: { $0.id == targetID }),
               notes[sourceIndex].folder == folder,
               notes[targetIndex].folder == folder
-        else { return }
+        else { return false }
 
-        let baseName = FileStorage.sanitizeForFilename(notes[targetIndex].title)
-        var displayName = baseName
-        var counter = 2
-        while folderWouldCollide(displayName: displayName, in: folder) {
-            displayName = "\(baseName) \(counter)"
-            counter += 1
-        }
         let groupFolder = folder.isEmpty ? displayName : "\(folder)/\(displayName)"
 
         do {
@@ -1109,6 +1151,7 @@ final class NoteStore {
             try? SidecarStore.shared.save()
             refreshFolders()
             Log.storage.info("[NoteStore] grouped notes into '\(groupFolder, privacy: .public)'")
+            return true
         } catch {
             for id in movedIDsReversed(sourceID: sourceID, targetID: targetID, in: groupFolder) {
                 guard let index = notes.firstIndex(where: { $0.id == id }) else { continue }
@@ -1132,6 +1175,7 @@ final class NoteStore {
             }
             refreshFolders()
             Log.storage.error("[NoteStore] groupNotes failed — \(error)")
+            return false
         }
     }
 

@@ -56,12 +56,13 @@ struct EdgeMarkDropTargetModifier: ViewModifier {
             }
             .overlay {
                 if isTargeted {
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: 6)
                         .fill(targetColor.opacity(0.10))
                         .overlay {
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(targetColor, lineWidth: 2)
+                            RoundedRectangle(cornerRadius: 6)
+                                .strokeBorder(targetColor, lineWidth: 2)
                         }
+                        .padding(.horizontal, 8)
                         .allowsHitTesting(false)
                 }
             }
@@ -72,7 +73,7 @@ struct EdgeMarkDropTargetModifier: ViewModifier {
         case .folder:
             .accentColor
         case .note:
-            .orange
+            .accentColor
         }
     }
 }

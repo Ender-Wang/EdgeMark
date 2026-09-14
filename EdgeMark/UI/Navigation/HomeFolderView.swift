@@ -37,10 +37,19 @@ struct HomeFolderView: View {
         return notes.filter { !Set($0.tags).isDisjoint(with: noteStore.activeTagFilter) }
     }
 
+    private var pendingGroupingNoteIDs: Set<UUID> {
+        guard let pending = noteStore.pendingNoteGrouping else { return [] }
+        return [pending.sourceID, pending.targetID]
+    }
+
+    private func excludingPendingGroupingNotes(_ notes: [Note]) -> [Note] {
+        notes.filter { !pendingGroupingNoteIDs.contains($0.id) }
+    }
+
     /// Notes whose title contains the query (case-insensitive).
     private var titleMatches: [Note] {
         guard !trimmedQuery.isEmpty else { return [] }
-        return applyTagFilter(noteStore.notes
+        return applyTagFilter(excludingPendingGroupingNotes(noteStore.notes)
             .filter { $0.title.range(of: trimmedQuery, options: .caseInsensitive) != nil })
             .sorted { $0.modifiedAt > $1.modifiedAt }
     }
@@ -49,7 +58,7 @@ struct HomeFolderView: View {
     /// can appear in both Titles and Content sections if it matches both.
     private var contentMatches: [ContentMatch] {
         guard !trimmedQuery.isEmpty else { return [] }
-        return applyTagFilter(noteStore.notes)
+        return applyTagFilter(excludingPendingGroupingNotes(noteStore.notes))
             .compactMap { note -> ContentMatch? in
                 guard let snippet = Self.buildSnippet(content: note.content, query: trimmedQuery) else {
                     return nil
@@ -84,14 +93,14 @@ struct HomeFolderView: View {
     /// Applies the tag filter when set.
     private var allNotesSorted: [Note] {
         var seen = Set<UUID>()
-        return applyTagFilter(noteStore.notes)
+        return applyTagFilter(excludingPendingGroupingNotes(noteStore.notes))
             .sorted { $0.modifiedAt > $1.modifiedAt }
             .filter { seen.insert($0.id).inserted }
     }
 
     /// Root-level notes (no folder), sorted by current sort setting.
     private var rootNotes: [Note] {
-        let filtered = noteStore.notes.filter(\.folder.isEmpty)
+        let filtered = excludingPendingGroupingNotes(noteStore.notes.filter(\.folder.isEmpty))
         return noteStore.sortedNotes(filtered, by: appSettings.sortBy, ascending: appSettings.sortAscending)
     }
 
@@ -147,6 +156,14 @@ struct HomeFolderView: View {
             guard pending else { return }
             noteStore.pendingNewFolder = false
             startCreatingFolder()
+        }
+        .onChange(of: noteStore.pendingNoteGrouping) { _, pending in
+            guard let pending else { return }
+            let defaultName = noteStore.uniqueFolderName(
+                basedOn: l10n["common.newFolder"],
+                in: pending.parentFolder,
+            )
+            startCreatingFolder(initialName: defaultName)
         }
         .onChange(of: noteStore.pendingRenameNote) { _, note in
             guard let note else { return }
@@ -394,10 +411,47 @@ struct HomeFolderView: View {
             isFocused: $isFolderFieldFocused,
             isConflicting: folderRename.isCreateConflicting(siblings: topLevelFolders),
             iconWidth: iconWidth,
-            onCommit: { folderRename.commitCreate(parent: "", noteStore: noteStore, siblings: topLevelFolders) },
-            onCancel: { folderRename.cancelCreate() },
-            onFocusLost: { folderRename.commitOrCancelCreate(parent: "", noteStore: noteStore, siblings: topLevelFolders) },
+            onCommit: { commitFolderCreation() },
+            onCancel: { cancelFolderCreation() },
+            onFocusLost: { commitOrCancelFolderCreation() },
         )
+    }
+
+    private func commitFolderCreation() {
+        if noteStore.pendingNoteGrouping != nil {
+            let trimmed = folderRename.creationText.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !folderRename.isCreateConflicting(siblings: topLevelFolders) else { return }
+            if trimmed.isEmpty {
+                cancelFolderCreation()
+            } else {
+                if noteStore.completePendingNoteGrouping(named: trimmed) {
+                    folderRename.cancelCreate()
+                }
+            }
+        } else {
+            folderRename.commitCreate(parent: "", noteStore: noteStore, siblings: topLevelFolders)
+        }
+    }
+
+    private func cancelFolderCreation() {
+        noteStore.cancelPendingNoteGrouping()
+        folderRename.cancelCreate()
+    }
+
+    private func commitOrCancelFolderCreation() {
+        guard noteStore.pendingNoteGrouping != nil else {
+            folderRename.commitOrCancelCreate(parent: "", noteStore: noteStore, siblings: topLevelFolders)
+            return
+        }
+
+        let trimmed = folderRename.creationText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || folderRename.isCreateConflicting(siblings: topLevelFolders) {
+            cancelFolderCreation()
+        } else {
+            if noteStore.completePendingNoteGrouping(named: trimmed) {
+                folderRename.cancelCreate()
+            }
+        }
     }
 
     // MARK: - Folder Row with Context Menu
@@ -768,8 +822,11 @@ struct HomeFolderView: View {
         DispatchQueue.main.async { isNoteRenameFocused = true }
     }
 
-    private func startCreatingFolder() {
+    private func startCreatingFolder(initialName: String? = nil) {
         folderRename.beginCreate()
+        if let initialName {
+            folderRename.creationText = initialName
+        }
         isFolderFieldFocused = true
     }
 

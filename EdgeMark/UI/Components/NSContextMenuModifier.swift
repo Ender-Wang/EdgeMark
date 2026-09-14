@@ -171,6 +171,10 @@ private struct RowClickOverlay: NSViewRepresentable {
         private var mouseDownLocation: NSPoint?
         private var startedDragging = false
 
+        override var mouseDownCanMoveWindow: Bool {
+            false
+        }
+
         override func hitTest(_ point: NSPoint) -> NSView? {
             // Only intercept left-clicks; pass everything else through.
             if let event = NSApp.currentEvent, event.type == .leftMouseDown {
