@@ -68,7 +68,7 @@ EdgeMark/
 │   │   └── ImageDropHandler.swift        # Transparent NSView overlay for image drag-and-drop
 │   ├── Settings/
 │   │   ├── AppSettings.swift       #   @Observable — sort, panel style/tint, editor font/checkbox, spell-check, peek, tags, + appearance/updates/launch
-│   │   ├── ShortcutSettings.swift  #   Global + 6 local keyboard shortcuts + conflict detection (posts .shortcutSettingsChanged)
+│   │   ├── ShortcutSettings.swift  #   Global + 7 local keyboard shortcuts + conflict detection (posts .shortcutSettingsChanged)
 │   │   ├── PanelSettings.swift     #   Edge activation, dismissal, panel width/animation, swipe gestures (.panelPinStateChanged)
 │   │   └── StorageSettings.swift   #   Storage roots (#55) + active/ask-on-launch/session-override (.storageRootChanged)
 │   ├── Shortcuts/
@@ -103,6 +103,7 @@ EdgeMark/
 │   │   ├── NoteListView.swift      #   Nested folders + notes, search/sort, shared row menus and drag/drop wiring
 │   │   └── TrashView.swift         #   Trash browser with restore/delete/empty
 │   ├── Components/
+│   │   ├── ClipboardFeedbackView.swift # Transient confirmation after a successful path copy
 │   │   ├── ContentFooterBar.swift  #   Bottom toolbar (word count, copy format picker)
 │   │   ├── DateFormatting.swift    #   Shared date → display string helpers
 │   │   ├── EmptyStateView.swift    #   Icon + title + subtitle placeholder
@@ -129,7 +130,7 @@ EdgeMark/
 │       ├── GeneralSettingsTab.swift #   Appearance (incl. panel style/tint), editor font, language, multi-root storage list
 │       ├── BehaviorSettingsTab.swift#   Panel position, edge activation, auto-hide
 │       ├── TagsSettingsTab.swift   #   Rename color tag labels
-│       ├── KeyboardSettingsTab.swift#   Global + 6 customizable local shortcut recorders
+│       ├── KeyboardSettingsTab.swift#   Global + 7 customizable local shortcut recorders
 │       ├── AboutSettingsTab.swift   #   Version info, links, copyright
 │       └── UpdateView.swift        #   Download progress, verify, install UI
 │
@@ -159,7 +160,8 @@ EdgeMark/
 | **Image asset co-location** | Images are stored in a hidden dot-prefix directory next to the note (`.NoteTitle/IMG-uuid.png`). Paths in `.md` files are standard `![](path)` — relative, readable in any external editor. The editor display layer converts them to `![[path]]` for rendering via `EmbeddedImageProvider`. `FileStorage` handles create/rename/move/trash/delete of asset dirs alongside their note. |
 | **Carbon hotkeys** | Global shortcut uses `RegisterEventHotKey` (Carbon API) since `NSEvent.addGlobalMonitorForEvents` can't intercept key events |
 | **Multiple storage locations** | `StorageSettings` owns a list of `StorageRoot`s + an `activeRootID` (persistent default) + an in-memory `sessionRootOverride` (menu-bar temporary switch, reverts on restart). `resolvedStorageDirectory` resolves session-override → active root → legacy → default. All storage (`FileStorage.rootURL`, `SidecarStore`, `.trash/`) reads the active root live, so flipping it re-points the whole layer — but in-memory `NoteStore`/`SidecarStore` must be reloaded (`AppDelegate.switchRoot(to:temporary:dismissPicker:)` is the single path: save dirty → set override/activeID → `SidecarStore.load` → `noteStore.loadFromDisk`, wrapped in `withAnimation` for a row crossfade). Per-root isolation: each root has its own sidecar, trash, and external-edit scope. |
-| **Local shortcut monitor** | `SidePanelController` installs an `NSEvent.addLocalMonitorForEvents` that checks all six configurable local shortcuts at event time. Settings changes take effect immediately without re-registration. |
+| **Local shortcut monitor** | `SidePanelController` installs an `NSEvent.addLocalMonitorForEvents` that checks all seven configurable local shortcuts at event time. Settings changes take effect immediately without re-registration. |
+| **Path clipboard export** | `NoteStore.copySelectedPaths()` resolves live note and folder selections through `FileStorage`, preserves visible row order, writes one absolute path per line, and leaves the clipboard unchanged when no live selection exists. `ContentView` observes the transient result and renders `ClipboardFeedbackView`; feedback is count-aware and auto-dismisses. |
 | **JSON i18n** | `L10n` loads locale JSON at runtime. Access: `l10n["key"]` or `l10n.t("key", arg1, arg2)` for interpolation |
 | **OSLog diagnostics** | 6 categorized loggers (app, storage, window, shortcuts, navigation, updates). View in Console.app with `subsystem:io.github.ender-wang.EdgeMark` |
 | **Internal drag and drop** | Normal note/folder rows use an AppKit dragging source and destination so click timing, drag thresholds, and target acceptance stay synchronous. Payloads use stable identities (note UUID or complete relative folder path); `NoteStore.canDrop` is the validation boundary and `moveDraggedItem` is the dispatch boundary. Valid targets advertise `.move`, invalid or malformed drops are rejected, and the drag source renders a Finder-style icon-and-label preview. Moves reuse `FileStorage`, selection/navigation remapping, and the existing conflict queues instead of maintaining a parallel path. |
