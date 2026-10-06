@@ -166,7 +166,7 @@ jobs:
 
             app "EdgeMark.app"
 
-            postflight do
+            postflight_steps do
               system_command "/usr/bin/xattr", args: ["-cr", "#{appdir}/EdgeMark.app"]
             end
           end
