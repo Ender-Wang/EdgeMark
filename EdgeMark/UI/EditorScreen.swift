@@ -149,36 +149,12 @@ struct EditorScreen: View {
 private struct CopyMenuButton: View {
     let note: Note
 
-    @State private var isHovered = false
-
     var body: some View {
-        if #available(macOS 26.0, *) {
-            menu
-                .menuStyle(.button)
-                .buttonStyle(.glass)
-                .menuIndicator(.hidden)
-                .fixedSize()
-                .help(L10n.shared["editor.copyNote"])
-                .accessibilityLabel(L10n.shared["editor.copyNote"])
-        } else {
-            menu
-                .menuStyle(.button)
-                .buttonStyle(.plain)
-                .menuIndicator(.hidden)
-                .fixedSize()
-                .help(L10n.shared["editor.copyNote"])
-                .accessibilityLabel(L10n.shared["editor.copyNote"])
-                .onHover { hovering in
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        isHovered = hovering
-                    }
-                }
-        }
-    }
-
-    private var menu: some View {
         let l10n = L10n.shared
-        return Menu {
+        return AdaptiveIconMenu(
+            systemName: "doc.on.doc",
+            help: l10n["editor.copyNote"],
+        ) {
             Button(l10n["common.copyPlainText"]) {
                 let selected = Self.getSelectedText()
                 let source = selected.isEmpty ? note.content : selected
@@ -202,21 +178,6 @@ private struct CopyMenuButton: View {
                     pb.setString(Note.plainText(from: source), forType: .string)
                 }
             }
-        } label: {
-            Image(systemName: "doc.on.doc")
-                .font(.system(size: SurfaceMetrics.compactSymbolSize, weight: .medium))
-                .foregroundStyle(isHovered ? .primary : .secondary)
-                .frame(
-                    width: SurfaceMetrics.compactControlSize,
-                    height: SurfaceMetrics.compactControlSize,
-                )
-                .background {
-                    if #unavailable(macOS 26.0) {
-                        RoundedRectangle(cornerRadius: SurfaceMetrics.compactControlCornerRadius)
-                            .fill(.primary.opacity(isHovered ? 0.1 : 0))
-                    }
-                }
-                .contentShape(Rectangle())
         }
     }
 

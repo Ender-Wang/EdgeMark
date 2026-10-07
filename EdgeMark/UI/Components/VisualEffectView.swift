@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// NSVisualEffectView wrapper for the translucent panel background.
+/// Reusable standard-material surface for content that should remain visually stable.
 /// Optionally tints the material with a translucent CALayer placed between the
 /// material and the SwiftUI content — color is applied behind text, not over it,
 /// so foreground content (including code block syntax colors) is unaffected.

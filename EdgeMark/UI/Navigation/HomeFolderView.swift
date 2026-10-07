@@ -20,7 +20,7 @@ struct HomeFolderView: View {
     @State private var showDeleteFolderConfirm = false
 
     /// Picker mode: root rows are small-centered; flipped to true on pick so they
-    /// grow to fill the content card before crossfading to the folder list.
+    /// grow to fill the content surface before crossfading to the folder list.
     @State private var pickerExpanded = false
 
     /// The root the user just tapped — its circle fills (checkmark) for a brief
@@ -127,9 +127,9 @@ struct HomeFolderView: View {
             VStack(spacing: 0) {
                 ZStack {
                     if noteStore.awaitingRootChoice {
-                        // Picker mode: small-centered root rows (no own card bg — the
-                        // PageLayout content card is the stable bg). Grows on pick, then
-                        // crossfades to the folder list (content crossfade, card stable).
+                        // Picker mode: small-centered root rows without a nested background.
+                        // PageLayout remains stable while the rows grow on pick and then
+                        // crossfade to the folder list.
                         pickerRows
                             .transition(.opacity)
                     } else {
@@ -272,11 +272,10 @@ struct HomeFolderView: View {
         }
     }
 
-    // MARK: - Storage Picker (in-card mode)
+    // MARK: - Storage Picker (embedded mode)
 
-    /// Root-option rows shown in the content card when `awaitingRootChoice`. No own
-    /// card background — the PageLayout content card is the stable bg, so on pick the
-    /// rows can crossfade to the folder list without a card-over-card double layer.
+    /// Root-option rows shown inside PageLayout when `awaitingRootChoice`. They add no
+    /// nested background, so the rows can crossfade while the shared surface stays stable.
     /// Small-centered by default; `pickerExpanded` grows them to fill on pick.
     private var pickerRows: some View {
         VStack(spacing: 0) {
@@ -313,7 +312,7 @@ struct HomeFolderView: View {
 
     /// Pick a storage root from the picker: fill the chosen row's circle, hold a beat
     /// so the user sees the selection, then grow the rows + preload the new root +
-    /// crossfade to the folder list (content crossfade, card stable).
+    /// crossfade to the folder list while the content surface stays stable.
     private func pickRoot(_ root: StorageRoot) {
         withAnimation(.easeInOut(duration: 0.15)) {
             pickedRootID = root.id

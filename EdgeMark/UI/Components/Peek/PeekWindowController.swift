@@ -248,7 +248,7 @@ final class PeekWindowController: NSWindowController {
 // MARK: - PeekChrome
 
 /// Visual wrapper applied around the peek content: translucent material
-/// background (mirrors the panel card), rounded 10pt corners, and an ESC
+/// background (mirrors the panel content layer), rounded 10pt corners, and an ESC
 /// shortcut. No extra padding — the content views handle their own spacing.
 private struct PeekChrome<Content: View>: View {
     let tint: NSColor?

@@ -71,3 +71,68 @@ struct AdaptiveIconButton: View {
         return isHovered ? .primary : .secondary
     }
 }
+
+/// Shared rendering boundary for compact icon menus in panel chrome.
+struct AdaptiveIconMenu<MenuContent: View>: View {
+    let systemName: String
+    let help: String
+    private let menuContent: MenuContent
+
+    @State private var isHovered = false
+
+    init(
+        systemName: String,
+        help: String,
+        @ViewBuilder content: () -> MenuContent,
+    ) {
+        self.systemName = systemName
+        self.help = help
+        menuContent = content()
+    }
+
+    var body: some View {
+        if #available(macOS 26.0, *) {
+            menu(isHovered: false)
+                .menuStyle(.button)
+                .buttonStyle(.glass)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help(help)
+                .accessibilityLabel(help)
+        } else {
+            menu(isHovered: isHovered)
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help(help)
+                .accessibilityLabel(help)
+                .onHover { hovering in
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        isHovered = hovering
+                    }
+                }
+        }
+    }
+
+    private func menu(isHovered: Bool) -> some View {
+        Menu {
+            menuContent
+        } label: {
+            Image(systemName: systemName)
+                .font(.system(size: SurfaceMetrics.compactSymbolSize, weight: .medium))
+                .foregroundStyle(isHovered ? .primary : .secondary)
+                .frame(
+                    width: SurfaceMetrics.compactControlSize,
+                    height: SurfaceMetrics.compactControlSize,
+                )
+                .background {
+                    if #unavailable(macOS 26.0) {
+                        RoundedRectangle(cornerRadius: SurfaceMetrics.compactControlCornerRadius)
+                            .fill(.primary.opacity(isHovered ? 0.1 : 0))
+                    }
+                }
+                .contentShape(Rectangle())
+        }
+    }
+}

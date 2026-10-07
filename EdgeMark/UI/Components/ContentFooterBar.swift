@@ -2,7 +2,7 @@ import Cocoa
 import SwiftUI
 
 /// Shared footer bar with sort (left) and settings (right) menus.
-/// Pinned at the bottom of the content card on home and folder list screens.
+/// Pinned at the bottom of the shared content surface on home and folder list screens.
 struct ContentFooterBar: View {
     @Environment(AppSettings.self) var settings
     @Environment(NoteStore.self) var noteStore

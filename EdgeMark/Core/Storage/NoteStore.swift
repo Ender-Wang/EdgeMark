@@ -22,7 +22,7 @@ final class NoteStore {
 
     /// Bumped on every storage-root switch. List views animate row changes off this
     /// (`.animation(value:)`) so the note/folder rows fade out and in while the panel
-    /// chrome (card, header) stays stable — content fades, not the panel.
+    /// chrome (surface, header) stays stable — content fades, not the panel.
     var rootSwitchToken: Int = 0
 
     // MARK: - List Selection (multi-select)

@@ -660,17 +660,17 @@ final class SidePanelController: NSWindowController {
     }
 
     /// Frame of the resize handle within the container view.
-    /// Centered on the visible card boundary (PageLayout uses 12pt horizontal padding).
+    /// Centered on the visible content-surface boundary (PageLayout uses 12pt horizontal padding).
     private static func resizeHandleFrame(for side: EdgeSide, containerWidth: CGFloat, height: CGFloat) -> NSRect {
-        // The visible card edge is 12pt from the window edge (PageLayout.padding(.horizontal, 12)).
+        // The visible surface edge is 12pt from the window edge (PageLayout.padding(.horizontal, 12)).
         // Center the handle on that boundary so the cursor appears on the visible border.
-        let cardInset: CGFloat = 12
+        let surfaceInset: CGFloat = 12
         let w = ResizeHandleView.handleWidth
         switch side {
         case .right:
-            return NSRect(x: cardInset - w / 2, y: 0, width: w, height: height)
+            return NSRect(x: surfaceInset - w / 2, y: 0, width: w, height: height)
         case .left:
-            return NSRect(x: containerWidth - cardInset - w / 2, y: 0, width: w, height: height)
+            return NSRect(x: containerWidth - surfaceInset - w / 2, y: 0, width: w, height: height)
         }
     }
 
@@ -790,7 +790,7 @@ final class SidePanelController: NSWindowController {
 
 // MARK: - ResizeHandleView
 
-/// Invisible 8pt-wide strip centered on the panel's visible inner card edge. Dragging it resizes the panel.
+/// Invisible 8pt-wide strip centered on the panel's content-surface edge. Dragging it resizes the panel.
 private final class ResizeHandleView: NSView {
     static let handleWidth: CGFloat = 8
     static let minWidth: CGFloat = 400

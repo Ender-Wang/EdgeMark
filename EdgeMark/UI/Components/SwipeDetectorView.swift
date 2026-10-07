@@ -67,7 +67,7 @@ final class SwipeDetectorNSView: NSView {
         // window's coordinate space, so the bounds check below is meaningless for it).
         guard let viewWindow = window, event.window === viewWindow else { return }
 
-        // Only respond to events where the cursor is inside this view (the header card)
+        // Only respond to events where the cursor is inside this view (the header region).
         let locationInSelf = convert(event.locationInWindow, from: nil)
         guard bounds.contains(locationInSelf) else { return }
 

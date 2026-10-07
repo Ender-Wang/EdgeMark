@@ -48,10 +48,10 @@ struct ContentView: View {
     var body: some View {
         ZStack(alignment: .top) {
             ZStack {
-                // HomeFolderView hosts the storage-root picker as an in-card mode
+                // HomeFolderView hosts the storage-root picker inside the shared surface
                 // (header + content swap), so when awaitingRootChoice it shows the
                 // picker rows; picking crossfades to the folder list within the same
-                // stable card. No separate picker view / card-over-card layer.
+                // stable content layer. No separate nested surface is introduced.
                 if showHome {
                     HomeFolderView()
                         .transition(pageTransition)
