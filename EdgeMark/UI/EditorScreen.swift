@@ -8,6 +8,8 @@ struct EditorScreen: View {
     @State private var showDeleteConfirm = false
     @State private var pendingEditorReload: String? = nil
     @State private var isFindBarShowing = false
+    @State private var noteRename = NoteRenameCoordinator()
+    @FocusState private var isNoteTitleFocused: Bool
 
     private var backLabel: String {
         noteStore.selectedFolder?.name ?? l10n["common.home"]
@@ -52,6 +54,40 @@ struct EditorScreen: View {
 
                     StickyNoteTitleBar(
                         title: note.title.isEmpty ? l10n["common.untitled"] : note.title,
+                        text: Binding(
+                            get: {
+                                noteRename.renamingNoteID == note.id
+                                    ? noteRename.text
+                                    : note.title
+                            },
+                            set: { newValue in
+                                if noteRename.renamingNoteID != note.id {
+                                    noteRename.beginRename(note)
+                                }
+                                noteRename.text = newValue
+                            },
+                        ),
+                        isFocused: $isNoteTitleFocused,
+                        isEditing: noteRename.renamingNoteID == note.id,
+                        isConflicting: noteRename.isConflicting(in: noteStore),
+                        onBeginEditing: {
+                            if noteRename.renamingNoteID != note.id {
+                                noteRename.beginRename(note)
+                            }
+                        },
+                        onCommit: {
+                            noteRename.commit(note: note, noteStore: noteStore)
+                            if noteRename.renamingNoteID == nil {
+                                isNoteTitleFocused = false
+                            }
+                        },
+                        onCancel: {
+                            noteRename.cancel(noteStore: noteStore)
+                            isNoteTitleFocused = false
+                        },
+                        onFocusLost: {
+                            noteRename.commitOrCancel(note: note, noteStore: noteStore)
+                        },
                     )
                     .zIndex(1)
                 }

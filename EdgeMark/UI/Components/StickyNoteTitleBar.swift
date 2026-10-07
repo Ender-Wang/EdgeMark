@@ -13,14 +13,22 @@ struct StickyNoteTitleBar: View {
     @Environment(AppSettings.self) private var appSettings
 
     let title: String
+    @Binding var text: String
+    var isFocused: FocusState<Bool>.Binding
+    let isEditing: Bool
+    let isConflicting: Bool
+    let onBeginEditing: () -> Void
+    let onCommit: () -> Void
+    let onCancel: () -> Void
+    let onFocusLost: () -> Void
 
     var body: some View {
         Group {
             if #available(macOS 26.0, *), appSettings.usesLiquidGlass {
-                titleLabel
+                titleField
                     .glassEffect(.regular, in: titleShape)
             } else {
-                titleLabel
+                titleField
                     .background(.regularMaterial, in: titleShape)
                     .overlay {
                         titleShape
@@ -33,11 +41,31 @@ struct StickyNoteTitleBar: View {
         .accessibilityAddTraits(.isHeader)
     }
 
-    private var titleLabel: some View {
-        Text(title)
+    private var titleField: some View {
+        TextField("", text: $text, prompt: Text(title))
+            .textFieldStyle(.plain)
             .font(.title3.weight(.semibold))
             .lineLimit(1)
-            .truncationMode(.tail)
+            .accessibilityLabel(L10n.shared["common.noteTitlePlaceholder"])
+            .focused(isFocused)
+            .onSubmit(onCommit)
+            .onExitCommand(perform: onCancel)
+            .onChange(of: isFocused.wrappedValue) { _, focused in
+                if focused {
+                    onBeginEditing()
+                } else if isEditing {
+                    onFocusLost()
+                }
+            }
+            .overlay(alignment: .trailing) {
+                Text(L10n.shared["common.nameTaken"])
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(.background.opacity(0.9), in: RoundedRectangle(cornerRadius: 4))
+                    .opacity(isConflicting ? 1 : 0)
+            }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 12)
             .frame(height: Self.surfaceHeight)

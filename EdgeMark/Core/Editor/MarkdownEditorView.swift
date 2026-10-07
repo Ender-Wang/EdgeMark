@@ -170,6 +170,20 @@ struct MarkdownEditorView: View {
                 text = Self.imagesToEmbeds(body)
                 pendingReload = nil
             }
+            .onChange(of: noteTitle) { _, _ in
+                // A rename performed from the sticky title updates NoteStore's full
+                // content while this editor remains mounted. Keep the editor's hidden
+                // heading snapshot in sync so a pending debounce or onDisappear flush
+                // cannot write the previous title back into the note.
+                guard noteID == stableNoteID else { return }
+                saveDebouncer.cancel()
+                let (heading, body) = Self.splitHeading(initialContent)
+                hiddenHeadingLine = heading
+                let displayBody = Self.imagesToEmbeds(body)
+                if text != displayBody {
+                    text = displayBody
+                }
+            }
             .overlay(
                 ImageDropOverlay { [noteID, noteTitle, noteFolder] url in
                     guard let data = try? Data(contentsOf: url) else { return }
