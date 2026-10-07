@@ -116,6 +116,7 @@ struct TrashView: View {
                 HeaderIconButton(
                     systemName: "trash.slash",
                     help: l10n["trash.emptyTrash"],
+                    role: .destructive,
                 ) {
                     showEmptyTrashConfirm = true
                 }
@@ -300,20 +301,25 @@ struct TrashView: View {
 
                 Spacer()
 
-                HeaderIconButton(
-                    systemName: "arrow.uturn.backward",
-                    help: l10n["trash.restoreFolder"],
-                ) {
-                    noteStore.restoreFolder(folder)
-                    closeTrashedFolder()
-                }
+                GlassControlGroup {
+                    HStack(spacing: SurfaceMetrics.controlGroupSpacing) {
+                        HeaderIconButton(
+                            systemName: "arrow.uturn.backward",
+                            help: l10n["trash.restoreFolder"],
+                        ) {
+                            noteStore.restoreFolder(folder)
+                            closeTrashedFolder()
+                        }
 
-                HeaderIconButton(
-                    systemName: "trash",
-                    help: l10n["common.deletePermanently"],
-                ) {
-                    deletingFolder = folder
-                    showDeleteFolderConfirm = true
+                        HeaderIconButton(
+                            systemName: "trash",
+                            help: l10n["common.deletePermanently"],
+                            role: .destructive,
+                        ) {
+                            deletingFolder = folder
+                            showDeleteFolderConfirm = true
+                        }
+                    }
                 }
             }
             .overlay {

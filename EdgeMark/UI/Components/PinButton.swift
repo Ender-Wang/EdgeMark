@@ -6,35 +6,21 @@ import SwiftUI
 struct PinButton: View {
     @Environment(L10n.self) private var l10n
     @State private var isPinned: Bool = PanelSettings.shared.isPanelPinned
-    @State private var isHovered = false
     /// Pinning is implicit in Edge-toggle mode (the panel sticks until the
     /// activating edge is re-touched), so the button is redundant there.
     @State private var isVisible: Bool = PanelSettings.shared.dismissalMode != .toggle
 
     var body: some View {
-        Button {
+        AdaptiveIconButton(
+            systemName: isPinned ? "pin.fill" : "pin",
+            help: isPinned ? l10n["common.unpin"] : l10n["common.pin"],
+            isActive: isPinned,
+        ) {
             isPinned.toggle()
             PanelSettings.shared.isPanelPinned = isPinned
-        } label: {
-            Image(systemName: isPinned ? "pin.fill" : "pin")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(isPinned ? Color.accentColor : (isHovered ? .primary : .secondary))
-                .frame(width: 28, height: 28)
-                .background {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(.primary.opacity(isHovered ? 0.1 : 0))
-                }
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
         .opacity(isVisible ? 1 : 0)
         .allowsHitTesting(isVisible)
-        .help(isPinned ? l10n["common.unpin"] : l10n["common.pin"])
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isHovered = hovering
-            }
-        }
         .onReceive(NotificationCenter.default.publisher(for: .panelPinStateChanged)) { _ in
             // Keep the icon in sync when pin is toggled by the Cmd-P shortcut
             // (or any path other than this button's own tap).

@@ -7,7 +7,7 @@ struct GlassControlGroup<Content: View>: View {
     private let content: Content
 
     init(
-        spacing: CGFloat? = SurfaceMetrics.controlGroupSpacing,
+        spacing: CGFloat? = 0,
         @ViewBuilder content: () -> Content,
     ) {
         self.spacing = spacing

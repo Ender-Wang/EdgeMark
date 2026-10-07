@@ -93,27 +93,31 @@ struct NoteListView: View {
 
                 PinButton()
 
-                HeaderIconButton(
-                    systemName: "magnifyingglass",
-                    help: l10n["common.search"],
-                ) {
-                    noteStore.searchReturnFolder = noteStore.selectedFolder
-                    noteStore.pendingSearchOnHome = true
-                    noteStore.navigateToHome()
-                }
+                GlassControlGroup {
+                    HStack(spacing: SurfaceMetrics.controlGroupSpacing) {
+                        HeaderIconButton(
+                            systemName: "magnifyingglass",
+                            help: l10n["common.search"],
+                        ) {
+                            noteStore.searchReturnFolder = noteStore.selectedFolder
+                            noteStore.pendingSearchOnHome = true
+                            noteStore.navigateToHome()
+                        }
 
-                HeaderIconButton(
-                    systemName: "folder.badge.plus",
-                    help: l10n["common.newFolder"],
-                ) {
-                    startCreatingFolder()
-                }
+                        HeaderIconButton(
+                            systemName: "folder.badge.plus",
+                            help: l10n["common.newFolder"],
+                        ) {
+                            startCreatingFolder()
+                        }
 
-                HeaderIconButton(
-                    systemName: "square.and.pencil",
-                    help: l10n["common.newNote"],
-                ) {
-                    createNote()
+                        HeaderIconButton(
+                            systemName: "square.and.pencil",
+                            help: l10n["common.newNote"],
+                        ) {
+                            createNote()
+                        }
+                    }
                 }
             }
         } content: {

@@ -20,15 +20,12 @@ struct TagFilterBar: View {
                     .help(appSettings.label(for: tag))
                 }
                 if !noteStore.activeTagFilter.isEmpty {
-                    Button {
+                    AdaptiveIconButton(
+                        systemName: "xmark.circle.fill",
+                        help: l10n["tags.clearFilter"],
+                    ) {
                         noteStore.clearTagFilter()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.plain)
-                    .help(l10n["tags.clearFilter"])
                 }
             }
             .padding(.horizontal, 12)

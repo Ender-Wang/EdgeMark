@@ -221,12 +221,12 @@ struct HomeFolderView: View {
                     .textFieldStyle(.plain)
                     .focused($isSearchFieldFocused)
 
-                Button(action: dismissSearch) {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
+                AdaptiveIconButton(
+                    systemName: "xmark.circle.fill",
+                    help: l10n["search.close"],
+                ) {
+                    dismissSearch()
                 }
-                .buttonStyle(.borderless)
-                .help(l10n["search.close"])
             }
             .onExitCommand { dismissSearch() }
             .opacity(isSearching && !noteStore.awaitingRootChoice ? 1 : 0)
@@ -241,26 +241,30 @@ struct HomeFolderView: View {
 
                 PinButton()
 
-                HeaderIconButton(
-                    systemName: "magnifyingglass",
-                    help: l10n["common.search"],
-                ) {
-                    isSearching = true
-                    isSearchFieldFocused = true
-                }
+                GlassControlGroup {
+                    HStack(spacing: SurfaceMetrics.controlGroupSpacing) {
+                        HeaderIconButton(
+                            systemName: "magnifyingglass",
+                            help: l10n["common.search"],
+                        ) {
+                            isSearching = true
+                            isSearchFieldFocused = true
+                        }
 
-                HeaderIconButton(
-                    systemName: "folder.badge.plus",
-                    help: l10n["common.newFolder"],
-                ) {
-                    startCreatingFolder()
-                }
+                        HeaderIconButton(
+                            systemName: "folder.badge.plus",
+                            help: l10n["common.newFolder"],
+                        ) {
+                            startCreatingFolder()
+                        }
 
-                HeaderIconButton(
-                    systemName: "square.and.pencil",
-                    help: l10n["common.newNote"],
-                ) {
-                    createRootNote()
+                        HeaderIconButton(
+                            systemName: "square.and.pencil",
+                            help: l10n["common.newNote"],
+                        ) {
+                            createRootNote()
+                        }
+                    }
                 }
             }
             .opacity(!isSearching && !noteStore.awaitingRootChoice ? 1 : 0)

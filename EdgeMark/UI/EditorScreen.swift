@@ -109,10 +109,14 @@ struct EditorScreen: View {
 
                     PinButton()
 
-                    CopyMenuButton(note: note)
+                    GlassControlGroup {
+                        HStack(spacing: SurfaceMetrics.controlGroupSpacing) {
+                            CopyMenuButton(note: note)
 
-                    DeleteIconButton {
-                        showDeleteConfirm = true
+                            DeleteIconButton {
+                                showDeleteConfirm = true
+                            }
+                        }
                     }
                 }
 
@@ -148,8 +152,33 @@ private struct CopyMenuButton: View {
     @State private var isHovered = false
 
     var body: some View {
+        if #available(macOS 26.0, *) {
+            menu
+                .menuStyle(.button)
+                .buttonStyle(.glass)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help(L10n.shared["editor.copyNote"])
+                .accessibilityLabel(L10n.shared["editor.copyNote"])
+        } else {
+            menu
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help(L10n.shared["editor.copyNote"])
+                .accessibilityLabel(L10n.shared["editor.copyNote"])
+                .onHover { hovering in
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        isHovered = hovering
+                    }
+                }
+        }
+    }
+
+    private var menu: some View {
         let l10n = L10n.shared
-        Menu {
+        return Menu {
             Button(l10n["common.copyPlainText"]) {
                 let selected = Self.getSelectedText()
                 let source = selected.isEmpty ? note.content : selected
@@ -175,23 +204,19 @@ private struct CopyMenuButton: View {
             }
         } label: {
             Image(systemName: "doc.on.doc")
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: SurfaceMetrics.compactSymbolSize, weight: .medium))
                 .foregroundStyle(isHovered ? .primary : .secondary)
-                .frame(width: 28, height: 28)
+                .frame(
+                    width: SurfaceMetrics.compactControlSize,
+                    height: SurfaceMetrics.compactControlSize,
+                )
                 .background {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(.primary.opacity(isHovered ? 0.1 : 0))
+                    if #unavailable(macOS 26.0) {
+                        RoundedRectangle(cornerRadius: SurfaceMetrics.compactControlCornerRadius)
+                            .fill(.primary.opacity(isHovered ? 0.1 : 0))
+                    }
                 }
                 .contentShape(Rectangle())
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .help(l10n["editor.copyNote"])
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isHovered = hovering
-            }
         }
     }
 
@@ -209,27 +234,13 @@ private struct CopyMenuButton: View {
 private struct DeleteIconButton: View {
     let action: () -> Void
 
-    @State private var isHovered = false
-
     var body: some View {
-        Button(action: action) {
-            Image(systemName: "trash")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(isHovered ? .red : .secondary)
-                .frame(width: 28, height: 28)
-                .background {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(.primary.opacity(isHovered ? 0.1 : 0))
-                }
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help(L10n.shared["editor.deleteNote"])
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isHovered = hovering
-            }
-        }
+        AdaptiveIconButton(
+            systemName: "trash",
+            help: L10n.shared["editor.deleteNote"],
+            role: .destructive,
+            action: action,
+        )
     }
 }
 
