@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The stable content layer behind a page's header, list, and editor.
+/// The stable content layer behind a page section such as its header, list, or editor.
 /// Liquid Glass is reserved for controls; content continues to use standard
 /// material so text and selection states remain calm and legible.
 struct PanelContentSurface: View {

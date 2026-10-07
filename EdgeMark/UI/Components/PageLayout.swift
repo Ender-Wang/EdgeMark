@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shared page layout with one continuous content surface across the header and body.
+/// Shared page layout with separate header and body surfaces.
 /// Pass `onSwipeBack` to enable two-finger trackpad right-swipe to go back on the header.
 struct PageLayout<Header: View, Content: View>: View {
     var onSwipeBack: (() -> Void)?
@@ -24,10 +24,12 @@ struct PageLayout<Header: View, Content: View>: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: SurfaceMetrics.panelSectionSpacing) {
             header
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
+                .background { PanelContentSurface() }
+                .clipShape(RoundedRectangle(cornerRadius: SurfaceMetrics.panelCornerRadius))
                 .overlay {
                     if let onSwipeBack {
                         SwipeDetectorView(onSwipeBack: onSwipeBack)
@@ -35,6 +37,8 @@ struct PageLayout<Header: View, Content: View>: View {
                 }
 
             content
+                .background { PanelContentSurface() }
+                .clipShape(RoundedRectangle(cornerRadius: SurfaceMetrics.panelCornerRadius))
                 .overlay {
                     if onContentSwipeRight != nil || onContentSwipeLeft != nil {
                         SwipeDetectorView(
@@ -43,14 +47,7 @@ struct PageLayout<Header: View, Content: View>: View {
                         )
                     }
                 }
-                .overlay(alignment: .top) {
-                    Divider()
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
-                }
         }
-        .background { PanelContentSurface() }
-        .clipShape(RoundedRectangle(cornerRadius: SurfaceMetrics.panelCornerRadius))
         .padding(.horizontal, 12)
         .padding(.top, 8)
         .padding(.bottom, 12)
