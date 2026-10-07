@@ -132,6 +132,7 @@
   "settings.appearance.system": "System",
   "settings.appearance.light": "Light",
   "settings.appearance.dark": "Dark",
+  "settings.general.liquidGlass": "Use Liquid Glass",
 
   "settings.general.panelTint": "Panel tint",
   "settings.editor.section": "Editor",

@@ -65,6 +65,12 @@ struct GeneralSettingsTab: View {
                         Text(tint.displayName(l10n)).tag(tint)
                     }
                 }
+                if #available(macOS 26.0, *) {
+                    Toggle(
+                        l10n["settings.general.liquidGlass"],
+                        isOn: $settings.liquidGlassEnabled,
+                    )
+                }
             } header: {
                 Label(l10n["settings.general.appearance"], systemImage: "circle.lefthalf.filled")
             }

@@ -132,6 +132,7 @@
   "settings.appearance.system": "सिस्टम",
   "settings.appearance.light": "लाइट",
   "settings.appearance.dark": "डार्क",
+  "settings.general.liquidGlass": "Liquid Glass का उपयोग करें",
 
   "settings.general.panelTint": "पैनल टिंट",
   "settings.editor.section": "एडिटर",

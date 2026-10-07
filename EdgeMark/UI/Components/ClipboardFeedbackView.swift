@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ClipboardFeedbackView: View {
+    @Environment(AppSettings.self) private var appSettings
     @Environment(L10n.self) private var l10n
 
     let count: Int
@@ -10,7 +11,7 @@ struct ClipboardFeedbackView: View {
     }
 
     var body: some View {
-        if #available(macOS 26.0, *) {
+        if #available(macOS 26.0, *), appSettings.usesLiquidGlass {
             feedbackLabel
                 .glassEffect(.regular, in: Capsule())
         } else {

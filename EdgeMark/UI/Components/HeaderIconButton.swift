@@ -15,6 +15,7 @@ struct HeaderIconButton: View {
 
 /// Shared rendering boundary for icon-only controls used throughout panel chrome.
 struct AdaptiveIconButton: View {
+    @Environment(AppSettings.self) private var appSettings
     @Environment(\.isInPanelToolbarGroup) private var isInPanelToolbarGroup
 
     let systemName: String
@@ -38,7 +39,7 @@ struct AdaptiveIconButton: View {
             .help(help)
             .accessibilityLabel(help)
             .onHover(perform: updateHover)
-        } else if #available(macOS 26.0, *) {
+        } else if #available(macOS 26.0, *), appSettings.usesLiquidGlass {
             Button(role: role, action: action) {
                 iconLabel(isHovered: false)
             }
@@ -50,7 +51,7 @@ struct AdaptiveIconButton: View {
             Button(role: role, action: action) {
                 iconLabel(isHovered: isHovered)
                     .background {
-                        ButtonBorderShape.roundedRectangle
+                        RoundedRectangle(cornerRadius: SurfaceMetrics.classicControlCornerRadius)
                             .fill(.primary.opacity(isHovered ? 0.1 : 0))
                     }
             }
@@ -91,6 +92,7 @@ struct AdaptiveIconButton: View {
 
 /// Shared rendering boundary for compact icon menus in panel chrome.
 struct AdaptiveIconMenu<MenuContent: View>: View {
+    @Environment(AppSettings.self) private var appSettings
     @Environment(\.isInPanelToolbarGroup) private var isInPanelToolbarGroup
 
     let systemName: String
@@ -119,7 +121,7 @@ struct AdaptiveIconMenu<MenuContent: View>: View {
                 .help(help)
                 .accessibilityLabel(help)
                 .onHover(perform: updateHover)
-        } else if #available(macOS 26.0, *) {
+        } else if #available(macOS 26.0, *), appSettings.usesLiquidGlass {
             menu(isHovered: false, fillsGroupSegment: false)
                 .menuStyle(.button)
                 .buttonStyle(.glass)
@@ -155,8 +157,8 @@ struct AdaptiveIconMenu<MenuContent: View>: View {
                     if fillsGroupSegment {
                         Rectangle()
                             .fill(.primary.opacity(isHovered ? 0.1 : 0))
-                    } else if #unavailable(macOS 26.0) {
-                        ButtonBorderShape.roundedRectangle
+                    } else if !appSettings.usesLiquidGlass {
+                        RoundedRectangle(cornerRadius: SurfaceMetrics.classicControlCornerRadius)
                             .fill(.primary.opacity(isHovered ? 0.1 : 0))
                     }
                 }

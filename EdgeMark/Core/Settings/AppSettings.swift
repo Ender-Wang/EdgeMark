@@ -192,6 +192,20 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(panelStyle.rawValue, forKey: "panelStyle") }
     }
 
+    /// Whether supported systems use Liquid Glass for controls and transient surfaces.
+    /// Defaults on; disabling it restores EdgeMark's classic material and hover styling.
+    var liquidGlassEnabled: Bool = true {
+        didSet { UserDefaults.standard.set(liquidGlassEnabled, forKey: "liquidGlassEnabled") }
+    }
+
+    var usesLiquidGlass: Bool {
+        if #available(macOS 26.0, *) {
+            liquidGlassEnabled
+        } else {
+            false
+        }
+    }
+
     // MARK: - Spell checking
 
     /// Mirrors `SpellCheckingPolicy.continuousSpellChecking`.
@@ -303,6 +317,7 @@ final class AppSettings {
         {
             panelStyle = value
         }
+        liquidGlassEnabled = UserDefaults.standard.object(forKey: "liquidGlassEnabled") as? Bool ?? true
         // If the saved font is no longer installed (e.g. user uninstalled it),
         // drop it silently so the editor falls back to the system font.
         if let saved = UserDefaults.standard.string(forKey: "editorFontName"),

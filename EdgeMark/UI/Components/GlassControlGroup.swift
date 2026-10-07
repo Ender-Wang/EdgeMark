@@ -7,6 +7,8 @@ extension EnvironmentValues {
 /// Coordinates nearby Liquid Glass controls on supported systems while
 /// preserving the same ordinary SwiftUI layout on older macOS releases.
 struct GlassControlGroup<Content: View>: View {
+    @Environment(AppSettings.self) private var appSettings
+
     private let spacing: CGFloat?
     private let content: Content
 
@@ -19,19 +21,21 @@ struct GlassControlGroup<Content: View>: View {
     }
 
     var body: some View {
-        if #available(macOS 26.0, *) {
+        if #available(macOS 26.0, *), appSettings.usesLiquidGlass {
             GlassEffectContainer(spacing: spacing) {
                 content
             }
             .buttonBorderShape(.roundedRectangle)
         } else {
-            content.buttonBorderShape(.roundedRectangle)
+            content
         }
     }
 }
 
 /// Presents related panel toolbar actions as one Finder-style control island.
 struct PanelToolbarGroup<Content: View>: View {
+    @Environment(AppSettings.self) private var appSettings
+
     private let content: Content
 
     init(@ViewBuilder content: () -> Content) {
@@ -39,18 +43,14 @@ struct PanelToolbarGroup<Content: View>: View {
     }
 
     var body: some View {
-        if #available(macOS 26.0, *) {
+        if #available(macOS 26.0, *), appSettings.usesLiquidGlass {
             groupContent
                 .glassEffect(.regular.interactive(), in: ButtonBorderShape.roundedRectangle)
                 .clipShape(ButtonBorderShape.roundedRectangle)
         } else {
-            groupContent
-                .background(.regularMaterial, in: ButtonBorderShape.roundedRectangle)
-                .overlay {
-                    ButtonBorderShape.roundedRectangle
-                        .strokeBorder(.separator.opacity(0.45), lineWidth: 0.5)
-                }
-                .clipShape(ButtonBorderShape.roundedRectangle)
+            HStack(spacing: SurfaceMetrics.controlGroupSpacing) {
+                content
+            }
         }
     }
 

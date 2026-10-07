@@ -27,6 +27,7 @@ struct FindBarView: View {
     @FocusState private var isSearchFocused: Bool
 
     @Environment(L10n.self) private var l10n
+    @Environment(AppSettings.self) private var appSettings
 
     // MARK: - Body
 
@@ -72,7 +73,7 @@ struct FindBarView: View {
                     Divider().frame(height: 14)
 
                     GlassControlGroup {
-                        HStack(spacing: 0) {
+                        HStack(spacing: appSettings.usesLiquidGlass ? 0 : 6) {
                             AdaptiveIconButton(
                                 systemName: "chevron.up",
                                 help: "Previous match (⇧↩)",
@@ -151,7 +152,7 @@ struct FindBarView: View {
 
     @ViewBuilder
     private var caseSensitivityButton: some View {
-        if #available(macOS 26.0, *) {
+        if #available(macOS 26.0, *), appSettings.usesLiquidGlass {
             Button {
                 caseSensitive.toggle()
             } label: {
@@ -167,7 +168,7 @@ struct FindBarView: View {
             } label: {
                 caseSensitivityLabel
                     .background {
-                        ButtonBorderShape.roundedRectangle
+                        RoundedRectangle(cornerRadius: SurfaceMetrics.classicControlCornerRadius)
                             .fill(Color.primary.opacity(caseSensitive ? 0.12 : 0))
                     }
             }

@@ -24,7 +24,7 @@ final class AppKitGlassSurface: NSView {
         contentView.frame = bounds
         contentView.autoresizingMask = [.width, .height]
 
-        if #available(macOS 26.0, *) {
+        if #available(macOS 26.0, *), AppSettings.shared.usesLiquidGlass {
             let glassView = NSGlassEffectView(frame: bounds)
             glassView.autoresizingMask = [.width, .height]
             glassView.cornerRadius = cornerRadius
