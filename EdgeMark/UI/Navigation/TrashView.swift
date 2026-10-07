@@ -303,24 +303,22 @@ struct TrashView: View {
 
                 Spacer()
 
-                GlassControlGroup {
-                    HStack(spacing: SurfaceMetrics.controlGroupSpacing) {
-                        HeaderIconButton(
-                            systemName: "arrow.uturn.backward",
-                            help: l10n["trash.restoreFolder"],
-                        ) {
-                            noteStore.restoreFolder(folder)
-                            closeTrashedFolder()
-                        }
+                PanelToolbarGroup {
+                    HeaderIconButton(
+                        systemName: "arrow.uturn.backward",
+                        help: l10n["trash.restoreFolder"],
+                    ) {
+                        noteStore.restoreFolder(folder)
+                        closeTrashedFolder()
+                    }
 
-                        HeaderIconButton(
-                            systemName: "trash",
-                            help: l10n["common.deletePermanently"],
-                            role: .destructive,
-                        ) {
-                            deletingFolder = folder
-                            showDeleteFolderConfirm = true
-                        }
+                    HeaderIconButton(
+                        systemName: "trash",
+                        help: l10n["common.deletePermanently"],
+                        role: .destructive,
+                    ) {
+                        deletingFolder = folder
+                        showDeleteFolderConfirm = true
                     }
                 }
             }
