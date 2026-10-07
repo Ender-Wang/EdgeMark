@@ -91,6 +91,7 @@ private struct NSContextMenuOverlay: NSViewRepresentable {
 
         override func rightMouseDown(with event: NSEvent) {
             if let menu = menuBuilder?() {
+                menu.prepareItemImagesForContextPresentation()
                 NSMenu.popUpContextMenu(menu, with: event, for: self)
                 MenuDispatch.shared.clear()
             }
@@ -291,6 +292,18 @@ private struct RowClickOverlay: NSViewRepresentable {
 // MARK: - NSMenu Builder Helpers
 
 extension NSMenu {
+    /// macOS 27 hides menu-item images by default. Context menus in EdgeMark use
+    /// icons as stable action cues, so opt every imaged item and submenu back in.
+    func prepareItemImagesForContextPresentation() {
+        guard #available(macOS 27.0, *) else { return }
+        for item in items {
+            if item.image != nil {
+                item.preferredImageVisibility = .visible
+            }
+            item.submenu?.prepareItemImagesForContextPresentation()
+        }
+    }
+
     /// Pop up this menu (built with addActionItem) at a point in a view without an NSEvent.
     /// Blocks until dismissed, then clears MenuDispatch closures.
     func popUpAtPoint(_ point: NSPoint, in view: NSView) {
