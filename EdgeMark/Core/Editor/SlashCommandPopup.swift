@@ -58,15 +58,6 @@ final class SlashCommandPopup: NSObject, NSTableViewDataSource, NSTableViewDeleg
         panel.level = .popUpMenu
         panel.hasShadow = true
 
-        // Container with rounded corners
-        let container = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight))
-        container.material = .popover
-        container.blendingMode = .behindWindow
-        container.state = .active
-        container.wantsLayer = true
-        container.layer?.cornerRadius = 8
-        container.layer?.masksToBounds = true
-
         // Table view
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("command"))
         column.width = panelWidth - 4
@@ -83,14 +74,21 @@ final class SlashCommandPopup: NSObject, NSTableViewDataSource, NSTableViewDeleg
         tableView.target = self
         tableView.doubleAction = #selector(rowDoubleClicked)
 
-        let scrollView = NSScrollView(frame: container.bounds)
+        let contentFrame = NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight)
+        let scrollView = NSScrollView(frame: contentFrame)
         scrollView.documentView = tableView
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.drawsBackground = false
         scrollView.autoresizingMask = [.width, .height]
 
-        container.addSubview(scrollView)
+        let container = AppKitGlassSurface(
+            frame: contentFrame,
+            contentView: scrollView,
+            style: .regular,
+            cornerRadius: 8,
+            isInteractive: true,
+        )
         panel.contentView = container
 
         self.panel = panel
