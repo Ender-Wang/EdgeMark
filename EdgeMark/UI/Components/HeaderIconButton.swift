@@ -15,6 +15,8 @@ struct HeaderIconButton: View {
 
 /// Shared rendering boundary for icon-only controls used throughout panel chrome.
 struct AdaptiveIconButton: View {
+    @Environment(\.isInPanelToolbarGroup) private var isInPanelToolbarGroup
+
     let systemName: String
     let help: String
     var isActive = false
@@ -24,29 +26,38 @@ struct AdaptiveIconButton: View {
     @State private var isHovered = false
 
     var body: some View {
-        if #available(macOS 26.0, *) {
-            Button(role: role, action: action) {
-                iconLabel(isHovered: false)
-            }
-            .buttonStyle(.glass)
-            .help(help)
-            .accessibilityLabel(help)
-        } else {
+        if isInPanelToolbarGroup {
             Button(role: role, action: action) {
                 iconLabel(isHovered: isHovered)
                     .background {
-                        RoundedRectangle(cornerRadius: SurfaceMetrics.compactControlCornerRadius)
+                        Rectangle()
                             .fill(.primary.opacity(isHovered ? 0.1 : 0))
                     }
             }
             .buttonStyle(.plain)
             .help(help)
             .accessibilityLabel(help)
-            .onHover { hovering in
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    isHovered = hovering
-                }
+            .onHover(perform: updateHover)
+        } else if #available(macOS 26.0, *) {
+            Button(role: role, action: action) {
+                iconLabel(isHovered: false)
             }
+            .buttonStyle(.glass)
+            .buttonBorderShape(.roundedRectangle)
+            .help(help)
+            .accessibilityLabel(help)
+        } else {
+            Button(role: role, action: action) {
+                iconLabel(isHovered: isHovered)
+                    .background {
+                        ButtonBorderShape.roundedRectangle
+                            .fill(.primary.opacity(isHovered ? 0.1 : 0))
+                    }
+            }
+            .buttonStyle(.plain)
+            .help(help)
+            .accessibilityLabel(help)
+            .onHover(perform: updateHover)
         }
     }
 
@@ -70,10 +81,18 @@ struct AdaptiveIconButton: View {
         }
         return isHovered ? .primary : .secondary
     }
+
+    private func updateHover(_ hovering: Bool) {
+        withAnimation(.easeInOut(duration: 0.15)) {
+            isHovered = hovering
+        }
+    }
 }
 
 /// Shared rendering boundary for compact icon menus in panel chrome.
 struct AdaptiveIconMenu<MenuContent: View>: View {
+    @Environment(\.isInPanelToolbarGroup) private var isInPanelToolbarGroup
+
     let systemName: String
     let help: String
     private let menuContent: MenuContent
@@ -91,31 +110,37 @@ struct AdaptiveIconMenu<MenuContent: View>: View {
     }
 
     var body: some View {
-        if #available(macOS 26.0, *) {
-            menu(isHovered: false)
-                .menuStyle(.button)
-                .buttonStyle(.glass)
-                .menuIndicator(.hidden)
-                .fixedSize()
-                .help(help)
-                .accessibilityLabel(help)
-        } else {
-            menu(isHovered: isHovered)
+        if isInPanelToolbarGroup {
+            menu(isHovered: isHovered, fillsGroupSegment: true)
                 .menuStyle(.button)
                 .buttonStyle(.plain)
                 .menuIndicator(.hidden)
                 .fixedSize()
                 .help(help)
                 .accessibilityLabel(help)
-                .onHover { hovering in
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        isHovered = hovering
-                    }
-                }
+                .onHover(perform: updateHover)
+        } else if #available(macOS 26.0, *) {
+            menu(isHovered: false, fillsGroupSegment: false)
+                .menuStyle(.button)
+                .buttonStyle(.glass)
+                .buttonBorderShape(.roundedRectangle)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help(help)
+                .accessibilityLabel(help)
+        } else {
+            menu(isHovered: isHovered, fillsGroupSegment: false)
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help(help)
+                .accessibilityLabel(help)
+                .onHover(perform: updateHover)
         }
     }
 
-    private func menu(isHovered: Bool) -> some View {
+    private func menu(isHovered: Bool, fillsGroupSegment: Bool) -> some View {
         Menu {
             menuContent
         } label: {
@@ -127,12 +152,21 @@ struct AdaptiveIconMenu<MenuContent: View>: View {
                     height: SurfaceMetrics.compactControlSize,
                 )
                 .background {
-                    if #unavailable(macOS 26.0) {
-                        RoundedRectangle(cornerRadius: SurfaceMetrics.compactControlCornerRadius)
+                    if fillsGroupSegment {
+                        Rectangle()
+                            .fill(.primary.opacity(isHovered ? 0.1 : 0))
+                    } else if #unavailable(macOS 26.0) {
+                        ButtonBorderShape.roundedRectangle
                             .fill(.primary.opacity(isHovered ? 0.1 : 0))
                     }
                 }
                 .contentShape(Rectangle())
+        }
+    }
+
+    private func updateHover(_ hovering: Bool) {
+        withAnimation(.easeInOut(duration: 0.15)) {
+            isHovered = hovering
         }
     }
 }

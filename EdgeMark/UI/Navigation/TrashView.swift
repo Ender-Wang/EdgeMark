@@ -111,17 +111,19 @@ struct TrashView: View {
 
                 Spacer()
 
-                PinButton()
+                PanelToolbarGroup {
+                    PinButton()
 
-                HeaderIconButton(
-                    systemName: "trash.slash",
-                    help: l10n["trash.emptyTrash"],
-                    role: .destructive,
-                ) {
-                    showEmptyTrashConfirm = true
+                    HeaderIconButton(
+                        systemName: "trash.slash",
+                        help: l10n["trash.emptyTrash"],
+                        role: .destructive,
+                    ) {
+                        showEmptyTrashConfirm = true
+                    }
+                    .opacity(noteStore.isTrashEmpty ? 0.3 : 1)
+                    .disabled(noteStore.isTrashEmpty)
                 }
-                .opacity(noteStore.isTrashEmpty ? 0.3 : 1)
-                .disabled(noteStore.isTrashEmpty)
             }
             .overlay {
                 Text(l10n["trash.title"])

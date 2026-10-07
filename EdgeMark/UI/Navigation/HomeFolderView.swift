@@ -239,31 +239,29 @@ struct HomeFolderView: View {
 
                 Spacer()
 
-                PinButton()
+                PanelToolbarGroup {
+                    PinButton()
 
-                GlassControlGroup {
-                    HStack(spacing: SurfaceMetrics.controlGroupSpacing) {
-                        HeaderIconButton(
-                            systemName: "magnifyingglass",
-                            help: l10n["common.search"],
-                        ) {
-                            isSearching = true
-                            isSearchFieldFocused = true
-                        }
+                    HeaderIconButton(
+                        systemName: "magnifyingglass",
+                        help: l10n["common.search"],
+                    ) {
+                        isSearching = true
+                        isSearchFieldFocused = true
+                    }
 
-                        HeaderIconButton(
-                            systemName: "folder.badge.plus",
-                            help: l10n["common.newFolder"],
-                        ) {
-                            startCreatingFolder()
-                        }
+                    HeaderIconButton(
+                        systemName: "folder.badge.plus",
+                        help: l10n["common.newFolder"],
+                    ) {
+                        startCreatingFolder()
+                    }
 
-                        HeaderIconButton(
-                            systemName: "square.and.pencil",
-                            help: l10n["common.newNote"],
-                        ) {
-                            createRootNote()
-                        }
+                    HeaderIconButton(
+                        systemName: "square.and.pencil",
+                        help: l10n["common.newNote"],
+                    ) {
+                        createRootNote()
                     }
                 }
             }

@@ -158,6 +158,7 @@ struct FindBarView: View {
                 caseSensitivityLabel
             }
             .buttonStyle(.glass)
+            .buttonBorderShape(.roundedRectangle)
             .help(l10n["find.caseSensitive"])
             .accessibilityLabel(l10n["find.caseSensitive"])
         } else {
@@ -166,7 +167,7 @@ struct FindBarView: View {
             } label: {
                 caseSensitivityLabel
                     .background {
-                        RoundedRectangle(cornerRadius: SurfaceMetrics.compactControlCornerRadius)
+                        ButtonBorderShape.roundedRectangle
                             .fill(Color.primary.opacity(caseSensitive ? 0.12 : 0))
                     }
             }

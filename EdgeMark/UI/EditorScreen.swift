@@ -107,15 +107,13 @@ struct EditorScreen: View {
 
                     Spacer()
 
-                    PinButton()
+                    PanelToolbarGroup {
+                        PinButton()
 
-                    GlassControlGroup {
-                        HStack(spacing: SurfaceMetrics.controlGroupSpacing) {
-                            CopyMenuButton(note: note)
+                        CopyMenuButton(note: note)
 
-                            DeleteIconButton {
-                                showDeleteConfirm = true
-                            }
+                        DeleteIconButton {
+                            showDeleteConfirm = true
                         }
                     }
                 }

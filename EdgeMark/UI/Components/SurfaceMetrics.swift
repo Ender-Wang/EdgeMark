@@ -5,7 +5,6 @@ import CoreGraphics
 enum SurfaceMetrics {
     static let panelCornerRadius: CGFloat = 10
     static let panelSectionSpacing: CGFloat = 8
-    static let compactControlCornerRadius: CGFloat = 6
     static let compactControlSize: CGFloat = 28
     static let compactSymbolSize: CGFloat = 16
     static let controlGroupSpacing: CGFloat = 8
