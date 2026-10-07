@@ -71,52 +71,35 @@ struct FindBarView: View {
 
                     Divider().frame(height: 14)
 
-                    // Previous match
-                    Button { navigateBackward() } label: {
-                        Image(systemName: "chevron.up")
-                            .imageScale(.small)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(matches.isEmpty)
-                    .help("Previous match (⇧↩)")
-
-                    // Next match
-                    Button { navigateForward() } label: {
-                        Image(systemName: "chevron.down")
-                            .imageScale(.small)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(matches.isEmpty)
-                    .help("Next match (↩)")
-
-                    Divider().frame(height: 14)
-
-                    // Case-sensitive toggle
-                    Button {
-                        caseSensitive.toggle()
-                    } label: {
-                        Text("Aa")
-                            .font(.system(size: 11, weight: caseSensitive ? .bold : .regular))
-                            .foregroundStyle(caseSensitive ? .primary : .secondary)
-                            .frame(width: 22, height: 18)
-                            .background(
-                                caseSensitive
-                                    ? AnyView(RoundedRectangle(cornerRadius: 4).fill(.quaternary))
-                                    : AnyView(EmptyView()),
+                    GlassControlGroup {
+                        HStack(spacing: 0) {
+                            AdaptiveIconButton(
+                                systemName: "chevron.up",
+                                help: "Previous match (⇧↩)",
+                                action: navigateBackward,
                             )
+                            .disabled(matches.isEmpty)
+
+                            AdaptiveIconButton(
+                                systemName: "chevron.down",
+                                help: "Next match (↩)",
+                                action: navigateForward,
+                            )
+                            .disabled(matches.isEmpty)
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .help(l10n["find.caseSensitive"])
 
                     Divider().frame(height: 14)
 
-                    // Close button
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark")
-                            .imageScale(.small)
-                    }
-                    .buttonStyle(.plain)
-                    .help(l10n["find.close"])
+                    caseSensitivityButton
+
+                    Divider().frame(height: 14)
+
+                    AdaptiveIconButton(
+                        systemName: "xmark",
+                        help: l10n["find.close"],
+                        action: dismiss,
+                    )
                 }
 
                 // Row 2: replace field + buttons
@@ -164,6 +147,44 @@ struct FindBarView: View {
             // while the bar is open — but that cost is low and keeps things correct.
             recomputeMatches()
         }
+    }
+
+    @ViewBuilder
+    private var caseSensitivityButton: some View {
+        if #available(macOS 26.0, *) {
+            Button {
+                caseSensitive.toggle()
+            } label: {
+                caseSensitivityLabel
+            }
+            .buttonStyle(.glass)
+            .help(l10n["find.caseSensitive"])
+            .accessibilityLabel(l10n["find.caseSensitive"])
+        } else {
+            Button {
+                caseSensitive.toggle()
+            } label: {
+                caseSensitivityLabel
+                    .background {
+                        RoundedRectangle(cornerRadius: SurfaceMetrics.compactControlCornerRadius)
+                            .fill(Color.primary.opacity(caseSensitive ? 0.12 : 0))
+                    }
+            }
+            .buttonStyle(.plain)
+            .help(l10n["find.caseSensitive"])
+            .accessibilityLabel(l10n["find.caseSensitive"])
+        }
+    }
+
+    private var caseSensitivityLabel: some View {
+        Text("Aa")
+            .font(.system(size: 11, weight: caseSensitive ? .bold : .regular))
+            .foregroundStyle(caseSensitive ? Color.accentColor : .secondary)
+            .frame(
+                width: SurfaceMetrics.compactControlSize,
+                height: SurfaceMetrics.compactControlSize,
+            )
+            .contentShape(Rectangle())
     }
 
     // MARK: - Match engine

@@ -10,16 +10,25 @@ struct ClipboardFeedbackView: View {
     }
 
     var body: some View {
+        if #available(macOS 26.0, *) {
+            feedbackLabel
+                .glassEffect(.regular, in: Capsule())
+        } else {
+            feedbackLabel
+                .background(.regularMaterial, in: Capsule())
+                .overlay {
+                    Capsule()
+                        .strokeBorder(.separator.opacity(0.5), lineWidth: 0.5)
+                }
+                .shadow(color: .black.opacity(0.15), radius: 8, y: 3)
+        }
+    }
+
+    private var feedbackLabel: some View {
         Label(message, systemImage: "checkmark.circle.fill")
             .font(.callout.weight(.medium))
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(.regularMaterial, in: Capsule())
-            .overlay {
-                Capsule()
-                    .strokeBorder(.separator.opacity(0.5), lineWidth: 0.5)
-            }
-            .shadow(color: .black.opacity(0.15), radius: 8, y: 3)
             .accessibilityLabel(message)
     }
 }
