@@ -117,6 +117,7 @@ struct ContentFooterBar: View {
         guard let event = NSApp.currentEvent,
               let view = event.window?.contentView
         else { return }
+        menu.prepareItemImagesForContextPresentation()
         NSMenu.popUpContextMenu(menu, with: event, for: view)
     }
 }
