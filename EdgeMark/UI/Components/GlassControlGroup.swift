@@ -45,8 +45,8 @@ struct PanelToolbarGroup<Content: View>: View {
     var body: some View {
         if #available(macOS 26.0, *), appSettings.usesLiquidGlass {
             groupContent
-                .glassEffect(.regular.interactive(), in: ButtonBorderShape.roundedRectangle)
-                .clipShape(ButtonBorderShape.roundedRectangle)
+                .glassEffect(.regular.interactive(), in: Capsule())
+                .clipShape(Capsule())
         } else {
             HStack(spacing: SurfaceMetrics.controlGroupSpacing) {
                 content
@@ -58,7 +58,7 @@ struct PanelToolbarGroup<Content: View>: View {
         HStack(spacing: 0) {
             content
         }
+        .padding(.vertical, SurfaceMetrics.groupedControlVerticalInset)
         .environment(\.isInPanelToolbarGroup, true)
-        .buttonBorderShape(.roundedRectangle)
     }
 }

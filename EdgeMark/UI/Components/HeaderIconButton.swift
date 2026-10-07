@@ -29,11 +29,7 @@ struct AdaptiveIconButton: View {
     var body: some View {
         if isInPanelToolbarGroup {
             Button(role: role, action: action) {
-                iconLabel(isHovered: isHovered)
-                    .background {
-                        Rectangle()
-                            .fill(.primary.opacity(isHovered ? 0.1 : 0))
-                    }
+                groupedIconLabel(isHovered: isHovered)
             }
             .buttonStyle(.plain)
             .help(help)
@@ -70,6 +66,25 @@ struct AdaptiveIconButton: View {
                 width: SurfaceMetrics.compactControlSize,
                 height: SurfaceMetrics.compactControlSize,
             )
+            .contentShape(Rectangle())
+    }
+
+    private func groupedIconLabel(isHovered: Bool) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: SurfaceMetrics.compactSymbolSize, weight: .medium))
+            .foregroundStyle(foregroundColor(isHovered: isHovered))
+            .frame(
+                width: SurfaceMetrics.groupedControlWidth,
+                height: SurfaceMetrics.compactControlSize,
+            )
+            .background {
+                RoundedRectangle(
+                    cornerRadius: SurfaceMetrics.groupedControlCornerRadius,
+                    style: .continuous,
+                )
+                .fill(.primary.opacity(isHovered ? 0.1 : 0))
+            }
+            .padding(.horizontal, SurfaceMetrics.groupedControlHorizontalInset)
             .contentShape(Rectangle())
     }
 
@@ -150,18 +165,27 @@ struct AdaptiveIconMenu<MenuContent: View>: View {
                 .font(.system(size: SurfaceMetrics.compactSymbolSize, weight: .medium))
                 .foregroundStyle(isHovered ? .primary : .secondary)
                 .frame(
-                    width: SurfaceMetrics.compactControlSize,
+                    width: fillsGroupSegment
+                        ? SurfaceMetrics.groupedControlWidth
+                        : SurfaceMetrics.compactControlSize,
                     height: SurfaceMetrics.compactControlSize,
                 )
                 .background {
                     if fillsGroupSegment {
-                        Rectangle()
-                            .fill(.primary.opacity(isHovered ? 0.1 : 0))
+                        RoundedRectangle(
+                            cornerRadius: SurfaceMetrics.groupedControlCornerRadius,
+                            style: .continuous,
+                        )
+                        .fill(.primary.opacity(isHovered ? 0.1 : 0))
                     } else if !appSettings.usesLiquidGlass {
                         RoundedRectangle(cornerRadius: SurfaceMetrics.classicControlCornerRadius)
                             .fill(.primary.opacity(isHovered ? 0.1 : 0))
                     }
                 }
+                .padding(
+                    .horizontal,
+                    fillsGroupSegment ? SurfaceMetrics.groupedControlHorizontalInset : 0,
+                )
                 .contentShape(Rectangle())
         }
     }

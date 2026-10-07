@@ -9,4 +9,8 @@ enum SurfaceMetrics {
     static let compactControlSize: CGFloat = 28
     static let compactSymbolSize: CGFloat = 16
     static let controlGroupSpacing: CGFloat = 8
+    static let groupedControlWidth: CGFloat = 34
+    static let groupedControlHorizontalInset: CGFloat = 3
+    static let groupedControlVerticalInset: CGFloat = 4
+    static let groupedControlCornerRadius: CGFloat = 14
 }
