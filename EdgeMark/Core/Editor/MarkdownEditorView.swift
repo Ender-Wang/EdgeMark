@@ -36,6 +36,7 @@ struct MarkdownEditorView: View {
     let noteTitle: String
     let noteFolder: String
     let initialContent: String
+    let topOverlayInset: CGFloat
     let onContentChanged: (UUID, String) -> Void
     /// Set to new full note content to reload the editor (e.g. from file watcher).
     /// Cleared automatically after the view applies it.
@@ -65,6 +66,7 @@ struct MarkdownEditorView: View {
         noteTitle: String,
         noteFolder: String,
         initialContent: String,
+        topOverlayInset: CGFloat = 0,
         onContentChanged: @escaping (UUID, String) -> Void,
         pendingReload: Binding<String?> = .constant(nil),
         showFindBar: Binding<Bool> = .constant(false),
@@ -75,6 +77,7 @@ struct MarkdownEditorView: View {
         self.noteTitle = noteTitle
         self.noteFolder = noteFolder
         self.initialContent = initialContent
+        self.topOverlayInset = topOverlayInset
         self.onContentChanged = onContentChanged
         _pendingReload = pendingReload
         self.showFindBar = showFindBar
@@ -108,6 +111,7 @@ struct MarkdownEditorView: View {
                 findClearHighlights: .editorFindClearHighlights,
             ),
         )
+        config.safeAreaInsets.top = topOverlayInset
         config.spellChecking = SpellCheckingPolicy(
             continuousSpellChecking: appSettings.spellCheckingEnabled,
             grammarChecking: appSettings.grammarCheckingEnabled,

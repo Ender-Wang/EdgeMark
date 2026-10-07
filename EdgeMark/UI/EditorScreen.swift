@@ -24,28 +24,36 @@ struct EditorScreen: View {
             headerContent
         } content: {
             if let note = noteStore.selectedNote {
-                MarkdownEditorView(
-                    noteID: note.id,
-                    noteTitle: note.title,
-                    noteFolder: note.folder,
-                    initialContent: note.content,
-                    onContentChanged: { id, newContent in
-                        noteStore.updateContent(for: id, content: newContent)
-                    },
-                    pendingReload: $pendingEditorReload,
-                    showFindBar: $isFindBarShowing,
-                    onNavigateNext: { noteStore.navigateToNextNote(sortedBy: appSettings) },
-                    onNavigatePrevious: { noteStore.navigateToPreviousNote(sortedBy: appSettings) },
-                )
-                .onAppear {
-                    noteStore.onNeedEditorReload = { content in
-                        pendingEditorReload = content
+                ZStack(alignment: .top) {
+                    MarkdownEditorView(
+                        noteID: note.id,
+                        noteTitle: note.title,
+                        noteFolder: note.folder,
+                        initialContent: note.content,
+                        topOverlayInset: StickyNoteTitleBar.editorContentInset,
+                        onContentChanged: { id, newContent in
+                            noteStore.updateContent(for: id, content: newContent)
+                        },
+                        pendingReload: $pendingEditorReload,
+                        showFindBar: $isFindBarShowing,
+                        onNavigateNext: { noteStore.navigateToNextNote(sortedBy: appSettings) },
+                        onNavigatePrevious: { noteStore.navigateToPreviousNote(sortedBy: appSettings) },
+                    )
+                    .onAppear {
+                        noteStore.onNeedEditorReload = { content in
+                            pendingEditorReload = content
+                        }
                     }
-                }
-                .onChange(of: noteStore.pendingEditorFind) { _, pending in
-                    guard pending else { return }
-                    noteStore.pendingEditorFind = false
-                    isFindBarShowing = true
+                    .onChange(of: noteStore.pendingEditorFind) { _, pending in
+                        guard pending else { return }
+                        noteStore.pendingEditorFind = false
+                        isFindBarShowing = true
+                    }
+
+                    StickyNoteTitleBar(
+                        title: note.title.isEmpty ? l10n["common.untitled"] : note.title,
+                    )
+                    .zIndex(1)
                 }
             }
         }
@@ -94,16 +102,10 @@ struct EditorScreen: View {
 
                     Spacer()
 
-                    HStack(spacing: 4) {
-                        Text(note.title.isEmpty ? l10n["common.untitled"] : note.title)
-                            .font(.headline)
-                            .lineLimit(1)
-
-                        Text(note.displayDirectory)
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                            .lineLimit(1)
-                    }
+                    Text(note.displayDirectory)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
 
                     Spacer()
 
