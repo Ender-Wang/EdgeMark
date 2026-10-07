@@ -1,10 +1,8 @@
 import SwiftUI
 
-/// Shared two-section card layout used across all screens.
-/// Header and content are each wrapped in a rounded VisualEffectView card.
+/// Shared page layout with one continuous content surface across the header and body.
 /// Pass `onSwipeBack` to enable two-finger trackpad right-swipe to go back on the header.
 struct PageLayout<Header: View, Content: View>: View {
-    @Environment(AppSettings.self) private var appSettings
     var onSwipeBack: (() -> Void)?
     var onContentSwipeRight: (() -> Void)?
     var onContentSwipeLeft: (() -> Void)?
@@ -26,12 +24,10 @@ struct PageLayout<Header: View, Content: View>: View {
     }
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 0) {
             header
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .background { VisualEffectView(tint: appSettings.panelTint.color, material: appSettings.panelStyle.material) }
-                .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay {
                     if let onSwipeBack {
                         SwipeDetectorView(onSwipeBack: onSwipeBack)
@@ -39,8 +35,6 @@ struct PageLayout<Header: View, Content: View>: View {
                 }
 
             content
-                .background { VisualEffectView(tint: appSettings.panelTint.color, material: appSettings.panelStyle.material) }
-                .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay {
                     if onContentSwipeRight != nil || onContentSwipeLeft != nil {
                         SwipeDetectorView(
@@ -49,7 +43,14 @@ struct PageLayout<Header: View, Content: View>: View {
                         )
                     }
                 }
+                .overlay(alignment: .top) {
+                    Divider()
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
         }
+        .background { PanelContentSurface() }
+        .clipShape(RoundedRectangle(cornerRadius: SurfaceMetrics.panelCornerRadius))
         .padding(.horizontal, 12)
         .padding(.top, 8)
         .padding(.bottom, 12)
