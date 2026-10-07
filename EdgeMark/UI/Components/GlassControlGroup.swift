@@ -25,7 +25,7 @@ struct GlassControlGroup<Content: View>: View {
             GlassEffectContainer(spacing: spacing) {
                 content
             }
-            .buttonBorderShape(.roundedRectangle)
+            .buttonBorderShape(.capsule)
         } else {
             content
         }

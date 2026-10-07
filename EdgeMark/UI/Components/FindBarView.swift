@@ -159,7 +159,7 @@ struct FindBarView: View {
                 caseSensitivityLabel
             }
             .buttonStyle(.glass)
-            .buttonBorderShape(.roundedRectangle)
+            .buttonBorderShape(.capsule)
             .help(l10n["find.caseSensitive"])
             .accessibilityLabel(l10n["find.caseSensitive"])
         } else {

@@ -12,5 +12,5 @@ enum SurfaceMetrics {
     static let groupedControlWidth: CGFloat = 34
     static let groupedControlHorizontalInset: CGFloat = 3
     static let groupedControlVerticalInset: CGFloat = 4
-    static let groupedControlCornerRadius: CGFloat = 14
+    static let liquidGlassControlCornerRadius: CGFloat = 14
 }

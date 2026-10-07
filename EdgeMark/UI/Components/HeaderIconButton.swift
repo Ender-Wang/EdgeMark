@@ -40,7 +40,7 @@ struct AdaptiveIconButton: View {
                 iconLabel(isHovered: false)
             }
             .buttonStyle(.glass)
-            .buttonBorderShape(.roundedRectangle)
+            .buttonBorderShape(.capsule)
             .help(help)
             .accessibilityLabel(help)
         } else {
@@ -79,7 +79,7 @@ struct AdaptiveIconButton: View {
             )
             .background {
                 RoundedRectangle(
-                    cornerRadius: SurfaceMetrics.groupedControlCornerRadius,
+                    cornerRadius: SurfaceMetrics.liquidGlassControlCornerRadius,
                     style: .continuous,
                 )
                 .fill(.primary.opacity(isHovered ? 0.1 : 0))
@@ -140,7 +140,7 @@ struct AdaptiveIconMenu<MenuContent: View>: View {
             menu(isHovered: false, fillsGroupSegment: false)
                 .menuStyle(.button)
                 .buttonStyle(.glass)
-                .buttonBorderShape(.roundedRectangle)
+                .buttonBorderShape(.capsule)
                 .menuIndicator(.hidden)
                 .fixedSize()
                 .help(help)
@@ -173,7 +173,7 @@ struct AdaptiveIconMenu<MenuContent: View>: View {
                 .background {
                     if fillsGroupSegment {
                         RoundedRectangle(
-                            cornerRadius: SurfaceMetrics.groupedControlCornerRadius,
+                            cornerRadius: SurfaceMetrics.liquidGlassControlCornerRadius,
                             style: .continuous,
                         )
                         .fill(.primary.opacity(isHovered ? 0.1 : 0))

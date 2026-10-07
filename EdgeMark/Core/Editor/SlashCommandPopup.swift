@@ -86,7 +86,9 @@ final class SlashCommandPopup: NSObject, NSTableViewDataSource, NSTableViewDeleg
             frame: contentFrame,
             contentView: scrollView,
             style: .regular,
-            cornerRadius: 8,
+            cornerRadius: AppSettings.shared.usesLiquidGlass
+                ? SurfaceMetrics.liquidGlassControlCornerRadius
+                : 8,
             isInteractive: true,
         )
         panel.contentView = container
