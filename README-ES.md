@@ -59,6 +59,7 @@ xattr -cr /Applications/EdgeMark.app
 - ↔️ Ancho ajustable — arrastra el borde interno para redimensionar, guardado entre reinicios
 - 🪟 Estilo del panel — alterna entre fondos de panel translúcido y opaco
 - 🎨 Tono del panel — elige de una paleta curada (System, Graphite, Slate, Sand, Sage, Rose)
+- 🫧 Liquid Glass en macOS 26+ — activado de forma predeterminada, sigue la apariencia del sistema y puede desactivarse para usar el diseño Clásico; macOS 15.7 usa Clásico automáticamente
 
 ✍️ **Edición Markdown**
 
@@ -79,6 +80,7 @@ xattr -cr /Applications/EdgeMark.app
 🗂️ **Notas y Almacenamiento**
 
 - 📄 Archivos `.md` simples sin encabezados inyectados — ábrelos en cualquier editor, sincronízalos con cualquier servicio; los metadatos viven en un sidecar oculto `.edgemark/meta.json`
+- 🏷️ Encabezados contextuales — los nombres de notas y carpetas permanecen visibles arriba; pasa el puntero brevemente para ver la ruta completa y las fechas de la nota, o haz clic en el título para renombrarla
 - 📁 Organización por carpetas al estilo Finder — arrastra notas a carpetas, carpetas a otras carpetas o una nota sobre otra para agruparlas; los destinos no válidos se rechazan, los conflictos de nombres usan las alertas existentes y una pequeña vista previa sigue al cursor
 - 🎨 Colores de carpeta personalizados — tiñe el ícono de cualquier carpeta con un color de la paleta mediante clic derecho → Folder Color
 - 📂 Múltiples ubicaciones de almacenamiento — cambia entre carpetas de notas separadas (p. ej. trabajo y personal) desde la barra de menú (un cambio rápido que se revierte al reiniciar) o en Ajustes; opcionalmente elige una cada vez que se abre la app

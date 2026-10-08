@@ -59,6 +59,7 @@ xattr -cr /Applications/EdgeMark.app
 - ↔️ Adjustable width — drag the inner edge to resize, saved across restarts
 - 🪟 Panel style — toggle between Translucent and Opaque panel backgrounds
 - 🎨 Panel tint — pick from a curated palette (System, Graphite, Slate, Sand, Sage, Rose)
+- 🫧 Liquid Glass on macOS 26+ — enabled by default, follows the system appearance, and can be switched off for the Classic design; macOS 15.7 uses Classic automatically
 
 ✍️ **Markdown Editing**
 
@@ -79,6 +80,7 @@ xattr -cr /Applications/EdgeMark.app
 🗂️ **Notes & Storage**
 
 - 📄 Plain `.md` files with no injected headers — open in any editor, sync with any service; metadata lives in a hidden `.edgemark/meta.json` sidecar
+- 🏷️ Contextual headers — note and folder names stay visible at the top; hover briefly for the full path and note dates, or click a note title to rename it
 - 📁 Finder-style drag-and-drop organization — drag notes into folders, folders into folders, or notes onto notes to group them; invalid drops are rejected, name conflicts use the existing alerts, and a small preview follows the cursor
 - 🎨 Custom folder colors — tint any folder's icon with a palette color via right-click → Folder Color
 - 📂 Multiple storage locations — switch between separate note folders (e.g. work and personal) from the menu bar (a quick switch that reverts on restart) or Settings; optionally pick one each time the app opens

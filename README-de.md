@@ -59,6 +59,7 @@ xattr -cr /Applications/EdgeMark.app
 - ↔️ Anpassbare Breite — innere Kante ziehen zum Ändern der Größe, wird über Neustarts hinweg gespeichert
 - 🪟 Panel-Stil — Wechsel zwischen Transluzentem und Deckendem Panel-Hintergrund
 - 🎨 Panel-Tönung — wähle aus einer kuratierten Palette (System, Graphit, Schiefer, Sand, Salbei, Rose)
+- 🫧 Liquid Glass unter macOS 26+ — standardmäßig aktiviert, folgt der Systemdarstellung und kann für das klassische Design ausgeschaltet werden; macOS 15.7 verwendet automatisch die klassische Darstellung
 
 ✍️ **Markdown-Bearbeitung**
 
@@ -79,6 +80,7 @@ xattr -cr /Applications/EdgeMark.app
 🗂️ **Notizen & Speicher**
 
 - 📄 Einfache `.md`-Dateien ohne eingefügte Header — in jedem Editor öffnen, mit jedem Dienst synchronisieren; Metadaten leben in einer versteckten `.edgemark/meta.json`-Sidecar-Datei
+- 🏷️ Kontextbezogene Kopfzeilen — Notiz- und Ordnernamen bleiben oben sichtbar; kurzes Darüberfahren zeigt den vollständigen Pfad und Notizdaten, ein Klick auf einen Notiztitel startet das Umbenennen
 - 📁 Finder-artige Organisation per Drag-and-Drop — Notizen in Ordner, Ordner in andere Ordner oder eine Notiz auf eine andere ziehen, um sie zu gruppieren; ungültige Ablagen werden abgelehnt, Namenskonflikte verwenden die bestehenden Hinweise und eine kleine Vorschau folgt dem Cursor
 - 🎨 Eigene Ordnerfarben — jedes Ordner-Icon über Rechtsklick → Ordnerfarbe mit einer Palettenfarbe tönen
 - 📂 Mehrere Speicherorte — wechsle zwischen separaten Notizordnern (z. B. Arbeit und Privat) über die Menüleiste (ein schneller Wechsel, der beim Neustart zurückgesetzt wird) oder die Einstellungen; optional bei jedem App-Start einen wählen

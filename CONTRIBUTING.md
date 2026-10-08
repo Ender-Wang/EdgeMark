@@ -1,6 +1,6 @@
 # Contributing to EdgeMark
 
-**Requirements:** macOS 15.7+, Xcode 16.2+, [Homebrew](https://brew.sh)
+**Requirements:** macOS 15.7+, Xcode 26.2+, [Homebrew](https://brew.sh)
 
 ```bash
 brew install swiftformat
@@ -60,14 +60,14 @@ EdgeMark/
 │   │   │                                #   debounced save, image conversion layer,
 │   │   │                                #   slash command integration.
 │   │   ├── EditorConfigFactory.swift      # Shared MarkdownEditorConfiguration (insets,
-│   │   │                                #   highlight/strikethrough extensions, task-checkbox
-│   │   │                                #   symbols, image/syntax/latex services) for both editors
+│   │   │                                #   extensions, task-checkbox and thematic-break styles,
+│   │   │                                #   image/syntax/LaTeX services) for both editors
 │   │   ├── ReadOnlyMarkdownView.swift    # Non-editable preview (trash)
 │   │   ├── SlashCommandHandler.swift     # /h1, /todo, /code, /quote — NSTextView insertion
 │   │   ├── SlashCommandPopup.swift       # Floating autocomplete panel
 │   │   └── ImageDropHandler.swift        # Transparent NSView overlay for image drag-and-drop
 │   ├── Settings/
-│   │   ├── AppSettings.swift       #   @Observable — sort, panel style/tint, editor font/checkbox, spell-check, peek, tags, + appearance/updates/launch
+│   │   ├── AppSettings.swift       #   @Observable — sort, panel/Liquid Glass appearance, editor/spell policy, peek, tags, updates, launch
 │   │   ├── ShortcutSettings.swift  #   Global + 7 local keyboard shortcuts + conflict detection (posts .shortcutSettingsChanged)
 │   │   ├── PanelSettings.swift     #   Edge activation, dismissal, panel width/animation, swipe gestures (.panelPinStateChanged)
 │   │   └── StorageSettings.swift   #   Storage roots (#55) + active/ask-on-launch/session-override (.storageRootChanged)
@@ -103,31 +103,38 @@ EdgeMark/
 │   │   ├── NoteListView.swift      #   Nested folders + notes, search/sort, shared row menus and drag/drop wiring
 │   │   └── TrashView.swift         #   Trash browser with restore/delete/empty
 │   ├── Components/
+│   │   ├── AppKitGlassSurface.swift #  Availability-gated NSGlassEffectView with classic material fallback
 │   │   ├── ClipboardFeedbackView.swift # Transient confirmation after a successful path copy
-│   │   ├── ContentFooterBar.swift  #   Bottom toolbar (word count, copy format picker)
+│   │   ├── ContentFooterBar.swift  #   Bottom Sort and Settings action popovers
 │   │   ├── DateFormatting.swift    #   Shared date → display string helpers
 │   │   ├── EmptyStateView.swift    #   Icon + title + subtitle placeholder
 │   │   ├── FolderRenameCoordinator.swift # Folder inline-rename state and validation
 │   │   ├── FontPickerButton.swift  #   NSFontPanel button with live changeFont(_:) preview
-│   │   ├── HeaderIconButton.swift  #   Standard icon button with hover UX
+│   │   ├── GlassControlGroup.swift #   Liquid Glass control containers and grouped toolbar island
+│   │   ├── HeaderActionMenu.swift  #   Compact hover/click action popovers shared by headers and footer
+│   │   ├── HeaderIconButton.swift  #   Adaptive Liquid Glass / Classic icon buttons and menus
 │   │   ├── InlineRenameEditor.swift#   Inline text field with "Name taken" overlay
 │   │   ├── MarqueeSelection.swift  #   Shared click/range/marquee selection helpers
 │   │   ├── MoveConflictAlerts.swift#   View extension: note + folder move conflict dialogs
 │   │   ├── NSContextMenuModifier.swift  # AppKit row click handling, NSMenu context menus, drag source + Finder-style preview
 │   │   ├── NoteCardView.swift      #   Note list row (title, preview, date)
 │   │   ├── NoteDragDrop.swift      #   Internal payloads, synchronous target validation, drop feedback + dispatch
+│   │   ├── NoteHeaderTitle.swift   #   Persistent contextual title, direct rename, and quick path/date details
 │   │   ├── NoteListMenus.swift     #   Note/folder menus, recursive Move to tree, tags and batch actions
 │   │   ├── NoteRenameCoordinator.swift # Note inline-rename state and validation
-│   │   ├── PageLayout.swift        #   Navigation page chrome (header + content + footer)
+│   │   ├── PageLayout.swift        #   Separate header/body surfaces with shared geometry and spacing
+│   │   ├── PanelContentSurface.swift # Stable standard-material background for header and body sections
+│   │   ├── PanelRowBackground.swift # Joined selection and adaptive row-hover surfaces
 │   │   ├── PinButton.swift         #   Toggle for PanelSettings.isPanelPinned
 │   │   ├── ShortcutRecorderView.swift   # Key capture field for shortcut settings
+│   │   ├── SurfaceMetrics.swift     #   Shared panel and compact-control geometry
 │   │   ├── SwipeDetectorView.swift #   NSView wrapper for two-finger swipe gestures
 │   │   ├── TagDotsView.swift       #   Inline colored dots for note rows
 │   │   ├── TagFilterBar.swift      #   Search-context tag filter strip
 │   │   └── VisualEffectView.swift  #   NSVisualEffectView wrapper with optional tint sublayer
 │   └── Settings/
 │       ├── SettingsView.swift      #   Tab container (General, Behavior, Tags, Keyboard, About)
-│       ├── GeneralSettingsTab.swift #   Appearance (incl. panel style/tint), editor font, language, multi-root storage list
+│       ├── GeneralSettingsTab.swift #   Appearance (incl. gated Liquid Glass), editor font, language, multi-root storage list
 │       ├── BehaviorSettingsTab.swift#   Panel position, edge activation, auto-hide
 │       ├── TagsSettingsTab.swift   #   Rename color tag labels
 │       ├── KeyboardSettingsTab.swift#   Global + 7 customizable local shortcut recorders
@@ -155,7 +162,8 @@ EdgeMark/
 | **@Observable** | `NoteStore`, `AppSettings`, and `UpdateState` use the `@Observable` macro — views read properties directly, no `@Published` needed |
 | **MainActor by default** | `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`. All types are `@MainActor` unless explicitly opted out |
 | **AppKit + SwiftUI hybrid** | `NSHostingView` embeds SwiftUI inside a borderless `NSWindow`. Panel lifecycle managed by `SidePanelController` (AppKit), UI rendered by SwiftUI |
-| **Native editor (swift-markdown-engine)** | `MarkdownEditorView` wraps `NativeTextViewWrapper` (NSViewRepresentable from swift-markdown-engine). Text flows via `@Binding<String>`. Heading stripping, image display-layer conversion (`![](path)` ↔ `![[path]]`), and save debouncing are handled in `MarkdownEditorView`. Both editors build their `MarkdownEditorConfiguration` via `EditorConfigFactory.makeEdgeMarkConfig` (shared insets, highlight/strikethrough extensions, task-checkbox symbols from `AppSettings.taskCheckboxPreset`, and image/syntax/latex services) — so previews match the editor. Changing the checkbox preset rebuilds the view via `.id()` because the engine's `updateNSView` doesn't sync `taskCheckbox` live. |
+| **Adaptive appearance boundary** | `AppSettings.usesLiquidGlass` is the single effective switch: it returns the persisted opt-in only on macOS 26+, and always returns `false` on older systems. SwiftUI glass APIs are additionally enclosed in `#available(macOS 26.0, *)`; `AppKitGlassSurface` applies the same check before constructing `NSGlassEffectView`. Turning the option off—or running on macOS 15.7—selects the Classic branches. `PanelContentSurface` deliberately remains standard material in both modes, while `PageLayout` geometry and shared interactions are appearance-independent. |
+| **Native editor (swift-markdown-engine)** | `MarkdownEditorView` wraps `NativeTextViewWrapper` (NSViewRepresentable from swift-markdown-engine). Text flows via `@Binding<String>`. Heading stripping, image display-layer conversion (`![](path)` ↔ `![[path]]`), slash-command mutation tracking, and save debouncing are handled in `MarkdownEditorView`. Both editors build their `MarkdownEditorConfiguration` via `EditorConfigFactory.makeEdgeMarkConfig` (shared insets, highlight/strikethrough extensions, task-checkbox symbols, the `***` thematic-break presentation, and image/syntax/LaTeX services) so previews match the editor. Editor-only spell and Smart Quotes policy is applied by `MarkdownEditorView`; configuration values that the engine does not synchronize live participate in its rebuild identity. |
 | **Sidecar metadata** | Notes are plain `.md` files with no headers. Metadata (UUID, timestamps, tags, trash state) lives in `.edgemark/meta.json` keyed by UUID. `SidecarMigration` strips YAML on first launch and restores original file timestamps. `savedAt` (last EdgeMark write) is the external-change sentinel; `modifiedAt` only advances on real content edits. |
 | **Image asset co-location** | Images are stored in a hidden dot-prefix directory next to the note (`.NoteTitle/IMG-uuid.png`). Paths in `.md` files are standard `![](path)` — relative, readable in any external editor. The editor display layer converts them to `![[path]]` for rendering via `EmbeddedImageProvider`. `FileStorage` handles create/rename/move/trash/delete of asset dirs alongside their note. |
 | **Carbon hotkeys** | Global shortcut uses `RegisterEventHotKey` (Carbon API) since `NSEvent.addGlobalMonitorForEvents` can't intercept key events |
@@ -191,7 +199,7 @@ EdgeMark uses a custom JSON-based i18n system. Currently supported:
 4. (Optional but appreciated) Add a translated `README-<code>.md` (e.g. `README-ja.md`) modeled on `README.md`, and add your language to the switcher row at the top of every `README*.md` (`English · 简体中文 · हिन्दी · Español · Deutsch · …`), bolding the current language in each file.
 5. Submit a PR
 
-No code, project, or build-phase changes are needed. The Xcode project uses Xcode 16 file-system synchronized groups, so any `.json` you drop into the folder is auto-bundled. The language picker enumerates locale files at runtime, and `L10n` matches the system language by prefix — `pt-BR.json` will be selected for any `pt-*` user, and so on. Native-script display names (e.g. "English", "简体中文", "हिन्दी") come from `Locale.localizedString(forIdentifier:)`, so no language-label keys need to be maintained.
+No code, project, or build-phase changes are needed. The Xcode project uses file-system synchronized groups, so any `.json` you drop into the folder is auto-bundled. The language picker enumerates locale files at runtime, and `L10n` matches the system language by prefix — `pt-BR.json` will be selected for any `pt-*` user, and so on. Native-script display names (e.g. "English", "简体中文", "हिन्दी") come from `Locale.localizedString(forIdentifier:)`, so no language-label keys need to be maintained.
 
 ### What reviewers check on translation PRs
 
