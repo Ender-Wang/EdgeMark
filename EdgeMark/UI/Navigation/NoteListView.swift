@@ -216,7 +216,7 @@ struct NoteListView: View {
                 date: appSettings.folderDate(for: folder),
                 iconWidth: iconWidth,
                 color: folder.color,
-                isSelected: noteStore.isSelected(id),
+                selectionPosition: .resolve(id, in: visibleOrder, selection: noteStore.selection),
             )
             .rowClick(
                 onSingle: { mods in
@@ -266,7 +266,7 @@ struct NoteListView: View {
             NoteRowView(
                 note: note,
                 iconWidth: iconWidth,
-                isSelected: noteStore.isSelected(id),
+                selectionPosition: .resolve(id, in: visibleOrder, selection: noteStore.selection),
             )
             .rowClick(
                 onSingle: { mods in

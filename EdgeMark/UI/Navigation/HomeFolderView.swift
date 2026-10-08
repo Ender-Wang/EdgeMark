@@ -465,7 +465,7 @@ struct HomeFolderView: View {
                 date: appSettings.folderDate(for: folder),
                 iconWidth: iconWidth,
                 color: folder.color,
-                isSelected: noteStore.isSelected(id),
+                selectionPosition: .resolve(id, in: visibleOrder, selection: noteStore.selection),
             )
             .rowClick(
                 onSingle: { mods in
@@ -516,7 +516,7 @@ struct HomeFolderView: View {
             NoteRowView(
                 note: note,
                 iconWidth: iconWidth,
-                isSelected: noteStore.isSelected(id),
+                selectionPosition: .resolve(id, in: visibleOrder, selection: noteStore.selection),
             )
             .rowClick(
                 onSingle: { mods in
@@ -865,7 +865,7 @@ struct FolderRowView: View {
     var date: Date?
     let iconWidth: CGFloat
     var color: TagColor?
-    var isSelected: Bool = false
+    var selectionPosition: RowSelectionPosition = .none
 
     @State private var isHovered = false
 
@@ -900,7 +900,7 @@ struct FolderRowView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 10)
         .background {
-            PanelRowBackground(isHovered: isHovered, isSelected: isSelected)
+            PanelRowBackground(isHovered: isHovered, selectionPosition: selectionPosition)
         }
         .padding(.horizontal, 8)
         .contentShape(Rectangle())
@@ -945,7 +945,7 @@ private struct FolderCountBadge: View {
 struct NoteRowView: View {
     let note: Note
     let iconWidth: CGFloat
-    var isSelected: Bool = false
+    var selectionPosition: RowSelectionPosition = .none
 
     @State private var isHovered = false
 
@@ -983,7 +983,7 @@ struct NoteRowView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 10)
         .background {
-            PanelRowBackground(isHovered: isHovered, isSelected: isSelected)
+            PanelRowBackground(isHovered: isHovered, selectionPosition: selectionPosition)
         }
         .padding(.horizontal, 8)
         .contentShape(Rectangle())
