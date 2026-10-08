@@ -133,6 +133,15 @@ struct MarkdownEditorView: View {
                     // onChange converts it back to standard ![](path) markdown before saving.
                     return (try? FileStorage.saveImage(data: data, ext: ext, forNote: note))?.embedMarkdown
                 },
+                onTextMutation: { mutation in
+                    guard let textView = NSApp.keyWindow?.firstResponder as? NSTextView,
+                          !textView.isFieldEditor
+                    else {
+                        slashHandler.dismiss()
+                        return
+                    }
+                    slashHandler.textDidMutate(mutation, in: textView)
+                },
                 onSpellCheckingPolicyChanged: { policy in
                     // Persist context-menu spelling/grammar/autocorrect/quote toggles back to settings
                     // so they survive note switches and app restarts.
@@ -153,8 +162,7 @@ struct MarkdownEditorView: View {
             // full config re-application picks up the new SF Symbols.
             .id(appSettings.taskCheckboxPreset)
             .onChange(of: text) { _, newText in
-                let cursorPos = (NSApp.keyWindow?.firstResponder as? NSTextView)?.selectedRange().location ?? 0
-                slashHandler.contentDidChange(content: newText, cursorPos: cursorPos)
+                slashHandler.contentDidSynchronize(newText)
                 let heading = hiddenHeadingLine
                 let noteIDSnapshot = stableNoteID
                 saveDebouncer.call { [onContentChanged] in
@@ -166,6 +174,7 @@ struct MarkdownEditorView: View {
             }
             .onChange(of: pendingReload) { _, newContent in
                 guard let newContent else { return }
+                slashHandler.dismiss()
                 saveDebouncer.cancel()
                 let (heading, body) = Self.splitHeading(newContent)
                 hiddenHeadingLine = heading
@@ -178,6 +187,7 @@ struct MarkdownEditorView: View {
                 // heading snapshot in sync so a pending debounce or onDisappear flush
                 // cannot write the previous title back into the note.
                 guard noteID == stableNoteID else { return }
+                slashHandler.dismiss()
                 saveDebouncer.cancel()
                 let (heading, body) = Self.splitHeading(initialContent)
                 hiddenHeadingLine = heading

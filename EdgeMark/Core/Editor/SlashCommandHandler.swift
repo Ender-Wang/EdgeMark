@@ -1,4 +1,5 @@
 import AppKit
+import MarkdownEngine
 
 struct SlashCommand: Identifiable {
     let id: String
@@ -14,7 +15,9 @@ final class SlashCommandHandler {
     private var popup: SlashCommandPopup?
     private var triggerLocation: Int?
     private var keyMonitor: Any?
-    /// Most-recently-known cursor document position (updated every content change).
+    private weak var textView: NSTextView?
+    private var lastObservedContent: String?
+    /// Most-recently-known cursor document position in UTF-16 units.
     private var lastCursorPos: Int = 0
 
     var isActive: Bool {
@@ -69,28 +72,56 @@ final class SlashCommandHandler {
         ]
     }
 
-    // MARK: - Content Change (called from MarkdownEditorView.onChange)
+    // MARK: - Text Mutation
 
-    func contentDidChange(content: String, cursorPos: Int) {
-        lastCursorPos = cursorPos
-
-        guard let triggerLoc = triggerLocation else {
-            checkForSlashTrigger(content: content)
-            return
-        }
-
-        if lastCursorPos <= triggerLoc {
+    /// Tracks a completed native edit using the same UTF-16 coordinates as NSTextView.
+    func textDidMutate(_ mutation: MarkdownTextMutation, in textView: NSTextView) {
+        let currentContent = textView.string
+        lastObservedContent = currentContent
+        let content = currentContent as NSString
+        let selection = textView.selectedRange()
+        guard selection.length == 0, selection.location <= content.length else {
             dismiss()
             return
         }
 
-        let start = content.index(content.startIndex, offsetBy: min(triggerLoc + 1, content.count))
-        let end = content.index(content.startIndex, offsetBy: min(lastCursorPos, content.count))
-        if start < end {
-            updateFilter(String(content[start ..< end]).lowercased())
-        } else {
-            popup?.updateCommands(Self.commands)
+        self.textView = textView
+        let previousCursorPos = lastCursorPos
+        lastCursorPos = selection.location
+
+        guard let triggerLoc = triggerLocation else {
+            checkForSlashTrigger(after: mutation, content: content)
+            return
         }
+
+        // An active query occupies the UTF-16 range after the slash through the
+        // previous caret. Edits before the slash or outside that query invalidate
+        // the session rather than trying to shift a stale replacement range.
+        let queryStart = triggerLoc + 1
+        guard previousCursorPos >= queryStart,
+              mutation.range.location >= queryStart,
+              NSMaxRange(mutation.range) <= previousCursorPos,
+              mutation.range.location + mutation.replacement.utf16.count == lastCursorPos,
+              lastCursorPos > triggerLoc,
+              lastCursorPos <= content.length
+        else {
+            dismiss()
+            return
+        }
+
+        let queryRange = NSRange(location: queryStart, length: lastCursorPos - queryStart)
+        if queryRange.length == 0 {
+            popup?.updateCommands(Self.commands)
+        } else {
+            updateFilter(content.substring(with: queryRange).lowercased())
+        }
+    }
+
+    /// Dismisses an active session when the binding changes without a matching
+    /// exact native mutation, such as an IME batch or programmatic replacement.
+    func contentDidSynchronize(_ content: String) {
+        guard isActive, content != lastObservedContent else { return }
+        dismiss()
     }
 
     // MARK: - Keyboard Forwarding
@@ -116,27 +147,36 @@ final class SlashCommandHandler {
         popup?.close()
         popup = nil
         triggerLocation = nil
+        textView = nil
+        lastObservedContent = nil
     }
 
     // MARK: - Private
 
-    private func checkForSlashTrigger(content: String) {
+    private func checkForSlashTrigger(after mutation: MarkdownTextMutation, content: NSString) {
         let pos = lastCursorPos
-        guard pos > 0, pos <= content.count else { return }
-        let idx = content.index(content.startIndex, offsetBy: pos - 1)
-        guard content[idx] == "/" else { return }
+        let replacementLength = mutation.replacement.utf16.count
+        guard pos > 0,
+              pos <= content.length,
+              mutation.range.location + replacementLength == pos,
+              content.character(at: pos - 1) == 0x2F
+        else { return }
+
         if pos > 1 {
-            let prevIdx = content.index(before: idx)
-            let prev = content[prevIdx]
-            guard prev == "\n" || prev == " " || prev == "\t" else { return }
+            switch content.character(at: pos - 2) {
+            case 0x0A, 0x20, 0x09: break // newline, space, tab
+            default: return
+            }
         }
         triggerLocation = pos - 1
-        showPopup()
+        guard let textView else {
+            triggerLocation = nil
+            return
+        }
+        showPopup(in: textView)
     }
 
-    private func showPopup() {
-        guard let textView = NSApp.keyWindow?.firstResponder as? NSTextView else { return }
-
+    private func showPopup(in textView: NSTextView) {
         // firstRect(forCharacterRange:) returns a screen-coordinate rect for the
         // character at the cursor — use the bottom-left corner as the popup origin.
         var actualRange = NSRange()
@@ -179,12 +219,11 @@ final class SlashCommandHandler {
     // MARK: - Execution
 
     private func executeCommand(_ command: SlashCommand) {
-        guard let triggerLoc = triggerLocation else { return }
+        guard let triggerLoc = triggerLocation, let textView else { return }
         let to = lastCursorPos
-        // Dismiss before inserting — clears triggerLocation so the resulting
-        // contentDidChange doesn't accidentally re-trigger slash detection.
+        // Dismiss before inserting so the resulting mutation cannot extend the
+        // completed slash-command session.
         dismiss()
-        guard let textView = NSApp.keyWindow?.firstResponder as? NSTextView else { return }
         let replaceRange = NSRange(location: triggerLoc, length: to - triggerLoc)
         textView.insertText(command.insertion, replacementRange: replaceRange)
         if let offset = command.cursorOffset {
