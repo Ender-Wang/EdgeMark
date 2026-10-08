@@ -103,8 +103,8 @@
 
   "editor.copyNote": "Copiar nota",
   "editor.deleteNote": "Eliminar nota",
-  "editor.modifiedAt": "Modificada el {0}",
-  "editor.createdAt": "Creada el {0}",
+  "editor.modifiedAt": "Modificada el {0} a las {1}",
+  "editor.createdAt": "Creada el {0} a las {1}",
   "editor.readOnly": "(solo lectura)",
   "editor.restoreNote": "Restaurar nota",
 

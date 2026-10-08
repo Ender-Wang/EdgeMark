@@ -97,8 +97,8 @@ struct EditorScreen: View {
                     NoteHeaderTitle(
                         title: note.title.isEmpty ? l10n["common.untitled"] : note.title,
                         path: note.displayPath,
-                        modifiedAt: note.modifiedAt.homeDisplayFormat,
-                        createdAt: note.createdAt.homeDisplayFormat,
+                        modifiedAt: note.modifiedAt,
+                        createdAt: note.createdAt,
                         text: Binding(
                             get: {
                                 noteRename.renamingNoteID == note.id
@@ -154,13 +154,21 @@ struct EditorScreen: View {
                         DateLabelView(
                             systemName: "clock",
                             date: note.modifiedAt.homeDisplayFormat,
-                            tooltip: L10n.shared.t("editor.modifiedAt", note.modifiedAt.homeDisplayFormat),
+                            tooltip: L10n.shared.t(
+                                "editor.modifiedAt",
+                                note.modifiedAt.homeDateFormat,
+                                note.modifiedAt.homeTimeFormat,
+                            ),
                         )
 
                         DateLabelView(
                             systemName: "calendar",
                             date: note.createdAt.homeDisplayFormat,
-                            tooltip: L10n.shared.t("editor.createdAt", note.createdAt.homeDisplayFormat),
+                            tooltip: L10n.shared.t(
+                                "editor.createdAt",
+                                note.createdAt.homeDateFormat,
+                                note.createdAt.homeTimeFormat,
+                            ),
                         )
                     }
                 }

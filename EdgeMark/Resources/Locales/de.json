@@ -103,8 +103,8 @@
 
   "editor.copyNote": "Notiz kopieren",
   "editor.deleteNote": "Notiz löschen",
-  "editor.modifiedAt": "Geändert am {0}",
-  "editor.createdAt": "Erstellt am {0}",
+  "editor.modifiedAt": "Geändert am {0} um {1}",
+  "editor.createdAt": "Erstellt am {0} um {1}",
   "editor.readOnly": "(schreibgeschützt)",
   "editor.restoreNote": "Notiz wiederherstellen",
 

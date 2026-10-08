@@ -16,4 +16,29 @@ extension Date {
             .minute(.twoDigits),
         )
     }
+
+    var homeDateFormat: String {
+        formatted(
+            Date.FormatStyle(
+                date: .omitted,
+                time: .omitted,
+                locale: Locale(identifier: L10n.shared.resolvedLocaleIdentifier),
+            )
+            .year(.defaultDigits)
+            .month(.abbreviated)
+            .day(.twoDigits),
+        )
+    }
+
+    var homeTimeFormat: String {
+        formatted(
+            Date.FormatStyle(
+                date: .omitted,
+                time: .omitted,
+                locale: Locale(identifier: L10n.shared.resolvedLocaleIdentifier),
+            )
+            .hour(.twoDigits(amPM: .abbreviated))
+            .minute(.twoDigits),
+        )
+    }
 }

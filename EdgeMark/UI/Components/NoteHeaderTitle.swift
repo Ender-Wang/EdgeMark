@@ -7,8 +7,8 @@ struct NoteHeaderTitle: View {
 
     let title: String
     let path: String
-    let modifiedAt: String
-    let createdAt: String
+    let modifiedAt: Date
+    let createdAt: Date
     @Binding var text: String
     var isFocused: FocusState<Bool>.Binding
     let isEditing: Bool
@@ -56,8 +56,8 @@ struct NoteHeaderTitle: View {
         guard !appSettings.showNoteDatesInHeader else { return path }
         return [
             path,
-            L10n.shared.t("editor.modifiedAt", modifiedAt),
-            L10n.shared.t("editor.createdAt", createdAt),
+            L10n.shared.t("editor.modifiedAt", modifiedAt.homeDateFormat, modifiedAt.homeTimeFormat),
+            L10n.shared.t("editor.createdAt", createdAt.homeDateFormat, createdAt.homeTimeFormat),
         ].joined(separator: "\n")
     }
 }

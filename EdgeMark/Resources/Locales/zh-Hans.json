@@ -103,8 +103,8 @@
 
   "editor.copyNote": "复制笔记",
   "editor.deleteNote": "删除笔记",
-  "editor.modifiedAt": "修改于 {0}",
-  "editor.createdAt": "创建于 {0}",
+  "editor.modifiedAt": "修改于 {0} {1}",
+  "editor.createdAt": "创建于 {0} {1}",
   "editor.readOnly": "（只读）",
   "editor.restoreNote": "恢复笔记",
 

@@ -103,8 +103,8 @@
 
   "editor.copyNote": "नोट कॉपी करें",
   "editor.deleteNote": "नोट हटाएं",
-  "editor.modifiedAt": "{0} पर बदला गया",
-  "editor.createdAt": "{0} पर बनाया गया",
+  "editor.modifiedAt": "{0} को {1} बजे बदला गया",
+  "editor.createdAt": "{0} को {1} बजे बनाया गया",
   "editor.readOnly": "(केवल पढ़ने के लिए)",
   "editor.restoreNote": "नोट वापस लाएं",
 
