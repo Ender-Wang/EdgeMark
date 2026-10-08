@@ -91,7 +91,7 @@ EdgeMark/
 │   │   ├── UpdateState.swift       #   @Observable — update UI state machine
 │   │   └── ChecksumVerifier.swift  #   SHA256 verification via CryptoKit
 │   └── Window/
-│       ├── SidePanelController.swift     # NSWindowController — show/hide/animate
+│       ├── SidePanelController.swift     # NSWindowController — show/hide/animate + appearance-aware shell geometry
 │       ├── EdgeDetector.swift            # Global mouse monitor → edge activation
 │       ├── SettingsWindowController.swift # Settings window lifecycle
 │       └── UpdateWindowController.swift  # Update window lifecycle
@@ -108,6 +108,7 @@ EdgeMark/
 │   │   ├── ContentFooterBar.swift  #   Bottom Sort and Settings action popovers
 │   │   ├── DateFormatting.swift    #   Shared date → display string helpers
 │   │   ├── EmptyStateView.swift    #   Icon + title + subtitle placeholder
+│   │   ├── FindBarView.swift       #   Adaptive in-editor find controls
 │   │   ├── FolderRenameCoordinator.swift # Folder inline-rename state and validation
 │   │   ├── FontPickerButton.swift  #   NSFontPanel button with live changeFont(_:) preview
 │   │   ├── GlassControlGroup.swift #   Liquid Glass control containers and grouped toolbar island
@@ -125,6 +126,11 @@ EdgeMark/
 │   │   ├── PageLayout.swift        #   Separate header/body surfaces with shared geometry and spacing
 │   │   ├── PanelContentSurface.swift # Stable standard-material background for header and body sections
 │   │   ├── PanelRowBackground.swift # Joined selection and adaptive row-hover surfaces
+│   │   ├── Peek/
+│   │   │   ├── HoverableRow.swift       # Row tracking bridge that schedules hover previews
+│   │   │   ├── PeekContentView.swift    # Markdown note and folder preview content
+│   │   │   ├── PeekCoordinator.swift    # Preview timing, identity, and lifecycle coordination
+│   │   │   └── PeekWindowController.swift # Floating preview-window ownership and placement
 │   │   ├── PinButton.swift         #   Toggle for PanelSettings.isPanelPinned
 │   │   ├── ShortcutRecorderView.swift   # Key capture field for shortcut settings
 │   │   ├── SurfaceMetrics.swift     #   Shared panel and compact-control geometry
@@ -143,7 +149,7 @@ EdgeMark/
 │
 ├── Shared/Utils/
 │   ├── L10n.swift                  #   JSON-based i18n runtime
-│   ├── Log.swift                   #   OSLog — 6 categories
+│   ├── Log.swift                   #   OSLog — 7 categories
 │   └── Debouncer.swift             #   Generic debounce utility
 │
 └── Resources/
@@ -162,16 +168,16 @@ EdgeMark/
 | **@Observable** | `NoteStore`, `AppSettings`, and `UpdateState` use the `@Observable` macro — views read properties directly, no `@Published` needed |
 | **MainActor by default** | `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`. All types are `@MainActor` unless explicitly opted out |
 | **AppKit + SwiftUI hybrid** | `NSHostingView` embeds SwiftUI inside a borderless `NSWindow`. Panel lifecycle managed by `SidePanelController` (AppKit), UI rendered by SwiftUI |
-| **Adaptive appearance boundary** | `AppSettings.usesLiquidGlass` is the single effective switch: it returns the persisted opt-in only on macOS 26+, and always returns `false` on older systems. SwiftUI glass APIs are additionally enclosed in `#available(macOS 26.0, *)`; `AppKitGlassSurface` applies the same check before constructing `NSGlassEffectView`. Turning the option off—or running on macOS 15.7—selects the Classic branches. `PanelContentSurface` deliberately remains standard material in both modes, while `PageLayout` geometry and shared interactions are appearance-independent. |
+| **Adaptive appearance boundary** | `AppSettings.usesLiquidGlass` is the single effective switch: it returns the persisted opt-in only on macOS 26+, and always returns `false` on older systems. SwiftUI glass APIs are additionally enclosed in `#available(macOS 26.0, *)`; `AppKitGlassSurface` applies the same check before constructing `NSGlassEffectView`. Turning the option off—or running on macOS 15.7—selects the Classic branches. `PanelContentSurface` deliberately remains standard material in both modes, while `PageLayout` geometry and shared interactions are appearance-independent. The outer panel shell is appearance-aware: `SidePanelController` applies the shared 16-point Liquid Glass window radius or the established 10-point Classic radius and updates it when the setting changes. |
 | **Native editor (swift-markdown-engine)** | `MarkdownEditorView` wraps `NativeTextViewWrapper` (NSViewRepresentable from swift-markdown-engine). Text flows via `@Binding<String>`. Heading stripping, image display-layer conversion (`![](path)` ↔ `![[path]]`), slash-command mutation tracking, and save debouncing are handled in `MarkdownEditorView`. Both editors build their `MarkdownEditorConfiguration` via `EditorConfigFactory.makeEdgeMarkConfig` (shared insets, highlight/strikethrough extensions, task-checkbox symbols, the `***` thematic-break presentation, and image/syntax/LaTeX services) so previews match the editor. Editor-only spell and Smart Quotes policy is applied by `MarkdownEditorView`; configuration values that the engine does not synchronize live participate in its rebuild identity. |
-| **Sidecar metadata** | Notes are plain `.md` files with no headers. Metadata (UUID, timestamps, tags, trash state) lives in `.edgemark/meta.json` keyed by UUID. `SidecarMigration` strips YAML on first launch and restores original file timestamps. `savedAt` (last EdgeMark write) is the external-change sentinel; `modifiedAt` only advances on real content edits. |
-| **Image asset co-location** | Images are stored in a hidden dot-prefix directory next to the note (`.NoteTitle/IMG-uuid.png`). Paths in `.md` files are standard `![](path)` — relative, readable in any external editor. The editor display layer converts them to `![[path]]` for rendering via `EmbeddedImageProvider`. `FileStorage` handles create/rename/move/trash/delete of asset dirs alongside their note. |
+| **Sidecar metadata** | Notes are plain `.md` files with no headers. Metadata (UUID, timestamps, tags, trash state) lives in `.edgemark/meta.json` keyed by UUID. `SidecarMigration` strips YAML on first launch and restores original file timestamps. `savedAt` (last EdgeMark write) is the external-change sentinel; `modifiedAt` only advances on real content edits. Completed rename and tag actions persist immediately through `NoteStore.persistDirtyNote`; filesystem or sidecar failures retain dirty state so lifecycle saves can retry instead of silently losing metadata on restart. |
+| **Image asset co-location** | Most images are stored in a hidden dot-prefix directory next to the note (`.NoteTitle/IMG-uuid.png`). Root notes whose stems case-insensitively collide with the app-owned `.edgemark` or `.trash` namespaces use `.edgemark/assets/<note UUID>/` instead; referenced legacy images are migrated and their Markdown paths rewritten without deleting the reserved directory. Paths in `.md` files remain standard relative `![](path)` references readable in external editors. The editor display layer converts them to `![[path]]` for rendering via `EmbeddedImageProvider`. `FileStorage` handles create/rename/move/trash/delete of asset directories alongside their notes. |
 | **Carbon hotkeys** | Global shortcut uses `RegisterEventHotKey` (Carbon API) since `NSEvent.addGlobalMonitorForEvents` can't intercept key events |
 | **Multiple storage locations** | `StorageSettings` owns a list of `StorageRoot`s + an `activeRootID` (persistent default) + an in-memory `sessionRootOverride` (menu-bar temporary switch, reverts on restart). `resolvedStorageDirectory` resolves session-override → active root → legacy → default. All storage (`FileStorage.rootURL`, `SidecarStore`, `.trash/`) reads the active root live, so flipping it re-points the whole layer — but in-memory `NoteStore`/`SidecarStore` must be reloaded (`AppDelegate.switchRoot(to:temporary:dismissPicker:)` is the single path: save dirty → set override/activeID → `SidecarStore.load` → `noteStore.loadFromDisk`, wrapped in `withAnimation` for a row crossfade). Per-root isolation: each root has its own sidecar, trash, and external-edit scope. |
 | **Local shortcut monitor** | `SidePanelController` installs an `NSEvent.addLocalMonitorForEvents` that checks all seven configurable local shortcuts at event time. Settings changes take effect immediately without re-registration. |
 | **Path clipboard export** | `NoteStore.copySelectedPaths()` resolves live note and folder selections through `FileStorage`, preserves visible row order, writes one absolute path per line, and leaves the clipboard unchanged when no live selection exists. `ContentView` observes the transient result and renders `ClipboardFeedbackView`; feedback is count-aware and auto-dismisses. |
 | **JSON i18n** | `L10n` loads locale JSON at runtime. Access: `l10n["key"]` or `l10n.t("key", arg1, arg2)` for interpolation |
-| **OSLog diagnostics** | 6 categorized loggers (app, storage, window, shortcuts, navigation, updates). View in Console.app with `subsystem:io.github.ender-wang.EdgeMark` |
+| **OSLog diagnostics** | 7 categorized loggers (app, storage, window, shortcuts, navigation, updates, peek). View in Console.app with `subsystem:io.github.ender-wang.EdgeMark` |
 | **Internal drag and drop** | Normal note/folder rows use an AppKit dragging source and destination so click timing, drag thresholds, and target acceptance stay synchronous. Payloads use stable identities (note UUID or complete relative folder path); `NoteStore.canDrop` is the validation boundary and `moveDraggedItem` is the dispatch boundary. Valid targets advertise `.move`, invalid or malformed drops are rejected, and the drag source renders a Finder-style icon-and-label preview. Moves reuse `FileStorage`, selection/navigation remapping, and the existing conflict queues instead of maintaining a parallel path. |
 | **Move destination trees** | `NoteListMenus` recursively renders the complete folder hierarchy. A note's current folder remains visible as a navigation branch so its descendants are reachable; choosing the current folder's checked **Move here** item is an intentional no-op, with `NoteStore.moveNote` providing the same guard. |
 | **Move conflict queue** | Context-menu moves and drag/drop share filesystem-aware pre-flight helpers (`noteFilenameWouldCollide`, `folderWouldCollide`) that check both in-memory state and the destination on disk. Conflicts are queued, not singletons — `MoveConflictAlerts` reads the queue head and surfaces batch buttons (Keep Both All / Replace All / Skip / Cancel) when more than one is pending. Resolver branches handle orphan files / directories at the destination. |
