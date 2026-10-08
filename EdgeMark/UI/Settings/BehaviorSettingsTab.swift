@@ -37,19 +37,21 @@ struct BehaviorSettingsTab: View {
     var body: some View {
         Form {
             Section {
-                Picker(l10n["settings.animation.style"], selection: $animationStyle) {
-                    Text(l10n["settings.animation.slide"]).tag(AnimationStyle.slide)
-                    Text(l10n["settings.animation.fade"]).tag(AnimationStyle.fade)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .onChange(of: animationStyle) { _, v in
-                    PanelSettings.shared.animationStyle = v
-                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Picker(l10n["settings.animation.style"], selection: $animationStyle) {
+                        Text(l10n["settings.animation.slide"]).tag(AnimationStyle.slide)
+                        Text(l10n["settings.animation.fade"]).tag(AnimationStyle.fade)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .onChange(of: animationStyle) { _, v in
+                        PanelSettings.shared.animationStyle = v
+                    }
 
-                Text(l10n["settings.animation.note"])
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    Text(l10n["settings.animation.note"])
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             } header: {
                 Label(l10n["settings.animation.section"], systemImage: "sparkles")
             }
@@ -69,23 +71,27 @@ struct BehaviorSettingsTab: View {
             }
 
             Section {
-                Toggle(l10n["settings.gesture.enableSwipe"], isOn: $swipeToNavigateEnabled)
-                    .onChange(of: swipeToNavigateEnabled) { _, v in
-                        PanelSettings.shared.swipeToNavigateEnabled = v
-                    }
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(l10n["settings.gesture.enableSwipe"], isOn: $swipeToNavigateEnabled)
+                        .onChange(of: swipeToNavigateEnabled) { _, v in
+                            PanelSettings.shared.swipeToNavigateEnabled = v
+                        }
 
-                Text(l10n["settings.desc.swipeBack"])
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    Text(l10n["settings.desc.swipeBack"])
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
 
-                Toggle(l10n["settings.gesture.enableEditorSwipe"], isOn: $editorSwipeToNavigateEnabled)
-                    .onChange(of: editorSwipeToNavigateEnabled) { _, v in
-                        PanelSettings.shared.editorSwipeToNavigateEnabled = v
-                    }
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(l10n["settings.gesture.enableEditorSwipe"], isOn: $editorSwipeToNavigateEnabled)
+                        .onChange(of: editorSwipeToNavigateEnabled) { _, v in
+                            PanelSettings.shared.editorSwipeToNavigateEnabled = v
+                        }
 
-                Text(l10n["settings.desc.editorSwipe"])
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    Text(l10n["settings.desc.editorSwipe"])
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
 
                 if swipeToNavigateEnabled || editorSwipeToNavigateEnabled {
                     HStack {
@@ -132,14 +138,22 @@ struct BehaviorSettingsTab: View {
             }
 
             Section {
-                Picker(l10n["settings.dismissal.mode"], selection: $dismissalMode) {
-                    Text(l10n["settings.dismissal.auto"]).tag(DismissalMode.auto)
-                    Text(l10n["settings.dismissal.toggle"]).tag(DismissalMode.toggle)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .onChange(of: dismissalMode) { _, v in
-                    PanelSettings.shared.dismissalMode = v
+                VStack(alignment: .leading, spacing: 4) {
+                    Picker(l10n["settings.dismissal.mode"], selection: $dismissalMode) {
+                        Text(l10n["settings.dismissal.auto"]).tag(DismissalMode.auto)
+                        Text(l10n["settings.dismissal.toggle"]).tag(DismissalMode.toggle)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .onChange(of: dismissalMode) { _, v in
+                        PanelSettings.shared.dismissalMode = v
+                    }
+
+                    if dismissalMode == .toggle {
+                        Text(l10n["settings.dismissal.toggleHint"])
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 if dismissalMode == .auto {
@@ -166,10 +180,6 @@ struct BehaviorSettingsTab: View {
                             PanelSettings.shared.hideOnClickOutside = v
                         }
                 } else {
-                    Text(l10n["settings.dismissal.toggleHint"])
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
                     HStack {
                         Text(l10n["settings.dismissal.toggleDelay"])
                         Slider(value: $toggleDismissDelay, in: 0.05 ... 2.0, step: 0.05)

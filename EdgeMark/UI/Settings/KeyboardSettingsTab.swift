@@ -30,17 +30,20 @@ struct KeyboardSettingsTab: View {
     var body: some View {
         Form {
             Section {
-                Text(l10n["settings.keyboard.globalDescription"])
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                HStack {
-                    Text(l10n["settings.keyboard.togglePanel"])
-                    Spacer()
-                    ShortcutRecorderView(shortcut: $toggleShortcut)
-                        .frame(width: 180, height: 32)
-                }
-                .onChange(of: toggleShortcut) { _, v in
-                    ShortcutSettings.shared.togglePanelShortcut = v
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(l10n["settings.keyboard.togglePanel"])
+                        Spacer()
+                        ShortcutRecorderView(shortcut: $toggleShortcut)
+                            .frame(width: 180, height: 32)
+                    }
+                    .onChange(of: toggleShortcut) { _, v in
+                        ShortcutSettings.shared.togglePanelShortcut = v
+                    }
+
+                    Text(l10n["settings.keyboard.globalDescription"])
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             } header: {
                 Label(l10n["settings.keyboard.globalShortcuts"], systemImage: "globe")
