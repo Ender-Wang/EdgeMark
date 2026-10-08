@@ -153,6 +153,7 @@
   "settings.editor.spellChecking": "Check spelling",
   "settings.editor.grammarChecking": "Check grammar",
   "settings.editor.autocorrect": "Auto-correct spelling",
+  "settings.editor.smartQuotes": "Smart quotes",
   "settings.editor.hoverPeek": "Hover to preview",
   "settings.editor.hoverDelay": "Hover delay",
   "settings.editor.spacePreview": "Space to preview",

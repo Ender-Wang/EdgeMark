@@ -116,6 +116,7 @@ struct MarkdownEditorView: View {
             continuousSpellChecking: appSettings.spellCheckingEnabled,
             grammarChecking: appSettings.grammarCheckingEnabled,
             automaticSpellingCorrection: appSettings.automaticSpellingCorrectionEnabled,
+            automaticQuoteSubstitution: appSettings.automaticQuoteSubstitutionEnabled,
         )
 
         return ZStack(alignment: .bottom) {
@@ -133,11 +134,12 @@ struct MarkdownEditorView: View {
                     return (try? FileStorage.saveImage(data: data, ext: ext, forNote: note))?.embedMarkdown
                 },
                 onSpellCheckingPolicyChanged: { policy in
-                    // Persist context-menu spelling/grammar/autocorrect toggles back to settings
+                    // Persist context-menu spelling/grammar/autocorrect/quote toggles back to settings
                     // so they survive note switches and app restarts.
                     AppSettings.shared.spellCheckingEnabled = policy.continuousSpellChecking
                     AppSettings.shared.grammarCheckingEnabled = policy.grammarChecking
                     AppSettings.shared.automaticSpellingCorrectionEnabled = policy.automaticSpellingCorrection
+                    AppSettings.shared.automaticQuoteSubstitutionEnabled = policy.automaticQuoteSubstitution
                 },
                 onPersistScrollOffset: { docId, offset in
                     Self.scrollOffsets[docId] = offset

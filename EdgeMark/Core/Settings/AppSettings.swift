@@ -226,6 +226,12 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(automaticSpellingCorrectionEnabled, forKey: "automaticSpellingCorrectionEnabled") }
     }
 
+    /// Mirrors `SpellCheckingPolicy.automaticQuoteSubstitution`.
+    /// Default off — Markdown and LaTeX source should retain straight quotes.
+    var automaticQuoteSubstitutionEnabled: Bool = false {
+        didSet { UserDefaults.standard.set(automaticQuoteSubstitutionEnabled, forKey: "automaticQuoteSubstitutionEnabled") }
+    }
+
     // MARK: - Hover-to-peek
 
     /// Discrete dwell options for hover-to-preview. Space-to-preview is
@@ -350,6 +356,9 @@ final class AppSettings {
         }
         if let raw = UserDefaults.standard.object(forKey: "automaticSpellingCorrectionEnabled") as? Bool {
             automaticSpellingCorrectionEnabled = raw
+        }
+        if let raw = UserDefaults.standard.object(forKey: "automaticQuoteSubstitutionEnabled") as? Bool {
+            automaticQuoteSubstitutionEnabled = raw
         }
         if let raw = UserDefaults.standard.object(forKey: "hoverPeekEnabled") as? Bool {
             hoverPeekEnabled = raw

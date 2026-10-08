@@ -153,6 +153,7 @@
   "settings.editor.spellChecking": "Rechtschreibung prüfen",
   "settings.editor.grammarChecking": "Grammatik prüfen",
   "settings.editor.autocorrect": "Rechtschreibung auto-korrigieren",
+  "settings.editor.smartQuotes": "Intelligente Anführungszeichen",
   "settings.editor.hoverPeek": "Drüberfahren zum Vorschauen",
   "settings.editor.hoverDelay": "Hover-Verzögerung",
   "settings.editor.spacePreview": "Leertaste zum Vorschauen",
