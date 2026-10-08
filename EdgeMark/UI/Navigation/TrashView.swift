@@ -151,9 +151,6 @@ struct TrashView: View {
                     .opacity(noteStore.isTrashEmpty ? 0 : 1)
                 }
 
-                Divider()
-                    .padding(.horizontal, 12)
-
                 ContentFooterBar()
             }
         }
@@ -386,9 +383,6 @@ struct TrashView: View {
                     }
                     .opacity(isEmpty ? 0 : 1)
                 }
-
-                Divider()
-                    .padding(.horizontal, 12)
 
                 ContentFooterBar()
             }

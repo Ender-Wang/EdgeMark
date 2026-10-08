@@ -155,9 +155,6 @@ struct NoteListView: View {
                     .opacity(isEmpty ? 0 : 1)
                 }
 
-                Divider()
-                    .padding(.horizontal, 12)
-
                 ContentFooterBar()
             }
             .focusable()

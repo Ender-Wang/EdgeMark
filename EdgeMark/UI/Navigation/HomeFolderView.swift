@@ -144,9 +144,6 @@ struct HomeFolderView: View {
                 }
 
                 if !noteStore.awaitingRootChoice {
-                    Divider()
-                        .padding(.horizontal, 12)
-
                     ContentFooterBar()
                 }
             }
