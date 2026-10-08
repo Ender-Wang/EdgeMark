@@ -32,6 +32,14 @@ struct EdgeMarkImageProvider: EmbeddedImageProvider {
 /// Manages heading stripping, save debouncing, font observation, and the
 /// slash-command popup.
 struct MarkdownEditorView: View {
+    private struct EditorRebuildIdentity: Hashable {
+        let taskCheckboxPreset: String
+        let spellChecking: Bool
+        let grammarChecking: Bool
+        let spellingCorrection: Bool
+        let quoteSubstitution: Bool
+    }
+
     let noteID: UUID
     let noteTitle: String
     let noteFolder: String
@@ -157,10 +165,16 @@ struct MarkdownEditorView: View {
                     Self.scrollOffsets[docId]
                 },
             )
-            // Force the text view to rebuild (makeNSView) when the task-checkbox style
-            // changes — the engine's updateNSView doesn't sync taskCheckbox, so only a
-            // full config re-application picks up the new SF Symbols.
-            .id(appSettings.taskCheckboxPreset)
+            // These configuration values are consulted when the native text view is
+            // created but are not synchronized by the engine's updateNSView. Rebuild
+            // only when one changes so Settings and AppKit menu toggles apply live.
+            .id(EditorRebuildIdentity(
+                taskCheckboxPreset: appSettings.taskCheckboxPreset.rawValue,
+                spellChecking: appSettings.spellCheckingEnabled,
+                grammarChecking: appSettings.grammarCheckingEnabled,
+                spellingCorrection: appSettings.automaticSpellingCorrectionEnabled,
+                quoteSubstitution: appSettings.automaticQuoteSubstitutionEnabled,
+            ))
             .onChange(of: text) { _, newText in
                 slashHandler.contentDidSynchronize(newText)
                 let heading = hiddenHeadingLine
