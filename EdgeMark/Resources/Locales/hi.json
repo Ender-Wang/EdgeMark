@@ -134,6 +134,7 @@
   "settings.appearance.light": "लाइट",
   "settings.appearance.dark": "डार्क",
   "settings.general.liquidGlass": "Liquid Glass का उपयोग करें",
+  "settings.general.liquidGlassUnavailable": "इसके लिए macOS 26 या बाद का संस्करण चाहिए। EdgeMark क्लासिक दिखावट का उपयोग कर रहा है।",
 
   "settings.general.panelTint": "पैनल टिंट",
   "settings.editor.section": "एडिटर",

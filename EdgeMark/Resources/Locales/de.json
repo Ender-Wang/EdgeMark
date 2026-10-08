@@ -134,6 +134,7 @@
   "settings.appearance.light": "Hell",
   "settings.appearance.dark": "Dunkel",
   "settings.general.liquidGlass": "Liquid Glass verwenden",
+  "settings.general.liquidGlassUnavailable": "Erfordert macOS 26 oder neuer. EdgeMark verwendet die klassische Darstellung.",
 
   "settings.general.panelTint": "Panel-Tönung",
   "settings.editor.section": "Editor",

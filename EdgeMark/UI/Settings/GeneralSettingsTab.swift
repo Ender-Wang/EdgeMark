@@ -65,11 +65,23 @@ struct GeneralSettingsTab: View {
                         Text(tint.displayName(l10n)).tag(tint)
                     }
                 }
-                if #available(macOS 26.0, *) {
-                    Toggle(
-                        l10n["settings.general.liquidGlass"],
-                        isOn: $settings.liquidGlassEnabled,
-                    )
+                VStack(alignment: .leading, spacing: 4) {
+                    if #available(macOS 26.0, *) {
+                        Toggle(
+                            l10n["settings.general.liquidGlass"],
+                            isOn: $settings.liquidGlassEnabled,
+                        )
+                    } else {
+                        Toggle(
+                            l10n["settings.general.liquidGlass"],
+                            isOn: .constant(false),
+                        )
+                        .disabled(true)
+
+                        Text(l10n["settings.general.liquidGlassUnavailable"])
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             } header: {
                 Label(l10n["settings.general.appearance"], systemImage: "circle.lefthalf.filled")

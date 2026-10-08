@@ -134,6 +134,7 @@
   "settings.appearance.light": "Claro",
   "settings.appearance.dark": "Oscuro",
   "settings.general.liquidGlass": "Usar Liquid Glass",
+  "settings.general.liquidGlassUnavailable": "Requiere macOS 26 o posterior. EdgeMark está usando la apariencia clásica.",
 
   "settings.general.panelTint": "Tinte del panel",
   "settings.editor.section": "Editor",
