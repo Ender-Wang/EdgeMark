@@ -335,6 +335,14 @@ final class NoteStore {
     // MARK: - Dirty Tracking
 
     private var dirtyNoteIDs: Set<UUID> = []
+    private var failedPersistenceNoteIDs: Set<UUID> = []
+
+    private enum PersistenceTrigger: String {
+        case rename
+        case tag
+        case retry
+        case deferred
+    }
 
     // MARK: - Lifecycle
 
@@ -373,6 +381,8 @@ final class NoteStore {
             autoPurgeExpiredTrash()
             diskFolderNames = Set((try? FileStorage.discoverFolders()) ?? [])
             refreshFolders()
+            dirtyNoteIDs.removeAll()
+            failedPersistenceNoteIDs.removeAll()
             let noteCount = notes.count
             let trashCount = trashedNotes.count + trashedFolders.count
             Log.storage.info("[NoteStore] loaded \(noteCount) notes, \(trashCount) trashed items")
@@ -389,16 +399,14 @@ final class NoteStore {
         for i in notes.indices {
             let note = notes[i]
             guard let diskDate = FileStorage.modificationDate(for: note) else {
-                let t = note.title
-                Log.storage.debug("[ExternalSync] '\(t, privacy: .public)' — file not found on disk")
+                Log.storage.debug("[NoteMetadata] reload skipped source=external noteID=\(note.id.uuidString, privacy: .public) reason=file-missing")
                 continue
             }
             // Compare file mtime against savedAt (last time EdgeMark wrote this file).
             // Using savedAt instead of modifiedAt prevents false positives from auto-saves
             // that write the file without changing content.
             let diff = diskDate.timeIntervalSince(note.savedAt)
-            let t = note.title
-            Log.storage.debug("[ExternalSync] '\(t, privacy: .public)' — diff: \(String(format: "%.3f", diff))s")
+            Log.storage.debug("[ExternalSync] noteID=\(note.id.uuidString, privacy: .public) diff=\(String(format: "%.3f", diff), privacy: .public)s")
             guard diff > 1 else { continue }
 
             let noteID = notes[i].id
@@ -411,19 +419,19 @@ final class NoteStore {
             let diskSavedAt = reloaded.savedAt
             let diskTags = reloaded.tags
 
-            let title = notes[i].title
             if isOpen, isDirty {
                 // Both EdgeMark and external have changes — prompt user
-                Log.storage.info("[NoteStore] external conflict on open note '\(title, privacy: .public)'")
+                Log.storage.info("[NoteMetadata] reload deferred source=external noteID=\(noteID.uuidString, privacy: .public) reason=dirty-conflict")
                 pendingExternalChange = PendingExternalChange(noteID: noteID, diskContent: diskContent, diskDate: diskDate, diskTags: diskTags)
             } else {
                 // Safe to auto-reload: note not open, or open but no EdgeMark edits
-                Log.storage.info("[NoteStore] auto-syncing '\(title, privacy: .public)' from external change")
+                Log.storage.info("[NoteMetadata] reload applied source=external noteID=\(noteID.uuidString, privacy: .public)")
                 notes[i].content = diskContent
                 notes[i].modifiedAt = diskModifiedAt
                 notes[i].savedAt = diskSavedAt
                 notes[i].tags = diskTags
                 dirtyNoteIDs.remove(noteID)
+                failedPersistenceNoteIDs.remove(noteID)
                 // Persist updated savedAt to sidecar so the watcher doesn't re-fire on next launch
                 if var entry = SidecarStore.shared.noteEntry(for: noteID) {
                     entry.savedAt = diskSavedAt
@@ -453,6 +461,7 @@ final class NoteStore {
             notes[i].savedAt = conflict.diskDate
             notes[i].tags = conflict.diskTags
             dirtyNoteIDs.remove(conflict.noteID)
+            failedPersistenceNoteIDs.remove(conflict.noteID)
             // Persist updated savedAt + tags so the watcher doesn't re-fire on next launch
             if var entry = SidecarStore.shared.noteEntry(for: conflict.noteID) {
                 entry.savedAt = conflict.diskDate
@@ -555,14 +564,21 @@ final class NoteStore {
             modifiedAt: now,
             folder: folder,
         )
+        var metadataSaved = true
         do {
             let result = try FileStorage.writeNote(note)
             note.savedFilename = result.filename
             note.savedAt = result.savedAt
+            metadataSaved = result.metadataSaved
         } catch {
             Log.storage.error("[NoteStore] writeNote failed — \(error)")
         }
         notes.append(note)
+        if !metadataSaved {
+            dirtyNoteIDs.insert(note.id)
+            failedPersistenceNoteIDs.insert(note.id)
+            Log.storage.error("[NoteMetadata] persist failure op=create noteID=\(note.id.uuidString, privacy: .public) dirtyRetained=true reason=sidecar")
+        }
         refreshFolders()
         return note
     }
@@ -610,6 +626,8 @@ final class NoteStore {
         if selectedNote?.id == note.id {
             selectedNote = notes[index]
         }
+        Log.storage.info("[NoteMetadata] mutation op=rename noteID=\(note.id.uuidString, privacy: .public) dirty=true")
+        persistDirtyNote(withID: note.id, trigger: .rename)
     }
 
     /// Toggle a single tag on a note. Updates in-memory state and marks the note dirty.
@@ -626,6 +644,8 @@ final class NoteStore {
             selectedNote = notes[index]
         }
         recomputeAllUsedTags()
+        Log.storage.info("[NoteMetadata] mutation op=tag noteID=\(note.id.uuidString, privacy: .public) dirty=true")
+        persistDirtyNote(withID: note.id, trigger: .tag)
     }
 
     /// Toggle a tag in the active sidebar filter. Multi-select acts as OR.
@@ -911,7 +931,7 @@ final class NoteStore {
         let notes = selectedNotes
         guard !notes.isEmpty else { return }
         let allHave = notes.allSatisfy { $0.tags.contains(tag) }
-        Log.storage.info("[NoteStore] toggleTagOnSelection \(allHave ? "remove" : "add", privacy: .public) '\(tag.rawValue, privacy: .public)' on \(notes.count) notes")
+        Log.storage.info("[NoteMetadata] batch mutation op=tag action=\(allHave ? "remove" : "add", privacy: .public) count=\(notes.count)")
         for note in notes {
             let has = note.tags.contains(tag)
             if allHave, has {
@@ -925,6 +945,7 @@ final class NoteStore {
     func deleteNote(_ note: Note) {
         notes.removeAll { $0.id == note.id }
         dirtyNoteIDs.remove(note.id)
+        failedPersistenceNoteIDs.remove(note.id)
         do {
             try FileStorage.deleteNote(note)
         } catch {
@@ -1039,10 +1060,17 @@ final class NoteStore {
     private func performMoveNote(at index: Int, to folder: String, renamingTo newFilename: String? = nil) {
         let note = notes[index]
         do {
-            let movedSavedAt = try FileStorage.moveNote(note, toFolder: folder, withFilename: newFilename)
+            let result = try FileStorage.moveNote(note, toFolder: folder, withFilename: newFilename)
             notes[index].folder = folder
             notes[index].savedFilename = newFilename ?? note.savedFilename ?? note.filename
-            notes[index].savedAt = movedSavedAt
+            notes[index].savedAt = result.savedAt
+            if let updatedContent = result.updatedContent {
+                notes[index].content = updatedContent
+                if selectedNote?.id == note.id {
+                    selectedNote?.content = updatedContent
+                    onNeedEditorReload?(updatedContent)
+                }
+            }
             refreshFolders()
         } catch {
             Log.storage.error("[NoteStore] moveNote failed — \(error)")
@@ -1134,9 +1162,12 @@ final class NoteStore {
             for id in ids {
                 guard let index = notes.firstIndex(where: { $0.id == id }) else { throw CocoaError(.fileNoSuchFile) }
                 let note = notes[index]
-                let movedSavedAt = try FileStorage.moveNote(note, toFolder: groupFolder)
+                let result = try FileStorage.moveNote(note, toFolder: groupFolder)
                 notes[index].folder = groupFolder
-                notes[index].savedAt = movedSavedAt
+                notes[index].savedAt = result.savedAt
+                if let updatedContent = result.updatedContent {
+                    notes[index].content = updatedContent
+                }
             }
             if let selectedNoteID = selectedNote?.id,
                let selectedNoteIndex = notes.firstIndex(where: { $0.id == selectedNoteID })
@@ -1157,9 +1188,12 @@ final class NoteStore {
                 guard let index = notes.firstIndex(where: { $0.id == id }) else { continue }
                 let note = notes[index]
                 do {
-                    let restoredSavedAt = try FileStorage.moveNote(note, toFolder: folder)
+                    let result = try FileStorage.moveNote(note, toFolder: folder)
                     notes[index].folder = folder
-                    notes[index].savedAt = restoredSavedAt
+                    notes[index].savedAt = result.savedAt
+                    if let updatedContent = result.updatedContent {
+                        notes[index].content = updatedContent
+                    }
                 } catch {
                     Log.storage.error("[NoteStore] groupNotes rollback failed — \(error)")
                 }
@@ -1191,6 +1225,7 @@ final class NoteStore {
         guard let index = notes.firstIndex(where: { $0.id == note.id }) else { return }
         notes[index].trashedAt = Date()
         dirtyNoteIDs.remove(note.id)
+        failedPersistenceNoteIDs.remove(note.id)
 
         // Move file to .trash/<UUID>_<Title>.md
         do {
@@ -1275,6 +1310,9 @@ final class NoteStore {
             let result = try FileStorage.restoreNote(trashedNotes[index])
             trashedNotes[index].savedFilename = result.filename
             trashedNotes[index].savedAt = result.savedAt
+            if let updatedContent = result.updatedContent {
+                trashedNotes[index].content = updatedContent
+            }
         } catch {
             Log.storage.error("[NoteStore] restoreNote failed — \(error)")
         }
@@ -1631,32 +1669,57 @@ final class NoteStore {
             let count = dirtyNoteIDs.count
             Log.storage.debug("[NoteStore] saving \(count) dirty notes")
         }
-        for noteID in dirtyNoteIDs {
-            guard let index = notes.firstIndex(where: { $0.id == noteID }) else { continue }
-            do {
-                let result = try FileStorage.writeNote(notes[index])
-                notes[index].savedFilename = result.filename
-                notes[index].savedAt = result.savedAt
-                if let updated = result.updatedContent {
-                    notes[index].content = updated
-                    if selectedNote?.id == noteID {
-                        selectedNote?.content = updated
-                        let noteTitle = notes[index].title
-                        Log.storage.info("[Image] reloading editor after image path rewrite for '\(noteTitle, privacy: .public)'")
-                        onNeedEditorReload?(updated)
-                    }
-                }
-                if selectedNote?.id == noteID {
-                    selectedNote?.savedFilename = result.filename
-                    selectedNote?.savedAt = result.savedAt
-                }
-                // Clean up orphaned images (deleted from body but file still on disk)
-                FileStorage.cleanOrphanedImages(forNote: notes[index], body: notes[index].content)
-            } catch {
-                Log.storage.error("[NoteStore] saveDirtyNotes failed for \(noteID) — \(error)")
-            }
+        for noteID in Array(dirtyNoteIDs) {
+            let trigger: PersistenceTrigger = failedPersistenceNoteIDs.contains(noteID) ? .retry : .deferred
+            persistDirtyNote(withID: noteID, trigger: trigger)
         }
-        dirtyNoteIDs.removeAll()
+    }
+
+    /// Persist one dirty note at a completed user-action boundary. Failed writes remain
+    /// dirty so a later lifecycle flush can retry instead of silently dropping the change.
+    private func persistDirtyNote(withID noteID: UUID, trigger: PersistenceTrigger) {
+        guard dirtyNoteIDs.contains(noteID) else { return }
+        guard let index = notes.firstIndex(where: { $0.id == noteID }) else {
+            dirtyNoteIDs.remove(noteID)
+            failedPersistenceNoteIDs.remove(noteID)
+            return
+        }
+        if trigger != .deferred {
+            Log.storage.info("[NoteMetadata] persist attempt op=\(trigger.rawValue, privacy: .public) noteID=\(noteID.uuidString, privacy: .public)")
+        }
+        do {
+            let result = try FileStorage.writeNote(notes[index])
+            notes[index].savedFilename = result.filename
+            notes[index].savedAt = result.savedAt
+            if let updated = result.updatedContent {
+                notes[index].content = updated
+                if selectedNote?.id == noteID {
+                    selectedNote?.content = updated
+                    Log.storage.info("[Image] reloading editor after image path rewrite noteID=\(noteID.uuidString, privacy: .public)")
+                    onNeedEditorReload?(updated)
+                }
+            }
+            if selectedNote?.id == noteID {
+                selectedNote?.savedFilename = result.filename
+                selectedNote?.savedAt = result.savedAt
+            }
+            // Clean up orphaned images (deleted from body but file still on disk)
+            FileStorage.cleanOrphanedImages(forNote: notes[index], body: notes[index].content)
+            if result.metadataSaved {
+                dirtyNoteIDs.remove(noteID)
+                failedPersistenceNoteIDs.remove(noteID)
+                if trigger != .deferred {
+                    Log.storage.info("[NoteMetadata] persist success op=\(trigger.rawValue, privacy: .public) noteID=\(noteID.uuidString, privacy: .public) dirtyRetained=false")
+                }
+            } else {
+                failedPersistenceNoteIDs.insert(noteID)
+                Log.storage.error("[NoteMetadata] persist failure op=\(trigger.rawValue, privacy: .public) noteID=\(noteID.uuidString, privacy: .public) dirtyRetained=true reason=sidecar")
+            }
+        } catch {
+            failedPersistenceNoteIDs.insert(noteID)
+            let errorType = String(describing: type(of: error))
+            Log.storage.error("[NoteMetadata] persist failure op=\(trigger.rawValue, privacy: .public) noteID=\(noteID.uuidString, privacy: .public) dirtyRetained=true reason=filesystem errorType=\(errorType, privacy: .public)")
+        }
     }
 
     // MARK: - Private

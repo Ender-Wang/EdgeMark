@@ -123,11 +123,19 @@ enum FileStorage {
 
     // MARK: - Asset Directory
 
-    /// Hidden dot-prefix asset directory co-located with a note file.
-    /// e.g. "My-Note.md" → ".My-Note/" in the same parent directory.
-    /// stem = sanitized filename WITHOUT the .md extension.
-    static func assetDirURL(stem: String, folder: String, inTrash: Bool = false) -> URL {
+    /// Hidden asset directory for a note. Most notes keep the historical co-located
+    /// `.<stem>/` layout. A root note whose stem is `edgemark` or `trash` (under
+    /// case-insensitive comparison) must not use that layout because it aliases the
+    /// app-owned `.edgemark/` sidecar or `.trash/` namespace on default macOS volumes.
+    /// Those notes store images under `.edgemark/assets/<note UUID>/` instead.
+    static func assetDirURL(stem: String, noteID: UUID, folder: String, inTrash: Bool = false) -> URL {
         let base = inTrash ? trashURL : rootURL
+        if isReservedRootAssetStem(stem, folder: folder, inTrash: inTrash) {
+            return rootURL
+                .appendingPathComponent(".edgemark", isDirectory: true)
+                .appendingPathComponent("assets", isDirectory: true)
+                .appendingPathComponent(noteID.uuidString, isDirectory: true)
+        }
         let dirName = "." + stem
         if !inTrash, !folder.isEmpty {
             return base.appendingPathComponent(folder, isDirectory: true)
@@ -136,18 +144,82 @@ enum FileStorage {
         return base.appendingPathComponent(dirName, isDirectory: true)
     }
 
+    /// Markdown path to the asset directory, relative to the note file.
+    private static func assetDirectoryReference(stem: String, noteID: UUID, folder: String, inTrash: Bool = false) -> String {
+        if isReservedRootAssetStem(stem, folder: folder, inTrash: inTrash) {
+            return ".edgemark/assets/\(noteID.uuidString)"
+        }
+        return ".\(stem)"
+    }
+
+    private static func isReservedRootAssetStem(_ stem: String, folder: String, inTrash: Bool) -> Bool {
+        guard !inTrash, folder.isEmpty else { return false }
+        let folded = stem.lowercased()
+        return folded == "edgemark" || folded == "trash"
+    }
+
+    /// Move or merge an asset directory without discarding an existing destination.
+    /// Returns the destination's children so callers can rewrite only paths for files
+    /// that actually moved with the note.
+    private static func moveAssetDirectoryIfPresent(from source: URL, to destination: URL) throws -> [URL] {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: source.path) else { return [] }
+        if pathsReferToSameItem(source, destination) {
+            return try fm.contentsOfDirectory(at: source, includingPropertiesForKeys: nil)
+        }
+
+        try fm.createDirectory(
+            at: destination.deletingLastPathComponent(),
+            withIntermediateDirectories: true,
+        )
+        if fm.fileExists(atPath: destination.path) {
+            let sourceChildren = try fm.contentsOfDirectory(at: source, includingPropertiesForKeys: nil)
+            for child in sourceChildren {
+                let target = destination.appendingPathComponent(child.lastPathComponent)
+                if fm.fileExists(atPath: target.path) {
+                    guard fm.contentsEqual(atPath: child.path, andPath: target.path) else {
+                        throw CocoaError(.fileWriteFileExists)
+                    }
+                    try fm.removeItem(at: child)
+                } else {
+                    try fm.moveItem(at: child, to: target)
+                }
+            }
+            try fm.removeItem(at: source)
+        } else {
+            try fm.moveItem(at: source, to: destination)
+        }
+        return try fm.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)
+    }
+
+    /// URL string comparison is insufficient on case-insensitive volumes: `.Foo` and
+    /// `.foo` can be the same directory. Compare stable filesystem identifiers before
+    /// any merge so a case-only rename can never delete files from its own source.
+    private static func pathsReferToSameItem(_ lhs: URL, _ rhs: URL) -> Bool {
+        if lhs.standardizedFileURL == rhs.standardizedFileURL {
+            return true
+        }
+        guard FileManager.default.fileExists(atPath: rhs.path),
+              let lhsID = try? lhs.resourceValues(forKeys: [.fileResourceIdentifierKey]).fileResourceIdentifier,
+              let rhsID = try? rhs.resourceValues(forKeys: [.fileResourceIdentifierKey]).fileResourceIdentifier,
+              let lhsHashable = lhsID as? AnyHashable,
+              let rhsHashable = rhsID as? AnyHashable
+        else { return false }
+        return lhsHashable == rhsHashable
+    }
+
     /// Save image data to the note's asset directory.
     /// Returns both the on-disk storage markdown `![](path)` and the embed syntax `![[path]]`
     /// used by the editor's display layer.
     static func saveImage(data: Data, ext: String, forNote note: Note) throws -> (markdown: String, embedMarkdown: String, src: String) {
         let stem = sanitizeForFilename(note.title)
-        let assetDir = assetDirURL(stem: stem, folder: note.folder)
+        let assetDir = assetDirURL(stem: stem, noteID: note.id, folder: note.folder)
         try FileManager.default.createDirectory(at: assetDir, withIntermediateDirectories: true)
         let imageFilename = "IMG-\(UUID().uuidString).\(ext)"
         let destURL = assetDir.appendingPathComponent(imageFilename)
         try data.write(to: destURL, options: .atomic)
         Log.storage.info("[Image] saved \(imageFilename, privacy: .public) (\(data.count) bytes) for '\(note.title, privacy: .public)'")
-        let path = "." + stem + "/" + imageFilename
+        let path = assetDirectoryReference(stem: stem, noteID: note.id, folder: note.folder) + "/" + imageFilename
         return (
             markdown: "![](\(path))",
             embedMarkdown: "![[\(path)]]",
@@ -159,7 +231,7 @@ enum FileStorage {
     /// Also removes the asset dir itself if it becomes empty.
     static func cleanOrphanedImages(forNote note: Note, body: String) {
         let stem = sanitizeForFilename(note.title)
-        let assetDir = assetDirURL(stem: stem, folder: note.folder)
+        let assetDir = assetDirURL(stem: stem, noteID: note.id, folder: note.folder)
         guard let files = try? FileManager.default.contentsOfDirectory(
             at: assetDir, includingPropertiesForKeys: nil,
         ) else { return }
@@ -175,6 +247,82 @@ enum FileStorage {
             try? FileManager.default.removeItem(at: assetDir)
             Log.storage.debug("[Image] removed empty asset dir for '\(note.title, privacy: .public)'")
         }
+    }
+
+    /// Move images for a legacy root `EdgeMark.md` / `Trash.md` note out of the
+    /// reserved directory it aliases on a case-insensitive volume. Only files with
+    /// EdgeMark's generated `IMG-` prefix that are referenced by this note are copied.
+    /// The source is retained until the rewritten Markdown reaches disk, and the
+    /// reserved root itself is never removed.
+    private static func migrateReservedRootAssetsIfNeeded(for note: Note) throws -> Note {
+        let filename = note.savedFilename ?? note.filename
+        let stem = (filename as NSString).deletingPathExtension
+        guard isReservedRootAssetStem(stem, folder: note.folder, inTrash: false) else {
+            return note
+        }
+
+        let legacyReference = ".\(stem)"
+        let safeReference = assetDirectoryReference(
+            stem: stem,
+            noteID: note.id,
+            folder: note.folder,
+        )
+        guard legacyReference != safeReference else { return note }
+
+        let legacyDirectory = rootURL.appendingPathComponent(legacyReference, isDirectory: true)
+        guard let children = try? FileManager.default.contentsOfDirectory(
+            at: legacyDirectory,
+            includingPropertiesForKeys: [.isRegularFileKey],
+        ) else { return note }
+
+        let referencedImages = children.filter { child in
+            guard child.lastPathComponent.hasPrefix("IMG-") else { return false }
+            let isRegular = (try? child.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) ?? false
+            return isRegular && note.content.contains("\(legacyReference)/\(child.lastPathComponent)")
+        }
+        guard !referencedImages.isEmpty else { return note }
+
+        let safeDirectory = assetDirURL(stem: stem, noteID: note.id, folder: note.folder)
+        try FileManager.default.createDirectory(at: safeDirectory, withIntermediateDirectories: true)
+
+        var updatedContent = note.content
+        var migratedPairs: [(source: URL, destination: URL)] = []
+        for source in referencedImages {
+            let destination = safeDirectory.appendingPathComponent(source.lastPathComponent)
+            if FileManager.default.fileExists(atPath: destination.path) {
+                guard FileManager.default.contentsEqual(atPath: source.path, andPath: destination.path) else {
+                    throw CocoaError(.fileWriteFileExists)
+                }
+            } else {
+                try FileManager.default.copyItem(at: source, to: destination)
+            }
+            updatedContent = updatedContent.replacingOccurrences(
+                of: "\(legacyReference)/\(source.lastPathComponent)",
+                with: "\(safeReference)/\(source.lastPathComponent)",
+            )
+            migratedPairs.append((source: source, destination: destination))
+        }
+
+        let noteURL = rootURL.appendingPathComponent(diskRelativePath(for: note))
+        try Data(updatedContent.utf8).write(to: noteURL, options: .atomic)
+
+        var migratedNote = note
+        migratedNote.content = updatedContent
+        migratedNote.savedAt = (try? FileManager.default.attributesOfItem(
+            atPath: noteURL.path,
+        ))?[.modificationDate] as? Date ?? Date()
+        if !upsertSidecarEntry(for: migratedNote, filename: filename) {
+            Log.storage.error("[Image] legacy asset migration metadata retry needed noteID=\(note.id.uuidString, privacy: .public)")
+        }
+
+        for pair in migratedPairs where FileManager.default.contentsEqual(
+            atPath: pair.source.path,
+            andPath: pair.destination.path,
+        ) {
+            try? FileManager.default.removeItem(at: pair.source)
+        }
+        Log.storage.info("[Image] migrated reserved asset path noteID=\(note.id.uuidString, privacy: .public) count=\(migratedPairs.count)")
+        return migratedNote
     }
 
     // MARK: - Filename Helpers
@@ -212,17 +360,28 @@ enum FileStorage {
             notes += try loadNotes(in: folderURL, folder: folderName)
         }
         let resolved = try resolveDuplicateFilenames(notes)
-        let count = resolved.count
+        let migrated = resolved.map { note in
+            do {
+                return try migrateReservedRootAssetsIfNeeded(for: note)
+            } catch {
+                let errorType = String(describing: type(of: error))
+                Log.storage.error("[Image] legacy asset migration failed noteID=\(note.id.uuidString, privacy: .public) errorType=\(errorType, privacy: .public)")
+                return note
+            }
+        }
+        let count = migrated.count
         Log.storage.info("[FileStorage] loaded \(count) notes from disk")
-        return resolved
+        return migrated
     }
 
     /// Writes the note to disk. If the title changed since last save, renames the old file
     /// to preserve macOS file metadata (creation date, Finder tags, extended attributes).
     /// Also renames the co-located asset directory and rewrites image paths in the body.
-    /// Returns the new filename and, if image paths were rewritten, the updated content.
+    /// Returns the file result plus whether the sidecar metadata reached disk. File I/O can
+    /// succeed while metadata persistence fails, allowing the caller to retain dirty state
+    /// and retry without losing the new on-disk filename.
     @discardableResult
-    static func writeNote(_ note: Note) throws -> (filename: String, updatedContent: String?, savedAt: Date) {
+    static func writeNote(_ note: Note) throws -> (filename: String, updatedContent: String?, savedAt: Date, metadataSaved: Bool) {
         try ensureRootExists()
         if !note.folder.isEmpty {
             try ensureFolderExists(note.folder)
@@ -236,12 +395,12 @@ enum FileStorage {
            savedFilename != newFilename,
            FileManager.default.fileExists(atPath: newURL.path)
         {
-            Log.storage.info("[FileStorage] filename conflict: \(newFilename, privacy: .public), keeping \(savedFilename, privacy: .public)")
+            Log.storage.info("[NoteMetadata] rename collision noteID=\(note.id.uuidString, privacy: .public)")
             let currentRelative = note.folder.isEmpty ? savedFilename : "\(note.folder)/\(savedFilename)"
             let currentURL = rootURL.appendingPathComponent(currentRelative)
             try Data(note.content.utf8).write(to: currentURL, options: .atomic)
-            upsertSidecarEntry(for: note, filename: savedFilename)
-            return (filename: savedFilename, updatedContent: nil, savedAt: modificationDate(for: note) ?? Date())
+            let metadataSaved = upsertSidecarEntry(for: note, filename: savedFilename)
+            return (filename: savedFilename, updatedContent: nil, savedAt: modificationDate(for: note) ?? Date(), metadataSaved: metadataSaved)
         }
 
         // Rename old file first if title changed (preserves macOS metadata)
@@ -251,44 +410,40 @@ enum FileStorage {
             let oldURL = rootURL.appendingPathComponent(oldRelative)
             if FileManager.default.fileExists(atPath: oldURL.path) {
                 try FileManager.default.moveItem(at: oldURL, to: newURL)
-                Log.storage.debug("[FileStorage] renamed \(oldFilename, privacy: .public) → \(newFilename, privacy: .public)")
+                Log.storage.debug("[NoteMetadata] file rename complete noteID=\(note.id.uuidString, privacy: .public)")
             }
 
             // Rename asset dir and rewrite image paths in body
             let oldStem = (oldFilename as NSString).deletingPathExtension
             let newStem = (newFilename as NSString).deletingPathExtension
             if oldStem != newStem {
-                let oldAsset = assetDirURL(stem: oldStem, folder: note.folder)
-                let newAsset = assetDirURL(stem: newStem, folder: note.folder)
-                if FileManager.default.fileExists(atPath: oldAsset.path) {
-                    if FileManager.default.fileExists(atPath: newAsset.path) {
-                        // Merge — UUID filenames guarantee no collision
-                        let existing = (try? FileManager.default.contentsOfDirectory(
-                            at: oldAsset, includingPropertiesForKeys: nil,
-                        )) ?? []
-                        for f in existing {
-                            try? FileManager.default.moveItem(
-                                at: f, to: newAsset.appendingPathComponent(f.lastPathComponent),
-                            )
-                        }
-                        try? FileManager.default.removeItem(at: oldAsset)
-                    } else {
-                        try? FileManager.default.moveItem(at: oldAsset, to: newAsset)
-                    }
-                    Log.storage.info("[Image] renamed asset dir .\(oldStem, privacy: .public) → .\(newStem, privacy: .public)")
+                let oldAsset = assetDirURL(stem: oldStem, noteID: note.id, folder: note.folder)
+                let newAsset = assetDirURL(stem: newStem, noteID: note.id, folder: note.folder)
+                let images = try moveAssetDirectoryIfPresent(from: oldAsset, to: newAsset)
+                if !images.isEmpty {
+                    Log.storage.info("[Image] renamed asset directory noteID=\(note.id.uuidString, privacy: .public)")
                     // Rewrite image refs in body — scoped to actual filenames, no false positives
                     var body = note.content
-                    let imgs = (try? FileManager.default.contentsOfDirectory(
-                        at: newAsset, includingPropertiesForKeys: nil,
-                    )) ?? []
-                    for f in imgs {
-                        let name = f.lastPathComponent
+                    let oldReference = assetDirectoryReference(
+                        stem: oldStem,
+                        noteID: note.id,
+                        folder: note.folder,
+                    )
+                    let newReference = assetDirectoryReference(
+                        stem: newStem,
+                        noteID: note.id,
+                        folder: note.folder,
+                    )
+                    for image in images {
+                        let name = image.lastPathComponent
                         body = body.replacingOccurrences(
-                            of: "(." + oldStem + "/" + name + ")",
-                            with: "(." + newStem + "/" + name + ")",
+                            of: "\(oldReference)/\(name)",
+                            with: "\(newReference)/\(name)",
                         )
                     }
-                    updatedContent = body
+                    if body != note.content {
+                        updatedContent = body
+                    }
                 }
             }
         }
@@ -303,14 +458,14 @@ enum FileStorage {
         if updatedContent != nil {
             noteForSidecar.content = bodyToWrite
         }
-        upsertSidecarEntry(for: noteForSidecar, filename: newFilename)
+        let metadataSaved = upsertSidecarEntry(for: noteForSidecar, filename: newFilename)
 
         let savedAt = modificationDate(for: noteForSidecar) ?? Date()
-        return (filename: newFilename, updatedContent: updatedContent, savedAt: savedAt)
+        return (filename: newFilename, updatedContent: updatedContent, savedAt: savedAt, metadataSaved: metadataSaved)
     }
 
     /// Update (or insert) the sidecar entry for a note after writing its file.
-    private static func upsertSidecarEntry(for note: Note, filename: String) {
+    private static func upsertSidecarEntry(for note: Note, filename: String) -> Bool {
         let relativePath = note.folder.isEmpty ? filename : "\(note.folder)/\(filename)"
         let savedAt = (try? FileManager.default.attributesOfItem(
             atPath: rootURL.appendingPathComponent(relativePath).path,
@@ -326,7 +481,12 @@ enum FileStorage {
             ),
             for: note.id,
         )
-        try? SidecarStore.shared.save()
+        do {
+            try SidecarStore.shared.save()
+            return true
+        } catch {
+            return false
+        }
     }
 
     static func deleteNote(_ note: Note) throws {
@@ -369,7 +529,11 @@ enum FileStorage {
     /// `savedFilename ?? filename`. Pass an explicit name to atomically move + rename
     /// (used by the conflict-resolver's "Keep Both" path).
     @discardableResult
-    static func moveNote(_ note: Note, toFolder: String, withFilename newFilename: String? = nil) throws -> Date {
+    static func moveNote(
+        _ note: Note,
+        toFolder: String,
+        withFilename newFilename: String? = nil,
+    ) throws -> (savedAt: Date, updatedContent: String?) {
         let actualFilename = note.savedFilename ?? note.filename
         let oldRelative = note.folder.isEmpty ? actualFilename : "\(note.folder)/\(actualFilename)"
         let oldURL = rootURL.appendingPathComponent(oldRelative)
@@ -385,11 +549,36 @@ enum FileStorage {
         // Move asset dir alongside note — rename stem too if filename changed.
         let oldStem = (actualFilename as NSString).deletingPathExtension
         let newStem = (destFilename as NSString).deletingPathExtension
-        let srcAsset = assetDirURL(stem: oldStem, folder: note.folder)
-        let dstAsset = assetDirURL(stem: newStem, folder: toFolder)
-        if FileManager.default.fileExists(atPath: srcAsset.path) {
-            try? FileManager.default.moveItem(at: srcAsset, to: dstAsset)
-            Log.storage.debug("[Image] moved asset dir for '\(note.title, privacy: .public)' to folder '\(toFolder, privacy: .public)'")
+        let srcAsset = assetDirURL(stem: oldStem, noteID: note.id, folder: note.folder)
+        let dstAsset = assetDirURL(stem: newStem, noteID: note.id, folder: toFolder)
+        let movedImages = try moveAssetDirectoryIfPresent(from: srcAsset, to: dstAsset)
+        var updatedContent: String? = nil
+        if !movedImages.isEmpty {
+            let oldReference = assetDirectoryReference(
+                stem: oldStem,
+                noteID: note.id,
+                folder: note.folder,
+            )
+            let newReference = assetDirectoryReference(
+                stem: newStem,
+                noteID: note.id,
+                folder: toFolder,
+            )
+            if oldReference != newReference {
+                var body = note.content
+                for image in movedImages {
+                    let name = image.lastPathComponent
+                    body = body.replacingOccurrences(
+                        of: "\(oldReference)/\(name)",
+                        with: "\(newReference)/\(name)",
+                    )
+                }
+                if body != note.content {
+                    try Data(body.utf8).write(to: newURL, options: .atomic)
+                    updatedContent = body
+                }
+            }
+            Log.storage.debug("[Image] moved asset directory noteID=\(note.id.uuidString, privacy: .public)")
         }
 
         // Update path and savedAt in sidecar — moveItem advances mtime
@@ -400,7 +589,7 @@ enum FileStorage {
             SidecarStore.shared.upsertNote(entry, for: note.id)
             try? SidecarStore.shared.save()
         }
-        return movedMtime
+        return (savedAt: movedMtime, updatedContent: updatedContent)
     }
 
     // MARK: - Trash I/O (Individual Notes)
@@ -440,17 +629,17 @@ enum FileStorage {
         // Move asset dir to trash: .My-Note/ → .trash/.<UUID>_My-Note/
         let stem = sanitizeForFilename(note.title)
         let trashStem = (trashFilename as NSString).deletingPathExtension
-        let srcAsset = assetDirURL(stem: stem, folder: note.folder)
-        let dstAsset = assetDirURL(stem: trashStem, folder: "", inTrash: true)
+        let srcAsset = assetDirURL(stem: stem, noteID: note.id, folder: note.folder)
+        let dstAsset = assetDirURL(stem: trashStem, noteID: note.id, folder: "", inTrash: true)
         if FileManager.default.fileExists(atPath: srcAsset.path) {
-            try? FileManager.default.moveItem(at: srcAsset, to: dstAsset)
+            _ = try? moveAssetDirectoryIfPresent(from: srcAsset, to: dstAsset)
             Log.storage.debug("[Image] moved asset dir to trash for '\(note.title, privacy: .public)'")
         }
     }
 
     /// Restore a note from `.trash/` back to its original folder.
     /// Returns the new `savedFilename`.
-    static func restoreNote(_ note: Note) throws -> (filename: String, savedAt: Date) {
+    static func restoreNote(_ note: Note) throws -> (filename: String, savedAt: Date, updatedContent: String?) {
         // Recreate original folder if needed
         if !note.folder.isEmpty {
             try ensureFolderExists(note.folder)
@@ -463,6 +652,50 @@ enum FileStorage {
         let newFilename = restored.filename
         let destRelative = restored.folder.isEmpty ? newFilename : "\(restored.folder)/\(newFilename)"
         let destURL = rootURL.appendingPathComponent(destRelative)
+
+        var updatedContent: String? = nil
+
+        // Restore image assets before writing so legacy trash entries can rewrite their
+        // old root path to the collision-safe reserved path in the same operation.
+        if let savedFilename = note.savedFilename {
+            let trashStem = (savedFilename as NSString).deletingPathExtension
+            let restoredStem = sanitizeForFilename(note.title)
+            let srcAsset = assetDirURL(
+                stem: trashStem,
+                noteID: note.id,
+                folder: "",
+                inTrash: true,
+            )
+            let dstAsset = assetDirURL(
+                stem: restoredStem,
+                noteID: note.id,
+                folder: note.folder,
+            )
+            let restoredImages = try moveAssetDirectoryIfPresent(from: srcAsset, to: dstAsset)
+            let legacyReference = ".\(restoredStem)"
+            let restoredReference = assetDirectoryReference(
+                stem: restoredStem,
+                noteID: note.id,
+                folder: note.folder,
+            )
+            if legacyReference != restoredReference, !restoredImages.isEmpty {
+                var body = restored.content
+                for image in restoredImages {
+                    let name = image.lastPathComponent
+                    body = body.replacingOccurrences(
+                        of: "\(legacyReference)/\(name)",
+                        with: "\(restoredReference)/\(name)",
+                    )
+                }
+                if body != restored.content {
+                    restored.content = body
+                    updatedContent = body
+                }
+            }
+            if !restoredImages.isEmpty {
+                Log.storage.debug("[Image] restored asset directory noteID=\(note.id.uuidString, privacy: .public)")
+            }
+        }
 
         // Write body only
         try Data(restored.content.utf8).write(to: destURL, options: .atomic)
@@ -487,19 +720,9 @@ enum FileStorage {
         // Remove from .trash/
         if let savedFilename = note.savedFilename {
             try? FileManager.default.removeItem(at: trashURL.appendingPathComponent(savedFilename))
-
-            // Restore asset dir: .trash/.<UUID>_Title/ → <folder>/.Title/
-            let trashStem = (savedFilename as NSString).deletingPathExtension
-            let restoredStem = sanitizeForFilename(note.title)
-            let srcAsset = assetDirURL(stem: trashStem, folder: "", inTrash: true)
-            let dstAsset = assetDirURL(stem: restoredStem, folder: note.folder)
-            if FileManager.default.fileExists(atPath: srcAsset.path) {
-                try? FileManager.default.moveItem(at: srcAsset, to: dstAsset)
-                Log.storage.debug("[Image] restored asset dir for '\(note.title, privacy: .public)'")
-            }
         }
 
-        return (filename: newFilename, savedAt: restoredSavedAt)
+        return (filename: newFilename, savedAt: restoredSavedAt, updatedContent: updatedContent)
     }
 
     /// Delete a trashed note from `.trash/`. Also deletes its asset directory.
@@ -509,7 +732,12 @@ enum FileStorage {
 
             // Delete asset dir: .trash/.<UUID>_Title/
             let trashStem = (savedFilename as NSString).deletingPathExtension
-            let assetDir = assetDirURL(stem: trashStem, folder: "", inTrash: true)
+            let assetDir = assetDirURL(
+                stem: trashStem,
+                noteID: note.id,
+                folder: "",
+                inTrash: true,
+            )
             if FileManager.default.fileExists(atPath: assetDir.path) {
                 try? FileManager.default.removeItem(at: assetDir)
                 Log.storage.debug("[Image] deleted asset dir for permanently deleted note '\(note.title, privacy: .public)'")
@@ -840,7 +1068,12 @@ enum FileStorage {
                     tags: tags.map(\.rawValue),
                 ), for: id)
             }
-            try? SidecarStore.shared.save()
+            do {
+                try SidecarStore.shared.save()
+                Log.storage.info("[NoteMetadata] reconcile success source=yaml noteID=\(id.uuidString, privacy: .public)")
+            } catch {
+                Log.storage.error("[NoteMetadata] reconcile failure source=yaml noteID=\(id.uuidString, privacy: .public) reason=sidecar")
+            }
 
             return Note(
                 id: id,
@@ -880,7 +1113,12 @@ enum FileStorage {
                 tags: [],
             ), for: id)
         }
-        try? SidecarStore.shared.save()
+        do {
+            try SidecarStore.shared.save()
+            Log.storage.info("[NoteMetadata] reconcile success source=external noteID=\(id.uuidString, privacy: .public)")
+        } catch {
+            Log.storage.error("[NoteMetadata] reconcile failure source=external noteID=\(id.uuidString, privacy: .public) reason=sidecar")
+        }
 
         return Note(
             id: id,
