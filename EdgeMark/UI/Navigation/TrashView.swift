@@ -585,8 +585,7 @@ private struct TrashedNoteRowView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 10)
             .background {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(.primary.opacity(isHovered ? 0.06 : 0))
+                PanelRowBackground(isHovered: isHovered)
             }
             .padding(.horizontal, 8)
             .contentShape(Rectangle())
@@ -667,8 +666,7 @@ private struct TrashedFolderRowView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 10)
             .background {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(.primary.opacity(isHovered ? 0.06 : 0))
+                PanelRowBackground(isHovered: isHovered)
             }
             .padding(.horizontal, 8)
             .contentShape(Rectangle())

@@ -914,8 +914,7 @@ struct FolderRowView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 10)
         .background {
-            RoundedRectangle(cornerRadius: 6)
-                .fill(rowBackground)
+            PanelRowBackground(isHovered: isHovered, isSelected: isSelected)
         }
         .padding(.horizontal, 8)
         .contentShape(Rectangle())
@@ -924,13 +923,6 @@ struct FolderRowView: View {
                 isHovered = hovering
             }
         }
-    }
-
-    private var rowBackground: Color {
-        if isSelected {
-            return Color.accentColor.opacity(isHovered ? 0.28 : 0.20)
-        }
-        return Color.primary.opacity(isHovered ? 0.06 : 0)
     }
 }
 
@@ -979,8 +971,7 @@ struct NoteRowView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 10)
         .background {
-            RoundedRectangle(cornerRadius: 6)
-                .fill(rowBackground)
+            PanelRowBackground(isHovered: isHovered, isSelected: isSelected)
         }
         .padding(.horizontal, 8)
         .contentShape(Rectangle())
@@ -989,12 +980,5 @@ struct NoteRowView: View {
                 isHovered = hovering
             }
         }
-    }
-
-    private var rowBackground: Color {
-        if isSelected {
-            return Color.accentColor.opacity(isHovered ? 0.28 : 0.20)
-        }
-        return Color.primary.opacity(isHovered ? 0.06 : 0)
     }
 }
