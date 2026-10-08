@@ -242,6 +242,7 @@ struct TrashView: View {
                         HStack(spacing: 3) {
                             Image(systemName: "clock")
                             Text(note.modifiedAt.homeDisplayFormat)
+                                .monospacedDigit()
                         }
                         .font(.caption)
                         .foregroundStyle(.tertiary)
@@ -249,6 +250,7 @@ struct TrashView: View {
                         HStack(spacing: 3) {
                             Image(systemName: "calendar")
                             Text(note.createdAt.homeDisplayFormat)
+                                .monospacedDigit()
                         }
                         .font(.caption)
                         .foregroundStyle(.tertiary)
@@ -567,6 +569,7 @@ private struct TrashedNoteRowView: View {
 
                         Text(note.createdAt.homeDisplayFormat)
                             .font(.caption)
+                            .monospacedDigit()
                             .foregroundStyle(.tertiary)
                     }
 
@@ -648,6 +651,7 @@ private struct TrashedFolderRowView: View {
 
                         Text(folder.trashedAt.homeDisplayFormat)
                             .font(.caption)
+                            .monospacedDigit()
                             .foregroundStyle(.tertiary)
                     }
 

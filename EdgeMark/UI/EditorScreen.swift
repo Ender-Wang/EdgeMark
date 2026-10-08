@@ -255,6 +255,7 @@ private struct DateLabelView: View {
         HStack(spacing: 3) {
             Image(systemName: systemName)
             Text(date)
+                .monospacedDigit()
         }
         .font(.caption)
         .foregroundStyle(.tertiary)

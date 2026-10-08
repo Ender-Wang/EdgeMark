@@ -797,6 +797,7 @@ struct HomeFolderView: View {
 
                 Text(note.modifiedAt.homeDisplayFormat)
                     .font(.caption)
+                    .monospacedDigit()
                     .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 16)
@@ -894,6 +895,7 @@ struct FolderRowView: View {
             if let date {
                 Text(date.homeDisplayFormat)
                     .font(.caption)
+                    .monospacedDigit()
                     .foregroundStyle(.tertiary)
             }
         }
@@ -964,12 +966,6 @@ struct NoteRowView: View {
                         .font(.body)
                         .foregroundStyle(.primary)
                         .lineLimit(1)
-
-                    Spacer()
-
-                    Text(note.createdAt.homeDisplayFormat)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
                 }
 
                 if !note.previewText.isEmpty {
@@ -979,6 +975,13 @@ struct NoteRowView: View {
                         .lineLimit(1)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(note.createdAt.homeDisplayFormat)
+                .font(.caption)
+                .monospacedDigit()
+                .foregroundStyle(.tertiary)
+                .fixedSize()
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 10)

@@ -125,10 +125,6 @@ struct PeekContentView: View {
                         .font(.body)
                         .foregroundStyle(.primary)
                         .lineLimit(1)
-                    Spacer()
-                    Text(note.modifiedAt.homeDisplayFormat)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
                 }
                 if !note.previewText.isEmpty {
                     Text(note.previewText)
@@ -137,6 +133,13 @@ struct PeekContentView: View {
                         .lineLimit(1)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(note.modifiedAt.homeDisplayFormat)
+                .font(.caption)
+                .monospacedDigit()
+                .foregroundStyle(.tertiary)
+                .fixedSize()
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
