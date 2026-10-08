@@ -149,6 +149,7 @@ struct GeneralSettingsTab: View {
                 Toggle(l10n["settings.editor.grammarChecking"], isOn: $settings.grammarCheckingEnabled)
                 Toggle(l10n["settings.editor.autocorrect"], isOn: $settings.automaticSpellingCorrectionEnabled)
                 Toggle(l10n["settings.editor.smartQuotes"], isOn: $settings.automaticQuoteSubstitutionEnabled)
+                Toggle(l10n["settings.editor.showNoteDates"], isOn: $settings.showNoteDatesInHeader)
                 Toggle(l10n["settings.editor.hoverPeek"], isOn: $settings.hoverPeekEnabled)
                 Picker(l10n["settings.editor.hoverDelay"], selection: $settings.hoverPeekDelay) {
                     ForEach(AppSettings.HoverPeekDelay.allCases, id: \.self) { delay in

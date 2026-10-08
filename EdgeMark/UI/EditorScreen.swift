@@ -26,70 +26,28 @@ struct EditorScreen: View {
             headerContent
         } content: {
             if let note = noteStore.selectedNote {
-                ZStack(alignment: .top) {
-                    MarkdownEditorView(
-                        noteID: note.id,
-                        noteTitle: note.title,
-                        noteFolder: note.folder,
-                        initialContent: note.content,
-                        topOverlayInset: StickyNoteTitleBar.editorContentInset,
-                        onContentChanged: { id, newContent in
-                            noteStore.updateContent(for: id, content: newContent)
-                        },
-                        pendingReload: $pendingEditorReload,
-                        showFindBar: $isFindBarShowing,
-                        onNavigateNext: { noteStore.navigateToNextNote(sortedBy: appSettings) },
-                        onNavigatePrevious: { noteStore.navigateToPreviousNote(sortedBy: appSettings) },
-                    )
-                    .onAppear {
-                        noteStore.onNeedEditorReload = { content in
-                            pendingEditorReload = content
-                        }
+                MarkdownEditorView(
+                    noteID: note.id,
+                    noteTitle: note.title,
+                    noteFolder: note.folder,
+                    initialContent: note.content,
+                    onContentChanged: { id, newContent in
+                        noteStore.updateContent(for: id, content: newContent)
+                    },
+                    pendingReload: $pendingEditorReload,
+                    showFindBar: $isFindBarShowing,
+                    onNavigateNext: { noteStore.navigateToNextNote(sortedBy: appSettings) },
+                    onNavigatePrevious: { noteStore.navigateToPreviousNote(sortedBy: appSettings) },
+                )
+                .onAppear {
+                    noteStore.onNeedEditorReload = { content in
+                        pendingEditorReload = content
                     }
-                    .onChange(of: noteStore.pendingEditorFind) { _, pending in
-                        guard pending else { return }
-                        noteStore.pendingEditorFind = false
-                        isFindBarShowing = true
-                    }
-
-                    StickyNoteTitleBar(
-                        title: note.title.isEmpty ? l10n["common.untitled"] : note.title,
-                        text: Binding(
-                            get: {
-                                noteRename.renamingNoteID == note.id
-                                    ? noteRename.text
-                                    : note.title
-                            },
-                            set: { newValue in
-                                if noteRename.renamingNoteID != note.id {
-                                    noteRename.beginRename(note)
-                                }
-                                noteRename.text = newValue
-                            },
-                        ),
-                        isFocused: $isNoteTitleFocused,
-                        isEditing: noteRename.renamingNoteID == note.id,
-                        isConflicting: noteRename.isConflicting(in: noteStore),
-                        onBeginEditing: {
-                            if noteRename.renamingNoteID != note.id {
-                                noteRename.beginRename(note)
-                            }
-                        },
-                        onCommit: {
-                            noteRename.commit(note: note, noteStore: noteStore)
-                            if noteRename.renamingNoteID == nil {
-                                isNoteTitleFocused = false
-                            }
-                        },
-                        onCancel: {
-                            noteRename.cancel(noteStore: noteStore)
-                            isNoteTitleFocused = false
-                        },
-                        onFocusLost: {
-                            noteRename.commitOrCancel(note: note, noteStore: noteStore)
-                        },
-                    )
-                    .zIndex(1)
+                }
+                .onChange(of: noteStore.pendingEditorFind) { _, pending in
+                    guard pending else { return }
+                    noteStore.pendingEditorFind = false
+                    isFindBarShowing = true
                 }
             }
         }
@@ -128,7 +86,7 @@ struct EditorScreen: View {
     private var headerContent: some View {
         if let note = noteStore.selectedNote {
             VStack(spacing: 4) {
-                HStack {
+                HStack(spacing: 8) {
                     HeaderIconButton(
                         systemName: "chevron.left",
                         help: backLabel,
@@ -136,14 +94,46 @@ struct EditorScreen: View {
                         goBack()
                     }
 
-                    Spacer()
-
-                    Text(note.displayDirectory)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-
-                    Spacer()
+                    NoteHeaderTitle(
+                        title: note.title.isEmpty ? l10n["common.untitled"] : note.title,
+                        path: note.displayPath,
+                        modifiedAt: note.modifiedAt.homeDisplayFormat,
+                        createdAt: note.createdAt.homeDisplayFormat,
+                        text: Binding(
+                            get: {
+                                noteRename.renamingNoteID == note.id
+                                    ? noteRename.text
+                                    : note.title
+                            },
+                            set: { newValue in
+                                if noteRename.renamingNoteID != note.id {
+                                    noteRename.beginRename(note)
+                                }
+                                noteRename.text = newValue
+                            },
+                        ),
+                        isFocused: $isNoteTitleFocused,
+                        isEditing: noteRename.renamingNoteID == note.id,
+                        isConflicting: noteRename.isConflicting(in: noteStore),
+                        onBeginEditing: {
+                            if noteRename.renamingNoteID != note.id {
+                                noteRename.beginRename(note)
+                            }
+                        },
+                        onCommit: {
+                            noteRename.commit(note: note, noteStore: noteStore)
+                            if noteRename.renamingNoteID == nil {
+                                isNoteTitleFocused = false
+                            }
+                        },
+                        onCancel: {
+                            noteRename.cancel(noteStore: noteStore)
+                            isNoteTitleFocused = false
+                        },
+                        onFocusLost: {
+                            noteRename.commitOrCancel(note: note, noteStore: noteStore)
+                        },
+                    )
 
                     HStack(spacing: SurfaceMetrics.controlGroupSpacing) {
                         PinButton()
@@ -158,18 +148,20 @@ struct EditorScreen: View {
                     }
                 }
 
-                HStack(spacing: 12) {
-                    DateLabelView(
-                        systemName: "clock",
-                        date: note.modifiedAt.homeDisplayFormat,
-                        tooltip: L10n.shared.t("editor.modifiedAt", note.modifiedAt.homeDisplayFormat),
-                    )
+                if appSettings.showNoteDatesInHeader {
+                    HStack(spacing: 12) {
+                        DateLabelView(
+                            systemName: "clock",
+                            date: note.modifiedAt.homeDisplayFormat,
+                            tooltip: L10n.shared.t("editor.modifiedAt", note.modifiedAt.homeDisplayFormat),
+                        )
 
-                    DateLabelView(
-                        systemName: "calendar",
-                        date: note.createdAt.homeDisplayFormat,
-                        tooltip: L10n.shared.t("editor.createdAt", note.createdAt.homeDisplayFormat),
-                    )
+                        DateLabelView(
+                            systemName: "calendar",
+                            date: note.createdAt.homeDisplayFormat,
+                            tooltip: L10n.shared.t("editor.createdAt", note.createdAt.homeDisplayFormat),
+                        )
+                    }
                 }
             }
         }

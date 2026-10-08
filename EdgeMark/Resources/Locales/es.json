@@ -155,6 +155,7 @@
   "settings.editor.grammarChecking": "Corrección gramatical",
   "settings.editor.autocorrect": "Autocorrección ortográfica",
   "settings.editor.smartQuotes": "Comillas tipográficas",
+  "settings.editor.showNoteDates": "Mostrar fechas de la nota en el encabezado",
   "settings.editor.hoverPeek": "Vista previa al pasar el cursor",
   "settings.editor.hoverDelay": "Retraso al pasar el cursor",
   "settings.editor.spacePreview": "Espacio para vista previa",

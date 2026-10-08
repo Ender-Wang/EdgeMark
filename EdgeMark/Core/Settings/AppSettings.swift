@@ -198,6 +198,12 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(liquidGlassEnabled, forKey: "liquidGlassEnabled") }
     }
 
+    /// Whether note creation and modification dates remain visible below the title.
+    /// Defaults off; hidden dates remain available from the title's hover details.
+    var showNoteDatesInHeader: Bool = false {
+        didSet { UserDefaults.standard.set(showNoteDatesInHeader, forKey: "showNoteDatesInHeader") }
+    }
+
     var usesLiquidGlass: Bool {
         if #available(macOS 26.0, *) {
             liquidGlassEnabled
@@ -324,6 +330,7 @@ final class AppSettings {
             panelStyle = value
         }
         liquidGlassEnabled = UserDefaults.standard.object(forKey: "liquidGlassEnabled") as? Bool ?? true
+        showNoteDatesInHeader = UserDefaults.standard.object(forKey: "showNoteDatesInHeader") as? Bool ?? false
         // If the saved font is no longer installed (e.g. user uninstalled it),
         // drop it silently so the editor falls back to the system font.
         if let saved = UserDefaults.standard.string(forKey: "editorFontName"),

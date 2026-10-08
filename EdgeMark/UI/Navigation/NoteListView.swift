@@ -33,7 +33,8 @@ struct NoteListView: View {
 
     private var folderPath: String {
         guard let name = noteStore.selectedFolder?.name else { return "/" }
-        return "/\(name)/"
+        return ([l10n["common.home"]] + name.split(separator: "/").map(String.init))
+            .joined(separator: " / ")
     }
 
     private var sortedNotes: [Note] {
@@ -72,24 +73,13 @@ struct NoteListView: View {
                     navigateBack()
                 }
 
-                HStack(spacing: 4) {
-                    Text(folderLabel)
-                        .font(.headline)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .layoutPriority(1)
-                        .help(folderLabel)
-
-                    Text(folderPath)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .frame(minWidth: 48, maxWidth: .infinity, alignment: .leading)
-                        .help(folderPath)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .clipped()
+                Text(folderLabel)
+                    .font(.title3.weight(.semibold))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .layoutPriority(1)
+                    .help(folderPath)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 HStack(spacing: SurfaceMetrics.controlGroupSpacing) {
                     PinButton()

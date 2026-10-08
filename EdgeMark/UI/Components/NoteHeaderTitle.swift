@@ -1,18 +1,14 @@
 import SwiftUI
 
-/// Keeps the open note's title visible while editor content scrolls beneath it.
-/// The reserved editor inset matches the overlay's occupied height, so content
-/// begins below the title but can move behind its translucent surface.
-struct StickyNoteTitleBar: View {
-    static let editorContentInset: CGFloat = surfaceHeight + topInset
-
-    private static let surfaceHeight: CGFloat = 44
-    private static let topInset: CGFloat = 8
-    private static let horizontalInset: CGFloat = 8
-
+/// Editable note title used as the primary content in the editor header.
+/// Its tooltip carries the path and, when hidden from the header, note dates.
+struct NoteHeaderTitle: View {
     @Environment(AppSettings.self) private var appSettings
 
     let title: String
+    let path: String
+    let modifiedAt: String
+    let createdAt: String
     @Binding var text: String
     var isFocused: FocusState<Bool>.Binding
     let isEditing: Bool
@@ -23,30 +19,13 @@ struct StickyNoteTitleBar: View {
     let onFocusLost: () -> Void
 
     var body: some View {
-        Group {
-            if #available(macOS 26.0, *), appSettings.usesLiquidGlass {
-                titleField
-                    .glassEffect(.regular, in: titleShape)
-            } else {
-                titleField
-                    .background(.regularMaterial, in: titleShape)
-                    .overlay {
-                        titleShape
-                            .strokeBorder(.separator.opacity(0.45), lineWidth: 0.5)
-                    }
-            }
-        }
-        .padding(.horizontal, Self.horizontalInset)
-        .padding(.top, Self.topInset)
-        .accessibilityAddTraits(.isHeader)
-    }
-
-    private var titleField: some View {
         TextField("", text: $text, prompt: Text(title))
             .textFieldStyle(.plain)
             .font(.title3.weight(.semibold))
             .lineLimit(1)
+            .truncationMode(.tail)
             .accessibilityLabel(L10n.shared["common.noteTitlePlaceholder"])
+            .accessibilityValue(hoverDetails)
             .focused(isFocused)
             .onSubmit(onCommit)
             .onExitCommand(perform: onCancel)
@@ -67,14 +46,18 @@ struct StickyNoteTitleBar: View {
                     .opacity(isConflicting ? 1 : 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 12)
-            .frame(height: Self.surfaceHeight)
+            .layoutPriority(1)
+            .contentShape(Rectangle())
+            .help(hoverDetails)
+            .accessibilityAddTraits(.isHeader)
     }
 
-    private var titleShape: RoundedRectangle {
-        RoundedRectangle(
-            cornerRadius: SurfaceMetrics.liquidGlassControlCornerRadius,
-            style: .continuous,
-        )
+    private var hoverDetails: String {
+        guard !appSettings.showNoteDatesInHeader else { return path }
+        return [
+            path,
+            L10n.shared.t("editor.modifiedAt", modifiedAt),
+            L10n.shared.t("editor.createdAt", createdAt),
+        ].joined(separator: "\n")
     }
 }

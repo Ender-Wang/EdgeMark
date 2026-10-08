@@ -155,6 +155,7 @@
   "settings.editor.grammarChecking": "Check grammar",
   "settings.editor.autocorrect": "Auto-correct spelling",
   "settings.editor.smartQuotes": "Smart quotes",
+  "settings.editor.showNoteDates": "Show note dates in header",
   "settings.editor.hoverPeek": "Hover to preview",
   "settings.editor.hoverDelay": "Hover delay",
   "settings.editor.spacePreview": "Space to preview",

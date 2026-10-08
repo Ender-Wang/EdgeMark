@@ -155,6 +155,7 @@
   "settings.editor.grammarChecking": "语法检查",
   "settings.editor.autocorrect": "自动更正拼写",
   "settings.editor.smartQuotes": "智能引号",
+  "settings.editor.showNoteDates": "在标题栏显示笔记日期",
   "settings.editor.hoverPeek": "悬停预览",
   "settings.editor.hoverDelay": "悬停延时",
   "settings.editor.spacePreview": "空格键预览",
