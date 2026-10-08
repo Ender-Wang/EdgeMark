@@ -344,12 +344,6 @@ struct HomeFolderView: View {
                     }
 
                     if !rootNotes.isEmpty {
-                        if !sortedFolders.isEmpty || folderRename.isCreating {
-                            Divider()
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 4)
-                        }
-
                         ForEach(rootNotes) { note in
                             noteRowWithContextMenu(note: note)
                         }

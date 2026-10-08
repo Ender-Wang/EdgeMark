@@ -130,12 +130,6 @@ struct NoteListView: View {
                                     inlineFolderEditor
                                 }
 
-                                if !childFolders.isEmpty, !sortedNotes.isEmpty {
-                                    Divider()
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 4)
-                                }
-
                                 ForEach(sortedNotes) { note in
                                     noteRowWithContextMenu(note: note)
                                 }
