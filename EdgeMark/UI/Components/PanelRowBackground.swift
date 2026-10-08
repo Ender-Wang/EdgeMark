@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Shared selection and hover surface for note and folder rows.
-/// Hover adopts Liquid Glass when enabled; classic mode keeps the established fills.
+/// Active row states adopt Liquid Glass when enabled; classic mode keeps the established fills.
 struct PanelRowBackground: View {
     @Environment(AppSettings.self) private var appSettings
 
@@ -16,7 +16,7 @@ struct PanelRowBackground: View {
     }
 
     var body: some View {
-        if #available(macOS 26.0, *), appSettings.usesLiquidGlass, isHovered {
+        if #available(macOS 26.0, *), appSettings.usesLiquidGlass, isHovered || isSelected {
             shape
                 .fill(isSelected ? Color.accentColor.opacity(0.14) : .clear)
                 .glassEffect(.regular.interactive(), in: shape)
