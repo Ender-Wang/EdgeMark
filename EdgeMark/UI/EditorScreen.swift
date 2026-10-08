@@ -145,13 +145,15 @@ struct EditorScreen: View {
 
                     Spacer()
 
-                    PanelToolbarGroup {
+                    HStack(spacing: SurfaceMetrics.controlGroupSpacing) {
                         PinButton()
 
-                        CopyMenuButton(note: note)
-
-                        DeleteIconButton {
-                            showDeleteConfirm = true
+                        HeaderActionMenu(help: l10n["common.moreActions"]) { dismiss in
+                            EditorActionMenuContent(
+                                note: note,
+                                dismiss: dismiss,
+                                onDelete: { showDeleteConfirm = true },
+                            )
                         }
                     }
                 }
@@ -178,32 +180,43 @@ struct EditorScreen: View {
     }
 }
 
-// MARK: - Copy Menu Button
+// MARK: - Editor Action Menu
 
-/// Copy icon that opens a menu with plain text and Markdown copy options.
-/// If text is selected in the editor, copies the selection; otherwise copies the whole document.
-private struct CopyMenuButton: View {
+/// Editor overflow actions. If text is selected, copy actions use the selection;
+/// otherwise they use the whole document.
+private struct EditorActionMenuContent: View {
     let note: Note
+    let dismiss: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
         let l10n = L10n.shared
-        return AdaptiveIconMenu(
-            systemName: "doc.on.doc",
-            help: l10n["editor.copyNote"],
-        ) {
-            Button(l10n["common.copyPlainText"]) {
+        VStack(spacing: 2) {
+            HeaderActionButton(
+                title: l10n["common.copyPlainText"],
+                systemName: "doc.on.doc",
+            ) {
+                dismiss()
                 let selected = Self.getSelectedText()
                 let source = selected.isEmpty ? note.content : selected
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(Note.plainText(from: source), forType: .string)
             }
-            Button(l10n["common.copyMarkdown"]) {
+            HeaderActionButton(
+                title: l10n["common.copyMarkdown"],
+                systemName: "doc.text",
+            ) {
+                dismiss()
                 let selected = Self.getSelectedText()
                 let text = selected.isEmpty ? note.content : selected
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(text, forType: .string)
             }
-            Button(l10n["common.copyRTF"]) {
+            HeaderActionButton(
+                title: l10n["common.copyRTF"],
+                systemName: "doc.richtext",
+            ) {
+                dismiss()
                 let selected = Self.getSelectedText()
                 let source = selected.isEmpty ? note.content : selected
                 let pb = NSPasteboard.general
@@ -214,6 +227,18 @@ private struct CopyMenuButton: View {
                     pb.setString(Note.plainText(from: source), forType: .string)
                 }
             }
+
+            Divider()
+                .padding(.vertical, 2)
+
+            HeaderActionButton(
+                title: l10n["editor.deleteNote"],
+                systemName: "trash",
+                role: .destructive,
+            ) {
+                dismiss()
+                onDelete()
+            }
         }
     }
 
@@ -222,22 +247,6 @@ private struct CopyMenuButton: View {
               tv.selectedRange().length > 0
         else { return "" }
         return (tv.string as NSString).substring(with: tv.selectedRange())
-    }
-}
-
-// MARK: - Delete Icon Button
-
-/// Trash icon that turns red on hover.
-private struct DeleteIconButton: View {
-    let action: () -> Void
-
-    var body: some View {
-        AdaptiveIconButton(
-            systemName: "trash",
-            help: L10n.shared["editor.deleteNote"],
-            role: .destructive,
-            action: action,
-        )
     }
 }
 

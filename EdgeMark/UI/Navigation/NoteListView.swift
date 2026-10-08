@@ -91,30 +91,35 @@ struct NoteListView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .clipped()
 
-                PanelToolbarGroup {
+                HStack(spacing: SurfaceMetrics.controlGroupSpacing) {
                     PinButton()
 
-                    HeaderIconButton(
-                        systemName: "magnifyingglass",
-                        help: l10n["common.search"],
-                    ) {
-                        noteStore.searchReturnFolder = noteStore.selectedFolder
-                        noteStore.pendingSearchOnHome = true
-                        noteStore.navigateToHome()
-                    }
-
-                    HeaderIconButton(
-                        systemName: "folder.badge.plus",
-                        help: l10n["common.newFolder"],
-                    ) {
-                        startCreatingFolder()
-                    }
-
-                    HeaderIconButton(
-                        systemName: "square.and.pencil",
-                        help: l10n["common.newNote"],
-                    ) {
-                        createNote()
+                    HeaderActionMenu(help: l10n["common.moreActions"]) { dismiss in
+                        VStack(spacing: 2) {
+                            HeaderActionButton(
+                                title: l10n["common.search"],
+                                systemName: "magnifyingglass",
+                            ) {
+                                dismiss()
+                                noteStore.searchReturnFolder = noteStore.selectedFolder
+                                noteStore.pendingSearchOnHome = true
+                                noteStore.navigateToHome()
+                            }
+                            HeaderActionButton(
+                                title: l10n["common.newFolder"],
+                                systemName: "folder.badge.plus",
+                            ) {
+                                dismiss()
+                                startCreatingFolder()
+                            }
+                            HeaderActionButton(
+                                title: l10n["common.newNote"],
+                                systemName: "square.and.pencil",
+                            ) {
+                                dismiss()
+                                createNote()
+                            }
+                        }
                     }
                 }
             }
