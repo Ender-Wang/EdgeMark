@@ -3,7 +3,8 @@ import CoreGraphics
 /// Shared measurements for panel chrome and compact functional controls.
 /// Content-specific spacing remains owned by the view that renders that content.
 enum SurfaceMetrics {
-    static let panelCornerRadius: CGFloat = 10
+    /// Matches the continuous 12-point corners of native grouped Settings sections.
+    static let panelCornerRadius: CGFloat = 12
     static let panelSectionSpacing: CGFloat = 8
     static let classicControlCornerRadius: CGFloat = 6
     static let compactControlSize: CGFloat = 28

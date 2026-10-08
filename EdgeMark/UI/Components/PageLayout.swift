@@ -29,7 +29,12 @@ struct PageLayout<Header: View, Content: View>: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .background { PanelContentSurface() }
-                .clipShape(RoundedRectangle(cornerRadius: SurfaceMetrics.panelCornerRadius))
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: SurfaceMetrics.panelCornerRadius,
+                        style: .continuous,
+                    ),
+                )
                 .overlay {
                     if let onSwipeBack {
                         SwipeDetectorView(onSwipeBack: onSwipeBack)
@@ -38,7 +43,12 @@ struct PageLayout<Header: View, Content: View>: View {
 
             content
                 .background { PanelContentSurface() }
-                .clipShape(RoundedRectangle(cornerRadius: SurfaceMetrics.panelCornerRadius))
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: SurfaceMetrics.panelCornerRadius,
+                        style: .continuous,
+                    ),
+                )
                 .overlay {
                     if onContentSwipeRight != nil || onContentSwipeLeft != nil {
                         SwipeDetectorView(
