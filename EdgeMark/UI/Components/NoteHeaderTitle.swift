@@ -48,7 +48,7 @@ struct NoteHeaderTitle: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .layoutPriority(1)
             .contentShape(Rectangle())
-            .help(hoverDetails)
+            .quickHoverHelp(hoverDetails)
             .accessibilityAddTraits(.isHeader)
     }
 
@@ -59,5 +59,58 @@ struct NoteHeaderTitle: View {
             L10n.shared.t("editor.modifiedAt", modifiedAt),
             L10n.shared.t("editor.createdAt", createdAt),
         ].joined(separator: "\n")
+    }
+}
+
+/// Path details that appear faster than the system `.help` delay.
+private struct QuickHoverHelpModifier: ViewModifier {
+    let text: String
+
+    @State private var isPresented = false
+    @State private var revealTask: Task<Void, Never>?
+
+    func body(content: Content) -> some View {
+        content
+            .onHover(perform: updateHover)
+            .popover(
+                isPresented: $isPresented,
+                attachmentAnchor: .rect(.bounds),
+                arrowEdge: .top,
+            ) {
+                Text(text)
+                    .font(.caption)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: true, vertical: true)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .allowsHitTesting(false)
+            }
+            .onDisappear(perform: cancelReveal)
+    }
+
+    private func updateHover(_ hovering: Bool) {
+        revealTask?.cancel()
+
+        guard hovering else {
+            isPresented = false
+            return
+        }
+
+        revealTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            guard !Task.isCancelled else { return }
+            isPresented = true
+        }
+    }
+
+    private func cancelReveal() {
+        revealTask?.cancel()
+        isPresented = false
+    }
+}
+
+extension View {
+    func quickHoverHelp(_ text: String) -> some View {
+        modifier(QuickHoverHelpModifier(text: text))
     }
 }

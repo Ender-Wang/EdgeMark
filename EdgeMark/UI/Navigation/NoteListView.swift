@@ -78,7 +78,7 @@ struct NoteListView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .layoutPriority(1)
-                    .help(folderPath)
+                    .quickHoverHelp(folderPath)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 HStack(spacing: SurfaceMetrics.controlGroupSpacing) {
