@@ -27,8 +27,8 @@ struct ContentFooterBar: View {
                 settingsActions(dismiss: dismiss)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 6)
+        .padding([.horizontal, .bottom], 16)
+        .padding(.top, 6)
     }
 
     // MARK: - Sort Actions
