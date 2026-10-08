@@ -11,113 +11,95 @@ struct ContentFooterBar: View {
     var body: some View {
         let l10n = L10n.shared
         HStack {
-            HeaderIconButton(systemName: "arrow.up.arrow.down", help: l10n["sort.help"]) {
-                showSortMenu()
+            HeaderActionMenu(
+                systemName: "arrow.up.arrow.down",
+                help: l10n["sort.help"],
+                arrowEdge: .bottom,
+            ) { dismiss in
+                sortActions(dismiss: dismiss)
             }
             Spacer()
-            HeaderIconButton(systemName: "gearshape", help: l10n["menu.settings"]) {
-                showSettingsMenu()
+            HeaderActionMenu(
+                systemName: "gearshape",
+                help: l10n["menu.settings"],
+                arrowEdge: .bottom,
+            ) { dismiss in
+                settingsActions(dismiss: dismiss)
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
     }
 
-    // MARK: - Sort Menu
+    // MARK: - Sort Actions
 
-    private func showSortMenu() {
+    private func sortActions(dismiss: @escaping () -> Void) -> some View {
         let l10n = L10n.shared
-        let menu = NSMenu()
-        let delegate = NSApp.delegate as? AppDelegate
+        return VStack(spacing: 2) {
+            ForEach(AppSettings.SortBy.allCases, id: \.self) { option in
+                HeaderActionButton(
+                    title: option.displayName(l10n),
+                    systemName: sortIcon(for: option),
+                    isSelected: settings.sortBy == option,
+                ) {
+                    dismiss()
+                    settings.sortBy = option
+                }
+            }
 
-        for option in AppSettings.SortBy.allCases {
-            let action: Selector = switch option {
-            case .name: #selector(AppDelegate.setSortByName)
-            case .dateModified: #selector(AppDelegate.setSortByDateModified)
-            case .dateCreated: #selector(AppDelegate.setSortByDateCreated)
+            Divider()
+                .padding(.vertical, 2)
+
+            HeaderActionButton(
+                title: settings.sortAscending ? l10n["sort.ascending"] : l10n["sort.descending"],
+                systemName: settings.sortAscending ? "arrow.up" : "arrow.down",
+            ) {
+                dismiss()
+                settings.sortAscending.toggle()
             }
-            let iconName = switch option {
-            case .name: "textformat"
-            case .dateModified: "clock"
-            case .dateCreated: "calendar"
-            }
-            let item = NSMenuItem(title: option.displayName(l10n), action: action, keyEquivalent: "")
-            item.image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
-            item.target = delegate
-            item.state = settings.sortBy == option ? .on : .off
-            menu.addItem(item)
         }
-
-        menu.addItem(.separator())
-
-        let dirItem = NSMenuItem(
-            title: settings.sortAscending ? l10n["sort.ascending"] : l10n["sort.descending"],
-            action: #selector(AppDelegate.toggleSortDirection),
-            keyEquivalent: "",
-        )
-        dirItem.image = NSImage(
-            systemSymbolName: settings.sortAscending ? "arrow.up" : "arrow.down",
-            accessibilityDescription: nil,
-        )
-        dirItem.target = delegate
-        menu.addItem(dirItem)
-
-        popUpMenu(menu)
     }
 
-    // MARK: - Settings Menu
-
-    private func showSettingsMenu() {
-        let l10n = L10n.shared
-        let menu = NSMenu()
-        let delegate = NSApp.delegate as? AppDelegate
-
-        let trashItem = NSMenuItem(
-            title: l10n["common.trash"],
-            action: #selector(AppDelegate.showTrash),
-            keyEquivalent: "",
-        )
-        trashItem.image = NSImage(systemSymbolName: "trash", accessibilityDescription: nil)
-        trashItem.target = delegate
-        menu.addItem(trashItem)
-
-        menu.addItem(.separator())
-
-        menu.addActionItem(title: l10n["menu.settings"], icon: "gearshape") { [openSettings] in
-            openSettings()
+    private func sortIcon(for option: AppSettings.SortBy) -> String {
+        switch option {
+        case .name: "textformat"
+        case .dateModified: "clock"
+        case .dateCreated: "calendar"
         }
-
-        let updateItem = NSMenuItem(
-            title: l10n["menu.checkUpdates"],
-            action: #selector(AppDelegate.checkForUpdates),
-            keyEquivalent: "",
-        )
-        updateItem.image = NSImage(systemSymbolName: "arrow.triangle.2.circlepath", accessibilityDescription: nil)
-        updateItem.target = delegate
-        menu.addItem(updateItem)
-
-        menu.addItem(.separator())
-
-        let quitItem = NSMenuItem(
-            title: l10n["menu.quit"],
-            action: #selector(AppDelegate.quitApp),
-            keyEquivalent: "",
-        )
-        quitItem.image = NSImage(systemSymbolName: "power", accessibilityDescription: nil)
-        quitItem.target = delegate
-        menu.addItem(quitItem)
-
-        popUpMenu(menu)
     }
 
-    // MARK: - Helpers
+    // MARK: - Settings Actions
 
-    /// Show an NSMenu at the current click location.
-    private func popUpMenu(_ menu: NSMenu) {
-        guard let event = NSApp.currentEvent,
-              let view = event.window?.contentView
-        else { return }
-        menu.prepareItemImagesForContextPresentation()
-        NSMenu.popUpContextMenu(menu, with: event, for: view)
+    private func settingsActions(dismiss: @escaping () -> Void) -> some View {
+        let l10n = L10n.shared
+        return VStack(spacing: 2) {
+            HeaderActionButton(title: l10n["common.trash"], systemName: "trash") {
+                dismiss()
+                noteStore.openTrash()
+            }
+
+            Divider()
+                .padding(.vertical, 2)
+
+            HeaderActionButton(title: l10n["menu.settings"], systemName: "gearshape") {
+                dismiss()
+                openSettings()
+            }
+            HeaderActionButton(
+                title: l10n["menu.checkUpdates"],
+                systemName: "arrow.triangle.2.circlepath",
+            ) {
+                dismiss()
+                AppDelegate.shared?.checkForUpdates()
+            }
+
+            Divider()
+                .padding(.vertical, 2)
+
+            HeaderActionButton(title: l10n["menu.quit"], systemName: "power") {
+                dismiss()
+                NSApplication.shared.terminate(nil)
+            }
+        }
     }
 }

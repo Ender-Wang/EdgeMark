@@ -3,7 +3,9 @@ import SwiftUI
 /// A compact overflow control that reveals header actions on hover and click.
 /// The popover preserves the header's layout, so titles never move as actions appear.
 struct HeaderActionMenu<MenuContent: View>: View {
+    let systemName: String
     let help: String
+    let arrowEdge: Edge
     private let menuContent: (@escaping () -> Void) -> MenuContent
 
     @State private var isPresented = false
@@ -11,16 +13,20 @@ struct HeaderActionMenu<MenuContent: View>: View {
     @State private var dismissTask: Task<Void, Never>?
 
     init(
+        systemName: String = "ellipsis",
         help: String,
+        arrowEdge: Edge = .top,
         @ViewBuilder content: @escaping (@escaping () -> Void) -> MenuContent,
     ) {
+        self.systemName = systemName
         self.help = help
+        self.arrowEdge = arrowEdge
         menuContent = content
     }
 
     var body: some View {
         AdaptiveIconButton(
-            systemName: "ellipsis",
+            systemName: systemName,
             help: help,
             isActive: isPresented,
         ) {
@@ -37,7 +43,7 @@ struct HeaderActionMenu<MenuContent: View>: View {
         .popover(
             isPresented: $isPresented,
             attachmentAnchor: .rect(.bounds),
-            arrowEdge: .top,
+            arrowEdge: arrowEdge,
         ) {
             menuContent(dismiss)
                 .padding(6)
@@ -90,6 +96,7 @@ struct HeaderActionButton: View {
     let title: String
     let systemName: String
     var role: ButtonRole?
+    var isSelected = false
     let action: () -> Void
 
     @State private var isHovered = false
@@ -101,6 +108,10 @@ struct HeaderActionButton: View {
                     .frame(width: 18)
                 Text(title)
                 Spacer(minLength: 16)
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(Color.accentColor)
+                }
             }
             .foregroundStyle(foregroundColor)
             .padding(.horizontal, 10)
