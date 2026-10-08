@@ -146,6 +146,7 @@ struct EditorScreen: View {
                             )
                         }
                     }
+                    .fixedSize()
                 }
 
                 if appSettings.showNoteDatesInHeader {

@@ -40,6 +40,7 @@ struct AdaptiveIconButton: View {
                 iconLabel(isHovered: false)
             }
             .buttonStyle(.glass)
+            .controlSize(.small)
             .buttonBorderShape(.capsule)
             .help(help)
             .accessibilityLabel(help)
@@ -140,6 +141,7 @@ struct AdaptiveIconMenu<MenuContent: View>: View {
             menu(isHovered: false, fillsGroupSegment: false)
                 .menuStyle(.button)
                 .buttonStyle(.glass)
+                .controlSize(.small)
                 .buttonBorderShape(.capsule)
                 .menuIndicator(.hidden)
                 .fixedSize()
