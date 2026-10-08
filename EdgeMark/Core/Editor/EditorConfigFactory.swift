@@ -26,6 +26,9 @@ extension MarkdownEditorConfiguration {
             uncheckedSymbolName: preset.uncheckedSymbolName,
             checkedSymbolName: preset.checkedSymbolName,
         )
+        // Keep the source portable while letting authors opt into a quieter,
+        // centered divider with ***. Dash and underscore rules stay full-width.
+        config.thematicBreak.asteriskMark = "* * *"
         config.services = MarkdownEditorServices(
             images: EdgeMarkImageProvider(noteFolder: noteFolder),
             syntaxHighlighter: HighlighterSwiftBridge(),
