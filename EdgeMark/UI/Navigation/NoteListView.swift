@@ -311,7 +311,7 @@ struct NoteListView: View {
 
     private func inlineNoteRenameEditor(note: Note) -> some View {
         InlineRenameEditor(
-            icon: "doc.text",
+            icon: "text.document",
             placeholder: l10n["common.noteTitlePlaceholder"],
             text: $noteRename.text,
             isFocused: $isNoteRenameFocused,

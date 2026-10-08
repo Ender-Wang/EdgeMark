@@ -248,7 +248,7 @@ private struct RowClickOverlay: NSViewRepresentable {
             let fallbackLabel: String
             switch item {
             case .note:
-                iconName = "doc.text"
+                iconName = "text.document"
                 fallbackLabel = "Note"
             case let .folder(path):
                 iconName = "folder.fill"

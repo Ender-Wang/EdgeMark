@@ -561,7 +561,7 @@ struct HomeFolderView: View {
 
     private func inlineNoteRenameEditor(note: Note) -> some View {
         InlineRenameEditor(
-            icon: "doc.text",
+            icon: "text.document",
             placeholder: l10n["common.noteTitlePlaceholder"],
             text: $noteRename.text,
             isFocused: $isNoteRenameFocused,
@@ -721,7 +721,7 @@ struct HomeFolderView: View {
             openNote(note)
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: "doc.text")
+                Image(systemName: "text.document")
                     .font(.title3)
                     .foregroundStyle(.secondary)
                     .frame(width: iconWidth)
@@ -750,7 +750,7 @@ struct HomeFolderView: View {
             openNote(note)
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: "doc.text")
+                Image(systemName: "text.document")
                     .font(.title3)
                     .foregroundStyle(.secondary)
                     .frame(width: iconWidth)
@@ -781,7 +781,7 @@ struct HomeFolderView: View {
             openNote(note)
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: "doc.text")
+                Image(systemName: "text.document")
                     .font(.title3)
                     .foregroundStyle(.secondary)
                     .frame(width: iconWidth)
@@ -957,7 +957,7 @@ struct NoteRowView: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: "doc.text")
+            Image(systemName: "text.document")
                 .font(.title3)
                 .foregroundStyle(.secondary)
                 .frame(width: iconWidth)

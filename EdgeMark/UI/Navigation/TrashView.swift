@@ -551,7 +551,7 @@ private struct TrashedNoteRowView: View {
             onTap()
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: "doc.text")
+                Image(systemName: "text.document")
                     .font(.title3)
                     .foregroundStyle(.secondary)
                     .frame(width: iconWidth)
