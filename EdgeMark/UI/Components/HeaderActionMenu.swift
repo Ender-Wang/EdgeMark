@@ -93,6 +93,8 @@ struct HeaderActionMenu<MenuContent: View>: View {
 
 /// A full-width action row used inside `HeaderActionMenu` popovers.
 struct HeaderActionButton: View {
+    @Environment(AppSettings.self) private var appSettings
+
     let title: String
     let systemName: String
     var role: ButtonRole?
@@ -118,8 +120,7 @@ struct HeaderActionButton: View {
             .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
             .contentShape(Rectangle())
             .background {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(.primary.opacity(isHovered ? 0.1 : 0))
+                hoverBackground
             }
         }
         .buttonStyle(.plain)
@@ -135,5 +136,26 @@ struct HeaderActionButton: View {
             return .red
         }
         return isHovered ? .primary : .secondary
+    }
+
+    @ViewBuilder
+    private var hoverBackground: some View {
+        if #available(macOS 26.0, *), appSettings.usesLiquidGlass, isHovered {
+            let shape = RoundedRectangle(
+                cornerRadius: SurfaceMetrics.liquidGlassControlCornerRadius,
+                style: .continuous,
+            )
+            shape
+                .fill(.primary.opacity(0.12))
+                .overlay {
+                    shape.stroke(.primary.opacity(0.08), lineWidth: 0.5)
+                }
+        } else {
+            RoundedRectangle(
+                cornerRadius: SurfaceMetrics.classicControlCornerRadius,
+                style: .continuous,
+            )
+            .fill(.primary.opacity(isHovered ? 0.1 : 0))
+        }
     }
 }
