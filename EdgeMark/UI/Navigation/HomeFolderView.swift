@@ -883,12 +883,7 @@ struct FolderRowView: View {
                     .foregroundStyle(color?.color ?? Color.accentColor)
 
                 if count > 0 {
-                    Text("\(count)")
-                        .font(.system(size: 9, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.background)
-                        .padding(.horizontal, 3)
-                        .padding(.vertical, 0.5)
-                        .background(.primary.opacity(0.8), in: Capsule())
+                    FolderCountBadge(count: count)
                         .offset(x: 4, y: -3)
                 }
             }
@@ -920,6 +915,32 @@ struct FolderRowView: View {
                 isHovered = hovering
             }
         }
+    }
+}
+
+/// Compact folder count that follows the selected panel appearance.
+private struct FolderCountBadge: View {
+    @Environment(AppSettings.self) private var appSettings
+
+    let count: Int
+
+    var body: some View {
+        if #available(macOS 26.0, *), appSettings.usesLiquidGlass {
+            label
+                .foregroundStyle(.primary)
+                .glassEffect(.regular, in: Capsule())
+        } else {
+            label
+                .foregroundStyle(.background)
+                .background(.primary.opacity(0.8), in: Capsule())
+        }
+    }
+
+    private var label: some View {
+        Text("\(count)")
+            .font(.system(size: 9, weight: .semibold, design: .rounded))
+            .padding(.horizontal, 3)
+            .padding(.vertical, 0.5)
     }
 }
 
