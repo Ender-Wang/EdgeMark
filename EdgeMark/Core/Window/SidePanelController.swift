@@ -18,7 +18,6 @@ class KeyableWindow: NSWindow {
 // MARK: - SidePanelController
 
 final class SidePanelController: NSWindowController {
-    private let cornerRadius: CGFloat = 10
     private(set) var isShown = false
     private var isAnimating = false
     private var animationGeneration = 0
@@ -80,7 +79,7 @@ final class SidePanelController: NSWindowController {
         hostingView.frame = containerView.bounds
         hostingView.autoresizingMask = [.width, .height]
         hostingView.wantsLayer = true
-        hostingView.layer?.cornerRadius = 10
+        hostingView.layer?.cornerRadius = Self.windowCornerRadius(using: appSettings)
         hostingView.layer?.maskedCorners = Self.maskedCorners(for: side)
         hostingView.layer?.masksToBounds = true
         containerView.addSubview(hostingView)
@@ -270,6 +269,13 @@ final class SidePanelController: NSWindowController {
             object: nil,
         )
 
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleLiquidGlassSettingChanged),
+            name: .liquidGlassSettingChanged,
+            object: nil,
+        )
+
         // Listen for pin state changes to toggle window draggability
         NotificationCenter.default.addObserver(
             self,
@@ -285,6 +291,10 @@ final class SidePanelController: NSWindowController {
     }
 
     // MARK: - Settings Change
+
+    @objc private func handleLiquidGlassSettingChanged() {
+        contentHostingView?.layer?.cornerRadius = Self.windowCornerRadius(using: appSettings)
+    }
 
     @objc private func handleSettingsChanged() {
         guard let window, let containerView = window.contentView else { return }
@@ -645,6 +655,13 @@ final class SidePanelController: NSWindowController {
                             width: width, height: visibleFrame.height)
         }
         return (shown, hidden)
+    }
+
+    /// Match the shell to the active macOS appearance generation.
+    private static func windowCornerRadius(using settings: AppSettings) -> CGFloat {
+        settings.usesLiquidGlass
+            ? SurfaceMetrics.liquidGlassWindowCornerRadius
+            : SurfaceMetrics.classicWindowCornerRadius
     }
 
     /// Corner mask for the given edge side.

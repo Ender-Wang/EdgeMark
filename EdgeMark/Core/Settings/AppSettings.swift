@@ -195,7 +195,10 @@ final class AppSettings {
     /// Whether supported systems use Liquid Glass for controls and transient surfaces.
     /// Defaults on; disabling it restores EdgeMark's classic material and hover styling.
     var liquidGlassEnabled: Bool = true {
-        didSet { UserDefaults.standard.set(liquidGlassEnabled, forKey: "liquidGlassEnabled") }
+        didSet {
+            UserDefaults.standard.set(liquidGlassEnabled, forKey: "liquidGlassEnabled")
+            NotificationCenter.default.post(name: .liquidGlassSettingChanged, object: nil)
+        }
     }
 
     /// Whether note creation and modification dates remain visible below the title.
@@ -409,6 +412,7 @@ extension AppSettings.SortBy {
 
 extension Notification.Name {
     static let editorFontChanged = Notification.Name("editorFontChanged")
+    static let liquidGlassSettingChanged = Notification.Name("liquidGlassSettingChanged")
     static let previewSettingsChanged = Notification.Name("previewSettingsChanged")
 }
 
