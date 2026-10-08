@@ -1,6 +1,6 @@
 # Contributing to EdgeMark
 
-**Requirements:** macOS 15.7+, Xcode 26.2+, [Homebrew](https://brew.sh)
+**Requirements:** macOS 15.7+, Xcode 27+, [Homebrew](https://brew.sh)
 
 ```bash
 brew install swiftformat
