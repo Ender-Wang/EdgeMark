@@ -1786,10 +1786,4 @@ final class NoteStore {
             try? SidecarStore.shared.save()
         }
     }
-
-    private static func extractTitle(from content: String) -> String {
-        let firstLine = content.split(separator: "\n", maxSplits: 1).first.map(String.init) ?? ""
-        let stripped = firstLine.drop { $0 == "#" || $0 == " " }
-        return stripped.isEmpty ? "Untitled" : String(stripped)
-    }
 }

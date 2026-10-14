@@ -92,8 +92,7 @@ extension Note {
     /// otherwise pin the main thread in `String.index` / `String.distance` for seconds
     /// when the note list renders (e.g. at launch, when the panel's view tree is built
     /// eagerly even while hidden). See devlog-0721, issue #56. 4 000 graphemes is far
-    /// beyond any real title line, so dropping the first line (the H1 heading) still
-    /// works; the 120-char preview output is unchanged.
+    /// beyond any ordinary preview source; the 120-char preview output is unchanged.
     var previewText: String {
         let head = content.prefix(4000)
         // Surface pathological first lines so a reported blank or truncated subtitle

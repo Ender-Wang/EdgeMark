@@ -29,7 +29,7 @@ struct EdgeMarkImageProvider: EmbeddedImageProvider {
 // MARK: - MarkdownEditorView
 
 /// SwiftUI wrapper around NativeTextViewWrapper (swift-markdown-engine).
-/// Manages heading stripping, save debouncing, font observation, and the
+/// Manages full-document editing, save debouncing, font observation, and the
 /// slash-command popup.
 struct MarkdownEditorView: View {
     private struct EditorRebuildIdentity: Hashable {
@@ -55,7 +55,6 @@ struct MarkdownEditorView: View {
     var onNavigatePrevious: (() -> Void)?
 
     @State private var text: String
-    @State private var hiddenHeadingLine: String
     @State private var saveDebouncer = Debouncer(delay: 1.0)
     @State private var slashHandler = SlashCommandHandler()
     @State private var noteNavMonitor: Any?
@@ -91,9 +90,7 @@ struct MarkdownEditorView: View {
         self.showFindBar = showFindBar
         self.onNavigateNext = onNavigateNext
         self.onNavigatePrevious = onNavigatePrevious
-        let (heading, body) = Self.splitHeading(initialContent)
-        _text = State(initialValue: Self.imagesToEmbeds(body))
-        _hiddenHeadingLine = State(initialValue: heading)
+        _text = State(initialValue: Self.imagesToEmbeds(initialContent))
         _stableNoteID = State(initialValue: noteID)
     }
 
@@ -177,38 +174,19 @@ struct MarkdownEditorView: View {
             ))
             .onChange(of: text) { _, newText in
                 slashHandler.contentDidSynchronize(newText)
-                let heading = hiddenHeadingLine
                 let noteIDSnapshot = stableNoteID
                 saveDebouncer.call { [onContentChanged] in
                     // Convert display-layer ![[path]] embeds back to on-disk ![]( path) before saving.
                     let storage = Self.embedsToImages(newText)
-                    let full = heading.isEmpty ? storage : heading + "\n\n" + storage
-                    onContentChanged(noteIDSnapshot, full)
+                    onContentChanged(noteIDSnapshot, storage)
                 }
             }
             .onChange(of: pendingReload) { _, newContent in
                 guard let newContent else { return }
                 slashHandler.dismiss()
                 saveDebouncer.cancel()
-                let (heading, body) = Self.splitHeading(newContent)
-                hiddenHeadingLine = heading
-                text = Self.imagesToEmbeds(body)
+                text = Self.imagesToEmbeds(newContent)
                 pendingReload = nil
-            }
-            .onChange(of: noteTitle) { _, _ in
-                // A rename performed from the sticky title updates NoteStore's full
-                // content while this editor remains mounted. Keep the editor's hidden
-                // heading snapshot in sync so a pending debounce or onDisappear flush
-                // cannot write the previous title back into the note.
-                guard noteID == stableNoteID else { return }
-                slashHandler.dismiss()
-                saveDebouncer.cancel()
-                let (heading, body) = Self.splitHeading(initialContent)
-                hiddenHeadingLine = heading
-                let displayBody = Self.imagesToEmbeds(body)
-                if text != displayBody {
-                    text = displayBody
-                }
             }
             .overlay(
                 ImageDropOverlay { [noteID, noteTitle, noteFolder] url in
@@ -278,8 +256,7 @@ struct MarkdownEditorView: View {
             let capturedID = stableNoteID
             saveDebouncer.cancel()
             let storage = Self.embedsToImages(text)
-            let full = hiddenHeadingLine.isEmpty ? storage : hiddenHeadingLine + "\n\n" + storage
-            onContentChanged(capturedID, full)
+            onContentChanged(capturedID, storage)
             slashHandler.dismiss()
             if let m = noteNavMonitor {
                 NSEvent.removeMonitor(m); noteNavMonitor = nil
@@ -288,16 +265,6 @@ struct MarkdownEditorView: View {
     }
 
     // MARK: - Helpers
-
-    static func splitHeading(_ content: String) -> (heading: String, body: String) {
-        let lines = content.components(separatedBy: "\n")
-        guard let first = lines.first, first.hasPrefix("#") else { return ("", content) }
-        var rest = Array(lines.dropFirst())
-        while rest.first == "" {
-            rest.removeFirst()
-        }
-        return (first, rest.joined(separator: "\n"))
-    }
 
     private static func resolvedFontFamily(from postscriptName: String?) -> String? {
         guard let name = postscriptName, let font = NSFont(name: name, size: 16) else { return nil }
