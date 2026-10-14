@@ -359,8 +359,7 @@ enum FileStorage {
             let folderURL = rootURL.appendingPathComponent(folderName, isDirectory: true)
             notes += try loadNotes(in: folderURL, folder: folderName)
         }
-        let resolved = try resolveDuplicateFilenames(notes)
-        let migrated = resolved.map { note in
+        let migrated = notes.map { note in
             do {
                 return try migrateReservedRootAssetsIfNeeded(for: note)
             } catch {
@@ -1201,59 +1200,6 @@ enum FileStorage {
         lines.append("---")
         lines.append("")
         return lines.joined(separator: "\n")
-    }
-
-    /// Resolve duplicate filenames after loading. Oldest note (by createdAt) keeps its name;
-    /// newer duplicates get a number suffix ("Title 2", "Title 3", etc.).
-    private static func resolveDuplicateFilenames(_ notes: [Note]) throws -> [Note] {
-        var groups: [String: [Int]] = [:]
-        for (i, note) in notes.enumerated() {
-            let key = "\(note.folder)/\(note.filename.lowercased())"
-            groups[key, default: []].append(i)
-        }
-
-        var result = notes
-        for (_, indices) in groups where indices.count > 1 {
-            let sorted = indices.sorted { result[$0].createdAt < result[$1].createdAt }
-            for duplicateIndex in sorted.dropFirst() {
-                var note = result[duplicateIndex]
-                let baseTitle = note.title
-                var counter = 2
-                var newTitle = "\(baseTitle) \(counter)"
-                while result.contains(where: {
-                    $0.folder == note.folder
-                        && sanitizeForFilename($0.title).caseInsensitiveCompare(sanitizeForFilename(newTitle)) == .orderedSame
-                }) {
-                    counter += 1
-                    newTitle = "\(baseTitle) \(counter)"
-                }
-
-                let oldURL = rootURL.appendingPathComponent(note.relativePath)
-                Log.storage.info("[FileStorage] resolved duplicate: \(baseTitle, privacy: .public) → \(newTitle, privacy: .public)")
-                note.title = newTitle
-                // Update # heading in content
-                var lines = note.content.components(separatedBy: "\n")
-                if let headingIdx = lines.firstIndex(where: { $0.hasPrefix("#") }) {
-                    let prefix = String(lines[headingIdx].prefix(while: { $0 == "#" }))
-                    lines[headingIdx] = "\(prefix) \(newTitle)"
-                    note.content = lines.joined(separator: "\n")
-                }
-                let newURL = rootURL.appendingPathComponent(note.relativePath)
-                try Data(note.content.utf8).write(to: newURL, options: .atomic)
-                if oldURL != newURL {
-                    try? FileManager.default.removeItem(at: oldURL)
-                }
-                note.savedFilename = note.filename
-                // Update sidecar path for the renamed note
-                if var entry = SidecarStore.shared.noteEntry(for: note.id) {
-                    entry.path = note.relativePath
-                    SidecarStore.shared.upsertNote(entry, for: note.id)
-                }
-                result[duplicateIndex] = note
-            }
-        }
-        try? SidecarStore.shared.save()
-        return result
     }
 
     private static func extractTitle(from content: String) -> String {
