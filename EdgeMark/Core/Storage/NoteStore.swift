@@ -1314,11 +1314,11 @@ final class NoteStore {
 
     func restoreNote(_ note: Note) {
         guard let index = trashedNotes.firstIndex(where: { $0.id == note.id }) else { return }
-        trashedNotes[index].trashedAt = nil
 
         // Move file from .trash/ back to original folder
         do {
             let result = try FileStorage.restoreNote(trashedNotes[index])
+            trashedNotes[index].trashedAt = nil
             trashedNotes[index].filename = result.filename
             trashedNotes[index].savedAt = result.savedAt
             if let updatedContent = result.updatedContent {
@@ -1326,6 +1326,7 @@ final class NoteStore {
             }
         } catch {
             Log.storage.error("[NoteStore] restoreNote failed — \(error)")
+            return
         }
 
         let restoredNote = trashedNotes.remove(at: index)

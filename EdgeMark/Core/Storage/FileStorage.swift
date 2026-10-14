@@ -794,7 +794,9 @@ enum FileStorage {
     /// Restore a note from `.trash/` back to its original folder.
     /// Returns the filename committed at the restored destination.
     static func restoreNote(_ note: Note) throws -> (filename: String, savedAt: Date, updatedContent: String?) {
-        let trashEntry = SidecarStore.shared.trashEntry(for: note.id)
+        guard let trashEntry = SidecarStore.shared.trashEntry(for: note.id) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
         // Recreate original folder if needed
         if !note.folder.isEmpty {
             try ensureFolderExists(note.folder)
@@ -804,43 +806,61 @@ enum FileStorage {
         var restored = note
         restored.trashedAt = nil
 
-        let newFilename = restored.filename
+        let newFilename = availableRestoreFilename(
+            preferred: restored.filename,
+            folder: restored.folder,
+            noteID: restored.id,
+        )
+        restored.filename = newFilename
         let destRelative = restored.folder.isEmpty ? newFilename : "\(restored.folder)/\(newFilename)"
         let destURL = rootURL.appendingPathComponent(destRelative)
+        let sourceURL = trashURL.appendingPathComponent(trashEntry.filename)
 
         var updatedContent: String? = nil
+        let trashStem = (trashEntry.filename as NSString).deletingPathExtension
+        let originalStem = (note.filename as NSString).deletingPathExtension
+        let restoredStem = (newFilename as NSString).deletingPathExtension
+        let srcAsset = assetDirURL(
+            stem: trashStem,
+            noteID: note.id,
+            folder: "",
+            inTrash: true,
+        )
+        let dstAsset = assetDirURL(
+            stem: restoredStem,
+            noteID: note.id,
+            folder: note.folder,
+        )
+        try preflightAssetDirectoryMove(from: srcAsset, to: dstAsset)
 
-        // Restore image assets before writing so legacy trash entries can rewrite their
-        // old root path to the collision-safe reserved path in the same operation.
-        if let trashEntry {
-            let trashStem = (trashEntry.filename as NSString).deletingPathExtension
-            let restoredStem = (note.filename as NSString).deletingPathExtension
-            let srcAsset = assetDirURL(
-                stem: trashStem,
-                noteID: note.id,
-                folder: "",
-                inTrash: true,
-            )
-            let dstAsset = assetDirURL(
-                stem: restoredStem,
+        do {
+            // Move instead of rewriting so creation metadata and extended attributes
+            // survive when no image-reference rewrite is required.
+            try FileManager.default.moveItem(at: sourceURL, to: destURL)
+            let restoredImages = try moveAssetDirectoryIfPresent(from: srcAsset, to: dstAsset)
+            let originalReference = assetDirectoryReference(
+                stem: originalStem,
                 noteID: note.id,
                 folder: note.folder,
             )
-            let restoredImages = try moveAssetDirectoryIfPresent(from: srcAsset, to: dstAsset)
-            let legacyReference = ".\(restoredStem)"
+            let legacyReference = ".\(originalStem)"
             let restoredReference = assetDirectoryReference(
                 stem: restoredStem,
                 noteID: note.id,
                 folder: note.folder,
             )
-            if legacyReference != restoredReference, !restoredImages.isEmpty {
+            if !restoredImages.isEmpty {
                 var body = restored.content
                 for image in restoredImages {
                     let name = image.lastPathComponent
-                    body = body.replacingOccurrences(
-                        of: "\(legacyReference)/\(name)",
-                        with: "\(restoredReference)/\(name)",
-                    )
+                    for sourceReference in Set([originalReference, legacyReference])
+                        where sourceReference != restoredReference
+                    {
+                        body = body.replacingOccurrences(
+                            of: "\(sourceReference)/\(name)",
+                            with: "\(restoredReference)/\(name)",
+                        )
+                    }
                 }
                 if body != restored.content {
                     restored.content = body
@@ -850,37 +870,84 @@ enum FileStorage {
             if !restoredImages.isEmpty {
                 Log.storage.debug("[Image] restored asset directory noteID=\(note.id.uuidString, privacy: .public)")
             }
+
+            if let updatedContent {
+                try Data(updatedContent.utf8).write(to: destURL, options: .atomic)
+            }
+
+            let savedAt = (try? FileManager.default.attributesOfItem(atPath: destURL.path))?[.modificationDate] as? Date ?? Date()
+            let persistedData = Data(restored.content.utf8)
+            SidecarStore.shared.removeTrash(id: note.id)
+            SidecarStore.shared.upsertNote(
+                SidecarStore.NoteEntry(
+                    path: destRelative,
+                    createdAt: note.createdAt,
+                    modifiedAt: note.modifiedAt,
+                    savedAt: savedAt,
+                    tags: note.tags.map(\.rawValue),
+                    contentHash: contentHash(for: persistedData),
+                    contentByteCount: persistedData.count,
+                ),
+                for: note.id,
+            )
+            try SidecarStore.shared.save()
+
+            if newFilename != note.filename {
+                Log.storage.info("[NoteMetadata] restore collision resolved noteID=\(note.id.uuidString, privacy: .public) filename=\(newFilename, privacy: .public)")
+            }
+            return (filename: newFilename, savedAt: savedAt, updatedContent: updatedContent)
+        } catch {
+            // Restore the pre-transaction sidecar state before returning failure.
+            SidecarStore.shared.removeNote(id: note.id)
+            SidecarStore.shared.upsertTrash(trashEntry, for: note.id)
+            try? SidecarStore.shared.save()
+
+            if FileManager.default.fileExists(atPath: destURL.path),
+               !FileManager.default.fileExists(atPath: sourceURL.path)
+            {
+                // A rewritten reserved path must not leak back into the trash copy.
+                if updatedContent != nil {
+                    try? Data(note.content.utf8).write(to: destURL, options: .atomic)
+                }
+                try? FileManager.default.moveItem(at: destURL, to: sourceURL)
+            }
+            if FileManager.default.fileExists(atPath: dstAsset.path) {
+                _ = try? moveAssetDirectoryIfPresent(from: dstAsset, to: srcAsset)
+            }
+            throw error
         }
+    }
 
-        // Write body only
-        try Data(restored.content.utf8).write(to: destURL, options: .atomic)
+    /// Picks the original filename when available, otherwise the first `Name N.md`
+    /// variant unused by both the directory and sidecar. Orphan asset directories are
+    /// treated as collisions too so restore never merges unrelated images.
+    private static func availableRestoreFilename(
+        preferred: String,
+        folder: String,
+        noteID: UUID,
+    ) -> String {
+        let stem = (preferred as NSString).deletingPathExtension
+        let ext = (preferred as NSString).pathExtension.isEmpty
+            ? "md"
+            : (preferred as NSString).pathExtension
+        let sidecarPaths = Set(SidecarStore.shared.noteEntriesByPath().keys.map { $0.lowercased() })
 
-        // Move sidecar entry from trash → notes
-        SidecarStore.shared.removeTrash(id: note.id)
-        let savedAt = (try? FileManager.default.attributesOfItem(atPath: destURL.path))?[.modificationDate] as? Date ?? Date()
-        let persistedData = Data(restored.content.utf8)
-        SidecarStore.shared.upsertNote(
-            SidecarStore.NoteEntry(
-                path: destRelative,
-                createdAt: note.createdAt,
-                modifiedAt: note.modifiedAt,
-                savedAt: savedAt,
-                tags: note.tags.map(\.rawValue),
-                contentHash: contentHash(for: persistedData),
-                contentByteCount: persistedData.count,
-            ),
-            for: note.id,
-        )
-        try? SidecarStore.shared.save()
-
-        let restoredSavedAt = savedAt
-
-        // Remove from .trash/
-        if let trashEntry {
-            try? FileManager.default.removeItem(at: trashURL.appendingPathComponent(trashEntry.filename))
+        var candidate = preferred
+        var counter = 2
+        while true {
+            let relativePath = folder.isEmpty ? candidate : "\(folder)/\(candidate)"
+            let fileURL = rootURL.appendingPathComponent(relativePath)
+            let candidateStem = (candidate as NSString).deletingPathExtension
+            let assetURL = assetDirURL(stem: candidateStem, noteID: noteID, folder: folder)
+            if !FileManager.default.fileExists(atPath: fileURL.path),
+               !FileManager.default.fileExists(atPath: assetURL.path),
+               !sidecarPaths.contains(relativePath.lowercased())
+            {
+                return candidate
+            }
+            candidate = "\(stem) \(counter).\(ext)"
+            counter += 1
         }
-
-        return (filename: newFilename, savedAt: restoredSavedAt, updatedContent: updatedContent)
     }
 
     /// Delete a trashed note from `.trash/`. Also deletes its asset directory.
