@@ -1002,8 +1002,6 @@ final class NoteStore {
                 newTitle = "\(baseTitle) \(counter)"
                 newFilename = FileStorage.filename(forTitle: newTitle) ?? "Untitled \(counter).md"
             }
-            notes[index].filename = newFilename
-            notes[index].modifiedAt = Date()
             // Atomic move + rename so the file actually lands at the new name on disk.
             performMoveNote(at: index, to: folder, renamingTo: newFilename)
             return
@@ -1075,6 +1073,7 @@ final class NoteStore {
             let result = try FileStorage.moveNote(note, toFolder: folder, withFilename: newFilename)
             notes[index].folder = folder
             notes[index].filename = result.filename
+            notes[index].modifiedAt = result.modifiedAt
             notes[index].savedAt = result.savedAt
             if let updatedContent = result.updatedContent {
                 notes[index].content = updatedContent

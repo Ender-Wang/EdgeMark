@@ -658,7 +658,7 @@ enum FileStorage {
         _ note: Note,
         toFolder: String,
         withFilename newFilename: String? = nil,
-    ) throws -> (filename: String, savedAt: Date, updatedContent: String?) {
+    ) throws -> (filename: String, modifiedAt: Date, savedAt: Date, updatedContent: String?) {
         let actualFilename = note.filename
         let oldRelative = note.folder.isEmpty ? actualFilename : "\(note.folder)/\(actualFilename)"
         let oldURL = rootURL.appendingPathComponent(oldRelative)
@@ -708,13 +708,20 @@ enum FileStorage {
 
         // Update path and savedAt in sidecar — moveItem advances mtime
         let movedMtime = (try? FileManager.default.attributesOfItem(atPath: newURL.path))?[.modificationDate] as? Date ?? Date()
+        let committedModifiedAt = newFilename == nil ? note.modifiedAt : Date()
         if var entry = SidecarStore.shared.noteEntry(for: note.id) {
             entry.path = newRelative
+            entry.modifiedAt = committedModifiedAt
             entry.savedAt = movedMtime
             SidecarStore.shared.upsertNote(entry, for: note.id)
             try? SidecarStore.shared.save()
         }
-        return (filename: destFilename, savedAt: movedMtime, updatedContent: updatedContent)
+        return (
+            filename: destFilename,
+            modifiedAt: committedModifiedAt,
+            savedAt: movedMtime,
+            updatedContent: updatedContent,
+        )
     }
 
     // MARK: - Trash I/O (Individual Notes)
