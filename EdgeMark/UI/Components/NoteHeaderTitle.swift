@@ -13,6 +13,7 @@ struct NoteHeaderTitle: View {
     var isFocused: FocusState<Bool>.Binding
     let isEditing: Bool
     let isConflicting: Bool
+    var validationMessage: String?
     let onBeginEditing: () -> Void
     let onCommit: () -> Void
     let onCancel: () -> Void
@@ -37,7 +38,7 @@ struct NoteHeaderTitle: View {
                 }
             }
             .overlay(alignment: .trailing) {
-                Text(L10n.shared["common.nameTaken"])
+                Text(validationMessage ?? L10n.shared["common.nameTaken"])
                     .font(.caption2)
                     .foregroundStyle(.red)
                     .padding(.horizontal, 6)

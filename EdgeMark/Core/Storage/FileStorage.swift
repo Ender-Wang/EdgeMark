@@ -372,6 +372,22 @@ enum FileStorage {
         return result.isEmpty ? "Untitled" : result
     }
 
+    /// Converts an editable title into one literal Markdown filename. Unlike the
+    /// legacy sanitizer, this preserves spaces and punctuation and rejects unsafe
+    /// path components instead of silently changing them.
+    static func filename(forTitle title: String) -> String? {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              trimmed != ".",
+              trimmed != "..",
+              !trimmed.contains("/"),
+              !trimmed.contains(":"),
+              !trimmed.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains),
+              Data("\(trimmed).md".utf8).count <= 255
+        else { return nil }
+        return "\(trimmed).md"
+    }
+
     // MARK: - Note I/O
 
     static func loadAllNotes() throws -> [Note] {

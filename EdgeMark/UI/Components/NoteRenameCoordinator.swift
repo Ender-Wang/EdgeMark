@@ -31,13 +31,22 @@ final class NoteRenameCoordinator {
         return noteStore.noteTitleExists(trimmed, in: folder, excluding: noteID)
     }
 
+    func validationMessage(in noteStore: NoteStore) -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        guard noteStore.isValidNoteTitle(trimmed) else {
+            return L10n.shared["common.invalidName"]
+        }
+        return isConflicting(in: noteStore) ? L10n.shared["common.nameTaken"] : nil
+    }
+
     // MARK: - Commit / Cancel
 
     func commit(note: Note, noteStore: NoteStore) {
-        guard !isConflicting(in: noteStore) else { return }
+        guard validationMessage(in: noteStore) == nil else { return }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty, trimmed != note.title {
-            noteStore.renameNote(note, to: trimmed)
+            guard noteStore.renameNote(note, to: trimmed) else { return }
         }
         let isNew = newlyCreatedNoteID == note.id
         clear()
@@ -56,8 +65,10 @@ final class NoteRenameCoordinator {
     func commitOrCancel(note: Note, noteStore: NoteStore) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let isNew = newlyCreatedNoteID == note.id
-        if (trimmed.isEmpty && !isNew) || isConflicting(in: noteStore) {
+        if trimmed.isEmpty, !isNew {
             cancel(noteStore: noteStore)
+        } else if validationMessage(in: noteStore) != nil {
+            return
         } else {
             commit(note: note, noteStore: noteStore)
         }

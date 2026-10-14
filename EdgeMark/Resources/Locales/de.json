@@ -38,6 +38,7 @@
   "tags.clearFilter": "Tag-Filter löschen",
   "common.moveHere": "Hierher verschieben",
   "common.nameTaken": "Name vergeben",
+  "common.invalidName": "Ungültiger Name",
   "common.copyPlainText": "Als Klartext kopieren",
   "common.copyMarkdown": "Als Markdown kopieren",
   "common.copyRTF": "Als Rich Text kopieren",

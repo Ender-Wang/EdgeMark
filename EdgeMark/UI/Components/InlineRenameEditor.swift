@@ -9,6 +9,7 @@ struct InlineRenameEditor: View {
     @Binding var text: String
     var isFocused: FocusState<Bool>.Binding
     let isConflicting: Bool
+    var validationMessage: String?
     let iconWidth: CGFloat
     let onCommit: () -> Void
     let onCancel: () -> Void
@@ -27,7 +28,7 @@ struct InlineRenameEditor: View {
                 .focused(isFocused)
                 .onSubmit(onCommit)
                 .overlay(alignment: .trailing) {
-                    Text(L10n.shared["common.nameTaken"])
+                    Text(validationMessage ?? L10n.shared["common.nameTaken"])
                         .font(.caption2)
                         .foregroundStyle(.red)
                         .padding(.horizontal, 6)

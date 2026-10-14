@@ -38,6 +38,7 @@
   "tags.clearFilter": "टैग फ़िल्टर हटाएं",
   "common.moveHere": "यहां ले जाएं",
   "common.nameTaken": "नाम पहले से मौजूद है",
+  "common.invalidName": "अमान्य नाम",
   "common.copyPlainText": "सादा टेक्स्ट के रूप में कॉपी करें",
   "common.copyMarkdown": "Markdown के रूप में कॉपी करें",
   "common.copyRTF": "रिच टेक्स्ट के रूप में कॉपी करें",

@@ -38,6 +38,7 @@
   "tags.clearFilter": "Limpiar filtro de etiquetas",
   "common.moveHere": "Mover aquí",
   "common.nameTaken": "Nombre ya en uso",
+  "common.invalidName": "Nombre no válido",
   "common.copyPlainText": "Copiar como texto plano",
   "common.copyMarkdown": "Copiar como Markdown",
   "common.copyRTF": "Copiar como texto enriquecido",

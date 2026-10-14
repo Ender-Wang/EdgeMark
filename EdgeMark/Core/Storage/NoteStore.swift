@@ -483,14 +483,32 @@ final class NoteStore {
 
     // MARK: - Duplicate Detection
 
+    func isValidNoteTitle(_ title: String) -> Bool {
+        FileStorage.filename(forTitle: title) != nil
+    }
+
     /// Whether a note title already exists in the given folder (case-insensitive filename match).
     func noteTitleExists(_ title: String, in folder: String, excluding noteID: UUID? = nil) -> Bool {
-        let filename = "\(title).md"
-        return notes.contains { note in
+        guard let filename = FileStorage.filename(forTitle: title) else { return false }
+        let collidesInMemory = notes.contains { note in
             note.id != noteID
                 && note.folder == folder
                 && note.filename.caseInsensitiveCompare(filename) == .orderedSame
         }
+        if collidesInMemory {
+            return true
+        }
+        if let noteID,
+           let current = notes.first(where: { $0.id == noteID }),
+           current.folder == folder,
+           current.filename.caseInsensitiveCompare(filename) == .orderedSame
+        {
+            return false
+        }
+        let destination = folder.isEmpty
+            ? FileStorage.rootURL.appendingPathComponent(filename)
+            : FileStorage.rootURL.appendingPathComponent(folder).appendingPathComponent(filename)
+        return FileManager.default.fileExists(atPath: destination.path)
     }
 
     /// Checks loaded notes and the destination directory for a filename collision.
@@ -557,8 +575,8 @@ final class NoteStore {
         let now = Date()
         var note = Note(
             id: UUID(),
-            filename: "\(FileStorage.sanitizeForFilename(title)).md",
-            content: "# \(title)\n\n",
+            filename: "\(title).md",
+            content: "",
             createdAt: now,
             modifiedAt: now,
             folder: folder,
@@ -596,13 +614,13 @@ final class NoteStore {
         }
     }
 
-    func renameNote(_ note: Note, to newTitle: String) {
-        guard let index = notes.firstIndex(where: { $0.id == note.id }) else { return }
+    @discardableResult
+    func renameNote(_ note: Note, to newTitle: String) -> Bool {
+        guard let index = notes.firstIndex(where: { $0.id == note.id }) else { return false }
         let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        guard !noteTitleExists(trimmed, in: note.folder, excluding: note.id) else { return }
+        guard let newFilename = FileStorage.filename(forTitle: trimmed) else { return false }
+        guard !noteTitleExists(trimmed, in: note.folder, excluding: note.id) else { return false }
 
-        let newFilename = "\(trimmed).md"
         var renamedNote = notes[index]
         renamedNote.modifiedAt = Date()
         do {
@@ -622,8 +640,10 @@ final class NoteStore {
                 selectedNote = notes[index]
             }
             Log.storage.info("[NoteMetadata] mutation op=rename noteID=\(note.id.uuidString, privacy: .public) committed=true")
+            return true
         } catch {
             Log.storage.error("[NoteMetadata] mutation op=rename noteID=\(note.id.uuidString, privacy: .public) committed=false error=\(error)")
+            return false
         }
     }
 
@@ -976,11 +996,11 @@ final class NoteStore {
             let baseTitle = notes[index].title
             var counter = 2
             var newTitle = "\(baseTitle) \(counter)"
-            var newFilename = "\(FileStorage.sanitizeForFilename(newTitle)).md"
+            var newFilename = FileStorage.filename(forTitle: newTitle) ?? "Untitled 2.md"
             while noteFilenameWouldCollide(newFilename, in: folder, excluding: conflict.noteID) {
                 counter += 1
                 newTitle = "\(baseTitle) \(counter)"
-                newFilename = "\(FileStorage.sanitizeForFilename(newTitle)).md"
+                newFilename = FileStorage.filename(forTitle: newTitle) ?? "Untitled \(counter).md"
             }
             notes[index].filename = newFilename
             notes[index].modifiedAt = Date()

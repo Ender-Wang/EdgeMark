@@ -38,6 +38,7 @@
   "tags.clearFilter": "清除标签筛选",
   "common.moveHere": "移动到此处",
   "common.nameTaken": "名称已存在",
+  "common.invalidName": "名称无效",
   "common.copyPlainText": "复制为纯文本",
   "common.copyMarkdown": "复制为 Markdown",
   "common.copyRTF": "复制为富文本",

@@ -114,7 +114,8 @@ struct EditorScreen: View {
                         ),
                         isFocused: $isNoteTitleFocused,
                         isEditing: noteRename.renamingNoteID == note.id,
-                        isConflicting: noteRename.isConflicting(in: noteStore),
+                        isConflicting: noteRename.validationMessage(in: noteStore) != nil,
+                        validationMessage: noteRename.validationMessage(in: noteStore),
                         onBeginEditing: {
                             if noteRename.renamingNoteID != note.id {
                                 noteRename.beginRename(note)

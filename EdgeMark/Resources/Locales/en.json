@@ -38,6 +38,7 @@
   "tags.clearFilter": "Clear tag filter",
   "common.moveHere": "Move here",
   "common.nameTaken": "Name taken",
+  "common.invalidName": "Invalid name",
   "common.copyPlainText": "Copy as Plain Text",
   "common.copyMarkdown": "Copy as Markdown",
   "common.copyRTF": "Copy as Rich Text",
