@@ -494,6 +494,12 @@ enum FileStorage {
         return (filename: note.filename, updatedContent: nil, savedAt: modificationDate(for: note) ?? Date(), metadataSaved: metadataSaved)
     }
 
+    /// Persists EdgeMark-only metadata without touching the Markdown file.
+    static func writeMetadata(_ note: Note) -> (savedAt: Date, metadataSaved: Bool) {
+        let metadataSaved = upsertSidecarEntry(for: note, filename: note.filename)
+        return (modificationDate(for: note) ?? note.savedAt, metadataSaved)
+    }
+
     /// Renames an existing note and its asset directory as one explicit operation.
     /// The old filename remains authoritative to the caller unless this returns.
     static func renameNote(
@@ -636,7 +642,7 @@ enum FileStorage {
         _ note: Note,
         toFolder: String,
         withFilename newFilename: String? = nil,
-    ) throws -> (savedAt: Date, updatedContent: String?) {
+    ) throws -> (filename: String, savedAt: Date, updatedContent: String?) {
         let actualFilename = note.filename
         let oldRelative = note.folder.isEmpty ? actualFilename : "\(note.folder)/\(actualFilename)"
         let oldURL = rootURL.appendingPathComponent(oldRelative)
@@ -692,7 +698,7 @@ enum FileStorage {
             SidecarStore.shared.upsertNote(entry, for: note.id)
             try? SidecarStore.shared.save()
         }
-        return (savedAt: movedMtime, updatedContent: updatedContent)
+        return (filename: destFilename, savedAt: movedMtime, updatedContent: updatedContent)
     }
 
     // MARK: - Trash I/O (Individual Notes)

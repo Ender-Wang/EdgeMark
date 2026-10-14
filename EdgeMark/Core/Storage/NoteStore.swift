@@ -336,6 +336,7 @@ final class NoteStore {
 
     private var dirtyNoteIDs: Set<UUID> = []
     private var failedPersistenceNoteIDs: Set<UUID> = []
+    private var metadataOnlyNoteIDs: Set<UUID> = []
 
     private enum PersistenceTrigger: String {
         case rename
@@ -382,6 +383,7 @@ final class NoteStore {
             refreshFolders()
             dirtyNoteIDs.removeAll()
             failedPersistenceNoteIDs.removeAll()
+            metadataOnlyNoteIDs.removeAll()
             let noteCount = notes.count
             let trashCount = trashedNotes.count + trashedFolders.count
             Log.storage.info("[NoteStore] loaded \(noteCount) notes, \(trashCount) trashed items")
@@ -431,6 +433,7 @@ final class NoteStore {
                 notes[i].tags = diskTags
                 dirtyNoteIDs.remove(noteID)
                 failedPersistenceNoteIDs.remove(noteID)
+                metadataOnlyNoteIDs.remove(noteID)
                 // Persist updated savedAt to sidecar so the watcher doesn't re-fire on next launch
                 if var entry = SidecarStore.shared.noteEntry(for: noteID) {
                     entry.savedAt = diskSavedAt
@@ -461,6 +464,7 @@ final class NoteStore {
             notes[i].tags = conflict.diskTags
             dirtyNoteIDs.remove(conflict.noteID)
             failedPersistenceNoteIDs.remove(conflict.noteID)
+            metadataOnlyNoteIDs.remove(conflict.noteID)
             // Persist updated savedAt + tags so the watcher doesn't re-fire on next launch
             if var entry = SidecarStore.shared.noteEntry(for: conflict.noteID) {
                 entry.savedAt = conflict.diskDate
@@ -583,6 +587,7 @@ final class NoteStore {
         guard notes[index].content != content else { return }
         notes[index].content = content
         notes[index].modifiedAt = Date()
+        metadataOnlyNoteIDs.remove(noteID)
         dirtyNoteIDs.insert(noteID)
 
         // Also update selectedNote if it matches
@@ -598,10 +603,12 @@ final class NoteStore {
         guard !noteTitleExists(trimmed, in: note.folder, excluding: note.id) else { return }
 
         let newFilename = "\(trimmed).md"
+        var renamedNote = notes[index]
+        renamedNote.modifiedAt = Date()
         do {
-            let result = try FileStorage.renameNote(notes[index], toFilename: newFilename)
+            let result = try FileStorage.renameNote(renamedNote, toFilename: newFilename)
             notes[index].filename = result.filename
-            notes[index].modifiedAt = Date()
+            notes[index].modifiedAt = renamedNote.modifiedAt
             notes[index].savedAt = result.savedAt
             if let updatedContent = result.updatedContent {
                 notes[index].content = updatedContent
@@ -630,6 +637,7 @@ final class NoteStore {
         }
         notes[index].modifiedAt = Date()
         dirtyNoteIDs.insert(note.id)
+        metadataOnlyNoteIDs.insert(note.id)
         if selectedNote?.id == note.id {
             selectedNote = notes[index]
         }
@@ -936,6 +944,7 @@ final class NoteStore {
         notes.removeAll { $0.id == note.id }
         dirtyNoteIDs.remove(note.id)
         failedPersistenceNoteIDs.remove(note.id)
+        metadataOnlyNoteIDs.remove(note.id)
         do {
             try FileStorage.deleteNote(note)
         } catch {
@@ -1045,7 +1054,7 @@ final class NoteStore {
         do {
             let result = try FileStorage.moveNote(note, toFolder: folder, withFilename: newFilename)
             notes[index].folder = folder
-            notes[index].filename = newFilename ?? note.filename
+            notes[index].filename = result.filename
             notes[index].savedAt = result.savedAt
             if let updatedContent = result.updatedContent {
                 notes[index].content = updatedContent
@@ -1147,6 +1156,7 @@ final class NoteStore {
                 let note = notes[index]
                 let result = try FileStorage.moveNote(note, toFolder: groupFolder)
                 notes[index].folder = groupFolder
+                notes[index].filename = result.filename
                 notes[index].savedAt = result.savedAt
                 if let updatedContent = result.updatedContent {
                     notes[index].content = updatedContent
@@ -1173,6 +1183,7 @@ final class NoteStore {
                 do {
                     let result = try FileStorage.moveNote(note, toFolder: folder)
                     notes[index].folder = folder
+                    notes[index].filename = result.filename
                     notes[index].savedAt = result.savedAt
                     if let updatedContent = result.updatedContent {
                         notes[index].content = updatedContent
@@ -1209,6 +1220,7 @@ final class NoteStore {
         notes[index].trashedAt = Date()
         dirtyNoteIDs.remove(note.id)
         failedPersistenceNoteIDs.remove(note.id)
+        metadataOnlyNoteIDs.remove(note.id)
 
         // Move file to .trash/<UUID>_<Title>.md
         do {
@@ -1663,13 +1675,21 @@ final class NoteStore {
         guard let index = notes.firstIndex(where: { $0.id == noteID }) else {
             dirtyNoteIDs.remove(noteID)
             failedPersistenceNoteIDs.remove(noteID)
+            metadataOnlyNoteIDs.remove(noteID)
             return
         }
         if trigger != .deferred {
             Log.storage.info("[NoteMetadata] persist attempt op=\(trigger.rawValue, privacy: .public) noteID=\(noteID.uuidString, privacy: .public)")
         }
         do {
-            let result = try FileStorage.writeNote(notes[index])
+            let metadataOnly = metadataOnlyNoteIDs.contains(noteID)
+            let result: (filename: String, updatedContent: String?, savedAt: Date, metadataSaved: Bool)
+            if metadataOnly {
+                let metadataResult = FileStorage.writeMetadata(notes[index])
+                result = (notes[index].filename, nil, metadataResult.savedAt, metadataResult.metadataSaved)
+            } else {
+                result = try FileStorage.writeNote(notes[index])
+            }
             notes[index].filename = result.filename
             notes[index].savedAt = result.savedAt
             if let updated = result.updatedContent {
@@ -1684,11 +1704,14 @@ final class NoteStore {
                 selectedNote?.filename = result.filename
                 selectedNote?.savedAt = result.savedAt
             }
-            // Clean up orphaned images (deleted from body but file still on disk)
-            FileStorage.cleanOrphanedImages(forNote: notes[index], body: notes[index].content)
+            if !metadataOnly {
+                // Clean up orphaned images only after a content write.
+                FileStorage.cleanOrphanedImages(forNote: notes[index], body: notes[index].content)
+            }
             if result.metadataSaved {
                 dirtyNoteIDs.remove(noteID)
                 failedPersistenceNoteIDs.remove(noteID)
+                metadataOnlyNoteIDs.remove(noteID)
                 if trigger != .deferred {
                     Log.storage.info("[NoteMetadata] persist success op=\(trigger.rawValue, privacy: .public) noteID=\(noteID.uuidString, privacy: .public) dirtyRetained=false")
                 }
