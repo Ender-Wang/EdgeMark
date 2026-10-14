@@ -395,6 +395,7 @@ enum FileStorage {
         let candidates = try loadActiveNoteCandidates()
         var entriesByPath = SidecarStore.shared.noteEntriesByPath()
         reconcileExternalRenames(candidates: candidates, entriesByPath: &entriesByPath)
+        removeMissingSidecarEntries(candidates: candidates, entriesByPath: &entriesByPath)
 
         let notes = candidates.compactMap { candidate in
             readNote(
@@ -480,6 +481,22 @@ enum FileStorage {
             entriesByPath.removeValue(forKey: old.1)
             entriesByPath[candidate.relativePath] = (old.2, entry)
             Log.storage.info("[NoteMetadata] reconcile success source=fingerprint noteID=\(old.2.uuidString, privacy: .public)")
+        }
+    }
+
+    /// Removes metadata whose path remains absent after conservative fingerprint
+    /// recovery. Keeping it would allow a later unrelated file with matching bytes to
+    /// inherit metadata from a note that was actually deleted.
+    private static func removeMissingSidecarEntries(
+        candidates: [NoteFileCandidate],
+        entriesByPath: inout [String: (id: UUID, entry: SidecarStore.NoteEntry)],
+    ) {
+        let diskPaths = Set(candidates.map(\.relativePath))
+        let missingPaths = entriesByPath.keys.filter { !diskPaths.contains($0) }
+        for path in missingPaths {
+            guard let indexed = entriesByPath.removeValue(forKey: path) else { continue }
+            SidecarStore.shared.removeNote(id: indexed.id)
+            Log.storage.info("[NoteMetadata] removed missing path noteID=\(indexed.id.uuidString, privacy: .public)")
         }
     }
 
