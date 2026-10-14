@@ -1,7 +1,25 @@
+import CryptoKit
 import Foundation
 import OSLog
 
 enum FileStorage {
+    private struct NoteFileCandidate {
+        let url: URL
+        let folder: String
+        let relativePath: String
+        let data: Data
+        let contentHash: String
+
+        var contentByteCount: Int {
+            data.count
+        }
+    }
+
+    private struct FingerprintKey: Hashable {
+        let contentHash: String
+        let contentByteCount: Int
+    }
+
     /// Storage root — reads from ShortcutSettings so the user can configure a custom directory.
     static var rootURL: URL {
         StorageSettings.shared.resolvedStorageDirectory
@@ -104,17 +122,23 @@ enum FileStorage {
     /// Reloads a note's content + tags from disk after an external change is detected.
     static func reloadContent(for note: Note) -> (content: String, modifiedAt: Date, savedAt: Date, tags: [TagColor])? {
         let url = rootURL.appendingPathComponent(diskRelativePath(for: note))
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        guard let data = try? Data(contentsOf: url),
+              let text = String(data: data, encoding: .utf8)
+        else { return nil }
         let diskDate = ((try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date) ?? Date()
 
         // Body may still have YAML if this note wasn't migrated yet — strip it.
         let (metadata, body) = parseFrontMatter(text)
         let content = metadata.isEmpty ? text : body
 
-        let tags: [TagColor] = if let entry = SidecarStore.shared.noteEntry(for: note.id) {
-            entry.tags.compactMap { TagColor(rawValue: $0) }
+        let tags: [TagColor]
+        if var entry = SidecarStore.shared.noteEntry(for: note.id) {
+            entry.contentHash = contentHash(for: data)
+            entry.contentByteCount = data.count
+            SidecarStore.shared.upsertNote(entry, for: note.id)
+            tags = entry.tags.compactMap { TagColor(rawValue: $0) }
         } else {
-            parseTagList(metadata["tags"] ?? "")
+            tags = parseTagList(metadata["tags"] ?? "")
         }
         // After an external edit, savedAt should advance to the new disk date so the
         // watcher doesn't fire again for the same change.
@@ -354,11 +378,26 @@ enum FileStorage {
 
     static func loadAllNotes() throws -> [Note] {
         try ensureRootExists()
-        var notes = try loadNotes(in: rootURL, folder: "")
-        for folderName in try discoverFolders() {
-            let folderURL = rootURL.appendingPathComponent(folderName, isDirectory: true)
-            notes += try loadNotes(in: folderURL, folder: folderName)
+        let candidates = try loadActiveNoteCandidates()
+        var entriesByPath = SidecarStore.shared.noteEntriesByPath()
+        reconcileExternalRenames(candidates: candidates, entriesByPath: &entriesByPath)
+
+        let notes = candidates.compactMap { candidate in
+            readNote(
+                at: candidate.url,
+                folder: candidate.folder,
+                preloadedData: candidate.data,
+                activeEntriesByPath: entriesByPath,
+                saveSidecarImmediately: false,
+            )
         }
+
+        do {
+            try SidecarStore.shared.save()
+        } catch {
+            Log.storage.error("[NoteMetadata] reconcile failure source=load reason=sidecar")
+        }
+
         let migrated = notes.map { note in
             do {
                 return try migrateReservedRootAssetsIfNeeded(for: note)
@@ -371,6 +410,76 @@ enum FileStorage {
         let count = migrated.count
         Log.storage.info("[FileStorage] loaded \(count) notes from disk")
         return migrated
+    }
+
+    private static func loadActiveNoteCandidates() throws -> [NoteFileCandidate] {
+        var locations: [(url: URL, folder: String)] = [(rootURL, "")]
+        locations += try discoverFolders().map { folder in
+            (rootURL.appendingPathComponent(folder, isDirectory: true), folder)
+        }
+
+        var candidates: [NoteFileCandidate] = []
+        for location in locations {
+            let contents = try FileManager.default.contentsOfDirectory(
+                at: location.url,
+                includingPropertiesForKeys: nil,
+                options: [.skipsHiddenFiles],
+            )
+            for url in contents where url.pathExtension.lowercased() == "md" && !url.hasDirectoryPath {
+                guard let data = try? Data(contentsOf: url), String(data: data, encoding: .utf8) != nil else {
+                    continue
+                }
+                let filename = url.lastPathComponent
+                let relativePath = location.folder.isEmpty ? filename : "\(location.folder)/\(filename)"
+                candidates.append(NoteFileCandidate(
+                    url: url,
+                    folder: location.folder,
+                    relativePath: relativePath,
+                    data: data,
+                    contentHash: contentHash(for: data),
+                ))
+            }
+        }
+        return candidates
+    }
+
+    private static func reconcileExternalRenames(
+        candidates: [NoteFileCandidate],
+        entriesByPath: inout [String: (id: UUID, entry: SidecarStore.NoteEntry)],
+    ) {
+        let diskPaths = Set(candidates.map(\.relativePath))
+        let missingEntries = entriesByPath.filter { !diskPaths.contains($0.key) }
+        let unmatchedFiles = candidates.filter { entriesByPath[$0.relativePath] == nil }
+
+        let missingByFingerprint = Dictionary(grouping: missingEntries.compactMap { path, indexed -> (FingerprintKey, String, UUID, SidecarStore.NoteEntry)? in
+            guard let hash = indexed.entry.contentHash,
+                  let byteCount = indexed.entry.contentByteCount
+            else { return nil }
+            return (FingerprintKey(contentHash: hash, contentByteCount: byteCount), path, indexed.id, indexed.entry)
+        }, by: \.0)
+
+        let filesByFingerprint = Dictionary(grouping: unmatchedFiles, by: {
+            FingerprintKey(contentHash: $0.contentHash, contentByteCount: $0.contentByteCount)
+        })
+
+        for (fingerprint, missing) in missingByFingerprint where missing.count == 1 {
+            guard let discovered = filesByFingerprint[fingerprint], discovered.count == 1,
+                  let old = missing.first, let candidate = discovered.first
+            else { continue }
+
+            var entry = old.3
+            entry.path = candidate.relativePath
+            entry.contentHash = candidate.contentHash
+            entry.contentByteCount = candidate.contentByteCount
+            SidecarStore.shared.upsertNote(entry, for: old.2)
+            entriesByPath.removeValue(forKey: old.1)
+            entriesByPath[candidate.relativePath] = (old.2, entry)
+            Log.storage.info("[NoteMetadata] reconcile success source=fingerprint noteID=\(old.2.uuidString, privacy: .public)")
+        }
+    }
+
+    private static func contentHash(for data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
     /// Writes the note to disk. If the title changed since last save, renames the old file
@@ -466,6 +575,7 @@ enum FileStorage {
     /// Update (or insert) the sidecar entry for a note after writing its file.
     private static func upsertSidecarEntry(for note: Note, filename: String) -> Bool {
         let relativePath = note.folder.isEmpty ? filename : "\(note.folder)/\(filename)"
+        let persistedData = Data(note.content.utf8)
         let savedAt = (try? FileManager.default.attributesOfItem(
             atPath: rootURL.appendingPathComponent(relativePath).path,
         ))?[.modificationDate] as? Date ?? Date()
@@ -477,6 +587,8 @@ enum FileStorage {
                 modifiedAt: note.modifiedAt,
                 savedAt: savedAt,
                 tags: note.tags.map(\.rawValue),
+                contentHash: contentHash(for: persistedData),
+                contentByteCount: persistedData.count,
             ),
             for: note.id,
         )
@@ -600,9 +712,10 @@ enum FileStorage {
         try ensureTrashExists()
         let trashFilename = "\(note.id.uuidString)_\(sanitizeForFilename(note.title)).md"
         let destURL = trashURL.appendingPathComponent(trashFilename)
+        let persistedData = Data(note.content.utf8)
 
         // Write body only to .trash/
-        try Data(note.content.utf8).write(to: destURL, options: .atomic)
+        try persistedData.write(to: destURL, options: .atomic)
 
         // Remove original file
         let actualFilename = note.savedFilename ?? note.filename
@@ -620,6 +733,8 @@ enum FileStorage {
                 createdAt: note.createdAt,
                 modifiedAt: note.modifiedAt,
                 tags: note.tags.map(\.rawValue),
+                contentHash: contentHash(for: persistedData),
+                contentByteCount: persistedData.count,
             ),
             for: note.id,
         )
@@ -702,6 +817,7 @@ enum FileStorage {
         // Move sidecar entry from trash → notes
         SidecarStore.shared.removeTrash(id: note.id)
         let savedAt = (try? FileManager.default.attributesOfItem(atPath: destURL.path))?[.modificationDate] as? Date ?? Date()
+        let persistedData = Data(restored.content.utf8)
         SidecarStore.shared.upsertNote(
             SidecarStore.NoteEntry(
                 path: destRelative,
@@ -709,6 +825,8 @@ enum FileStorage {
                 modifiedAt: note.modifiedAt,
                 savedAt: savedAt,
                 tags: note.tags.map(\.rawValue),
+                contentHash: contentHash(for: persistedData),
+                contentByteCount: persistedData.count,
             ),
             for: note.id,
         )
@@ -795,6 +913,8 @@ enum FileStorage {
                     createdAt: entry.createdAt,
                     modifiedAt: entry.modifiedAt,
                     tags: entry.tags,
+                    contentHash: entry.contentHash,
+                    contentByteCount: entry.contentByteCount,
                 ), for: noteID)
             }
         }
@@ -851,6 +971,8 @@ enum FileStorage {
                     modifiedAt: entry.modifiedAt,
                     savedAt: actualMtime,
                     tags: entry.tags,
+                    contentHash: entry.contentHash,
+                    contentByteCount: entry.contentByteCount,
                 ), for: noteID)
             }
         }
@@ -973,9 +1095,19 @@ enum FileStorage {
         }
     }
 
-    private static func readNote(at url: URL, folder: String) -> Note? {
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+    private static func readNote(
+        at url: URL,
+        folder: String,
+        preloadedData: Data? = nil,
+        activeEntriesByPath: [String: (id: UUID, entry: SidecarStore.NoteEntry)]? = nil,
+        saveSidecarImmediately: Bool = true,
+    ) -> Note? {
+        guard let data = preloadedData ?? (try? Data(contentsOf: url)),
+              let text = String(data: data, encoding: .utf8)
+        else { return nil }
         let filename = url.lastPathComponent
+        let hash = contentHash(for: data)
+        let byteCount = data.count
 
         // Determine relative path for sidecar lookup.
         // Trash files live under trashURL, active notes under rootURL.
@@ -998,7 +1130,14 @@ enum FileStorage {
 
         // --- Sidecar path (preferred) ---
         if isTrash {
-            if let (id, entry) = SidecarStore.shared.trashEntry(forFilename: relativePath) {
+            if let (id, storedEntry) = SidecarStore.shared.trashEntry(forFilename: relativePath) {
+                var entry = storedEntry
+                entry.contentHash = hash
+                entry.contentByteCount = byteCount
+                SidecarStore.shared.upsertTrash(entry, for: id)
+                if saveSidecarImmediately {
+                    try? SidecarStore.shared.save()
+                }
                 let (_, body) = parseFrontMatter(text) // strip any residual YAML
                 let content = text.hasPrefix("---") ? body : text
                 let tags = entry.tags.compactMap { TagColor(rawValue: $0) }
@@ -1018,7 +1157,19 @@ enum FileStorage {
                 )
             }
         } else {
-            if let (id, entry) = SidecarStore.shared.noteEntry(forPath: relativePath) {
+            let indexedEntry = if let activeEntriesByPath {
+                activeEntriesByPath[relativePath]
+            } else {
+                SidecarStore.shared.noteEntry(forPath: relativePath)
+            }
+            if let (id, storedEntry) = indexedEntry {
+                var entry = storedEntry
+                entry.contentHash = hash
+                entry.contentByteCount = byteCount
+                SidecarStore.shared.upsertNote(entry, for: id)
+                if saveSidecarImmediately {
+                    try? SidecarStore.shared.save()
+                }
                 let (_, body) = parseFrontMatter(text)
                 let content = text.hasPrefix("---") ? body : text
                 let tags = entry.tags.compactMap { TagColor(rawValue: $0) }
@@ -1057,6 +1208,8 @@ enum FileStorage {
                     createdAt: created,
                     modifiedAt: modified,
                     tags: tags.map(\.rawValue),
+                    contentHash: hash,
+                    contentByteCount: byteCount,
                 ), for: id)
             } else {
                 SidecarStore.shared.upsertNote(SidecarStore.NoteEntry(
@@ -1065,13 +1218,17 @@ enum FileStorage {
                     modifiedAt: modified,
                     savedAt: modified,
                     tags: tags.map(\.rawValue),
+                    contentHash: hash,
+                    contentByteCount: byteCount,
                 ), for: id)
             }
-            do {
-                try SidecarStore.shared.save()
-                Log.storage.info("[NoteMetadata] reconcile success source=yaml noteID=\(id.uuidString, privacy: .public)")
-            } catch {
-                Log.storage.error("[NoteMetadata] reconcile failure source=yaml noteID=\(id.uuidString, privacy: .public) reason=sidecar")
+            if saveSidecarImmediately {
+                do {
+                    try SidecarStore.shared.save()
+                    Log.storage.info("[NoteMetadata] reconcile success source=yaml noteID=\(id.uuidString, privacy: .public)")
+                } catch {
+                    Log.storage.error("[NoteMetadata] reconcile failure source=yaml noteID=\(id.uuidString, privacy: .public) reason=sidecar")
+                }
             }
 
             return Note(
@@ -1102,6 +1259,8 @@ enum FileStorage {
                 createdAt: created,
                 modifiedAt: modified,
                 tags: [],
+                contentHash: hash,
+                contentByteCount: byteCount,
             ), for: id)
         } else {
             SidecarStore.shared.upsertNote(SidecarStore.NoteEntry(
@@ -1110,13 +1269,17 @@ enum FileStorage {
                 modifiedAt: modified,
                 savedAt: modified,
                 tags: [],
+                contentHash: hash,
+                contentByteCount: byteCount,
             ), for: id)
         }
-        do {
-            try SidecarStore.shared.save()
-            Log.storage.info("[NoteMetadata] reconcile success source=external noteID=\(id.uuidString, privacy: .public)")
-        } catch {
-            Log.storage.error("[NoteMetadata] reconcile failure source=external noteID=\(id.uuidString, privacy: .public) reason=sidecar")
+        if saveSidecarImmediately {
+            do {
+                try SidecarStore.shared.save()
+                Log.storage.info("[NoteMetadata] reconcile success source=external noteID=\(id.uuidString, privacy: .public)")
+            } catch {
+                Log.storage.error("[NoteMetadata] reconcile failure source=external noteID=\(id.uuidString, privacy: .public) reason=sidecar")
+            }
         }
 
         return Note(

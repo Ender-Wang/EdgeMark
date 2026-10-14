@@ -14,6 +14,8 @@ final class SidecarStore {
         var modifiedAt: Date
         var savedAt: Date // last EdgeMark write — external-change sentinel
         var tags: [String] // TagColor rawValues
+        var contentHash: String? = nil // SHA-256 of exact persisted bytes
+        var contentByteCount: Int? = nil
     }
 
     struct TrashEntry: Codable {
@@ -23,6 +25,8 @@ final class SidecarStore {
         var createdAt: Date
         var modifiedAt: Date
         var tags: [String]
+        var contentHash: String? = nil
+        var contentByteCount: Int? = nil
     }
 
     struct FolderEntry: Codable {
@@ -30,7 +34,7 @@ final class SidecarStore {
     }
 
     struct Payload: Codable {
-        var version: Int = 2
+        var version: Int = 3
         var notes: [String: NoteEntry] = [:] // UUID string → NoteEntry
         var trash: [String: TrashEntry] = [:] // UUID string → TrashEntry
         var folders: [String: FolderEntry] = [:] // folder path → FolderEntry
@@ -73,6 +77,7 @@ final class SidecarStore {
         }
         let raw = try Data(contentsOf: sidecarURL)
         data = try decoder.decode(Payload.self, from: raw)
+        data.version = max(data.version, 3)
         let count = data.notes.count
         Log.storage.info("[Sidecar] loaded \(count) note entries")
     }
@@ -98,6 +103,18 @@ final class SidecarStore {
             }
         }
         return nil
+    }
+
+    /// Build once for vault reconciliation. Repeated `noteEntry(forPath:)` calls make
+    /// a full scan O(n²) for large external folders.
+    func noteEntriesByPath() -> [String: (id: UUID, entry: NoteEntry)] {
+        var result: [String: (id: UUID, entry: NoteEntry)] = [:]
+        result.reserveCapacity(data.notes.count)
+        for (uuidString, entry) in data.notes {
+            guard let id = UUID(uuidString: uuidString) else { continue }
+            result[entry.path] = (id, entry)
+        }
+        return result
     }
 
     func upsertNote(_ entry: NoteEntry, for id: UUID) {
