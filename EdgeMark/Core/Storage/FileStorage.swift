@@ -412,18 +412,9 @@ enum FileStorage {
             Log.storage.error("[NoteMetadata] reconcile failure source=load reason=sidecar")
         }
 
-        let migrated = notes.map { note in
-            do {
-                return try migrateReservedRootAssetsIfNeeded(for: note)
-            } catch {
-                let errorType = String(describing: type(of: error))
-                Log.storage.error("[Image] legacy asset migration failed noteID=\(note.id.uuidString, privacy: .public) errorType=\(errorType, privacy: .public)")
-                return note
-            }
-        }
-        let count = migrated.count
+        let count = notes.count
         Log.storage.info("[FileStorage] loaded \(count) notes from disk")
-        return migrated
+        return notes
     }
 
     private static func loadActiveNoteCandidates() throws -> [NoteFileCandidate] {
@@ -504,10 +495,19 @@ enum FileStorage {
             try ensureFolderExists(note.folder)
         }
 
-        let url = rootURL.appendingPathComponent(note.relativePath)
-        try Data(note.content.utf8).write(to: url, options: .atomic)
-        let metadataSaved = upsertSidecarEntry(for: note, filename: note.filename)
-        return (filename: note.filename, updatedContent: nil, savedAt: modificationDate(for: note) ?? Date(), metadataSaved: metadataSaved)
+        // Legacy reserved image paths are migrated only at an explicit content-save
+        // boundary. Directory discovery itself never rewrites Markdown.
+        let noteToWrite = try migrateReservedRootAssetsIfNeeded(for: note)
+        let url = rootURL.appendingPathComponent(noteToWrite.relativePath)
+        try Data(noteToWrite.content.utf8).write(to: url, options: .atomic)
+        let metadataSaved = upsertSidecarEntry(for: noteToWrite, filename: noteToWrite.filename)
+        let updatedContent = noteToWrite.content == note.content ? nil : noteToWrite.content
+        return (
+            filename: noteToWrite.filename,
+            updatedContent: updatedContent,
+            savedAt: modificationDate(for: noteToWrite) ?? Date(),
+            metadataSaved: metadataSaved,
+        )
     }
 
     /// Persists EdgeMark-only metadata without touching the Markdown file.
