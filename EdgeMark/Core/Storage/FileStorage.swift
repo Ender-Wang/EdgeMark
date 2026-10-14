@@ -369,29 +369,6 @@ enum FileStorage {
 
     // MARK: - Filename Helpers
 
-    static func sanitizeForFilename(_ title: String) -> String {
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return "Untitled" }
-
-        let illegal = CharacterSet(charactersIn: "/\\:*?\"<>|\0")
-        let cleaned = trimmed.unicodeScalars
-            .map { illegal.contains($0) ? "-" : String($0) }
-            .joined()
-
-        let hyphenated = cleaned.replacingOccurrences(of: " ", with: "-")
-        let collapsed = hyphenated.replacingOccurrences(of: "-{2,}", with: "-", options: .regularExpression)
-        var result = collapsed.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
-
-        // Truncate to stay within APFS 255-byte filename limit (.md = 3 bytes + margin)
-        let maxBytes = 248
-        while result.utf8.count > maxBytes {
-            result = String(result.dropLast())
-        }
-        result = result.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
-
-        return result.isEmpty ? "Untitled" : result
-    }
-
     /// Converts an editable title into one literal Markdown filename. Unlike the
     /// legacy sanitizer, this preserves spaces and punctuation and rejects unsafe
     /// path components instead of silently changing them.

@@ -339,7 +339,6 @@ final class NoteStore {
     private var metadataOnlyNoteIDs: Set<UUID> = []
 
     private enum PersistenceTrigger: String {
-        case rename
         case tag
         case retry
         case deferred
