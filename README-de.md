@@ -80,6 +80,7 @@ xattr -cr /Applications/EdgeMark.app
 🗂️ **Notizen & Speicher**
 
 - 📄 Einfache `.md`-Dateien ohne eingefügte Header — in jedem Editor öffnen, mit jedem Dienst synchronisieren; Metadaten leben in einer versteckten `.edgemark/meta.json`-Sidecar-Datei
+- 📝 Dateinamengestützte Titel — der Notiztitel entspricht exakt dem Dateinamen ohne `.md`; das vollständige Markdown-Dokument einschließlich der ersten Überschrift bleibt sichtbar und editierbar, und die Erkennung externer Ordner benennt Notizen weder um noch schreibt sie neu
 - 🏷️ Kontextbezogene Kopfzeilen — Notiz- und Ordnernamen bleiben oben sichtbar; kurzes Darüberfahren zeigt den vollständigen Pfad und Notizdaten, ein Klick auf einen Notiztitel startet das Umbenennen
 - 📁 Finder-artige Organisation per Drag-and-Drop — Notizen in Ordner, Ordner in andere Ordner oder eine Notiz auf eine andere ziehen, um sie zu gruppieren; ungültige Ablagen werden abgelehnt, Namenskonflikte verwenden die bestehenden Hinweise und eine kleine Vorschau folgt dem Cursor
 - 🎨 Eigene Ordnerfarben — jedes Ordner-Icon über Rechtsklick → Ordnerfarbe mit einer Palettenfarbe tönen

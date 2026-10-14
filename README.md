@@ -80,6 +80,7 @@ xattr -cr /Applications/EdgeMark.app
 🗂️ **Notes & Storage**
 
 - 📄 Plain `.md` files with no injected headers — open in any editor, sync with any service; metadata lives in a hidden `.edgemark/meta.json` sidecar
+- 📝 Filename-backed titles — a note title is its exact filename stem, while the complete Markdown document (including its first heading) stays visible and editable; external-folder discovery never renames or rewrites notes
 - 🏷️ Contextual headers — note and folder names stay visible at the top; hover briefly for the full path and note dates, or click a note title to rename it
 - 📁 Finder-style drag-and-drop organization — drag notes into folders, folders into folders, or notes onto notes to group them; invalid drops are rejected, name conflicts use the existing alerts, and a small preview follows the cursor
 - 🎨 Custom folder colors — tint any folder's icon with a palette color via right-click → Folder Color

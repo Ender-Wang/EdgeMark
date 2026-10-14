@@ -80,6 +80,7 @@ xattr -cr /Applications/EdgeMark.app
 🗂️ **Notas y Almacenamiento**
 
 - 📄 Archivos `.md` simples sin encabezados inyectados — ábrelos en cualquier editor, sincronízalos con cualquier servicio; los metadatos viven en un sidecar oculto `.edgemark/meta.json`
+- 📝 Títulos basados en el nombre de archivo — el título es exactamente el nombre sin `.md`; el documento Markdown completo, incluido su primer encabezado, permanece visible y editable, y el descubrimiento de carpetas externas no renombra ni reescribe notas
 - 🏷️ Encabezados contextuales — los nombres de notas y carpetas permanecen visibles arriba; pasa el puntero brevemente para ver la ruta completa y las fechas de la nota, o haz clic en el título para renombrarla
 - 📁 Organización por carpetas al estilo Finder — arrastra notas a carpetas, carpetas a otras carpetas o una nota sobre otra para agruparlas; los destinos no válidos se rechazan, los conflictos de nombres usan las alertas existentes y una pequeña vista previa sigue al cursor
 - 🎨 Colores de carpeta personalizados — tiñe el ícono de cualquier carpeta con un color de la paleta mediante clic derecho → Folder Color
