@@ -136,7 +136,7 @@ struct MarkdownEditorView: View {
                 documentId: noteID.uuidString,
                 onPasteImage: { [noteID, noteTitle, noteFolder] pasteboard in
                     guard let (data, ext) = Self.imageData(from: pasteboard) else { return nil }
-                    let note = Note(id: noteID, title: noteTitle, folder: noteFolder)
+                    let note = Note(id: noteID, filename: "\(noteTitle).md", folder: noteFolder)
                     // Return embed syntax — gets inserted into the display-layer text.
                     // onChange converts it back to standard ![](path) markdown before saving.
                     return (try? FileStorage.saveImage(data: data, ext: ext, forNote: note))?.embedMarkdown
@@ -214,7 +214,7 @@ struct MarkdownEditorView: View {
                 ImageDropOverlay { [noteID, noteTitle, noteFolder] url in
                     guard let data = try? Data(contentsOf: url) else { return }
                     let ext = url.pathExtension.lowercased()
-                    let note = Note(id: noteID, title: noteTitle, folder: noteFolder)
+                    let note = Note(id: noteID, filename: "\(noteTitle).md", folder: noteFolder)
                     guard let result = try? FileStorage.saveImage(data: data, ext: ext, forNote: note) else { return }
                     // After a drag completes the text view may have lost first responder.
                     // Fall back to walking the window hierarchy to find it.

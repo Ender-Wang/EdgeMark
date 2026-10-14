@@ -358,14 +358,13 @@ final class NoteStore {
                     Log.storage.warning("[NoteStore] duplicate UUID '\(note.id)' for '\(note.title, privacy: .public)' — reassigning to \(newID)")
                     let fixed = Note(
                         id: newID,
-                        title: note.title,
+                        filename: note.filename,
                         content: note.content,
                         createdAt: note.createdAt,
                         modifiedAt: note.modifiedAt,
                         savedAt: note.savedAt,
                         folder: note.folder,
                         trashedAt: note.trashedAt,
-                        savedFilename: note.savedFilename,
                     )
                     do {
                         try FileStorage.writeNote(fixed) // return value intentionally discarded (dedup path)
@@ -482,24 +481,20 @@ final class NoteStore {
 
     /// Whether a note title already exists in the given folder (case-insensitive filename match).
     func noteTitleExists(_ title: String, in folder: String, excluding noteID: UUID? = nil) -> Bool {
-        let sanitized = FileStorage.sanitizeForFilename(title)
+        let filename = "\(title).md"
         return notes.contains { note in
             note.id != noteID
                 && note.folder == folder
-                && FileStorage.sanitizeForFilename(note.title).caseInsensitiveCompare(sanitized) == .orderedSame
+                && note.filename.caseInsensitiveCompare(filename) == .orderedSame
         }
     }
 
-    /// Effective on-disk filename for a note (savedFilename if set, else title-derived).
-    /// `noteTitleExists` is purely title-based and misses the case where a title was
-    /// renamed in memory but `savedFilename` still points at the old on-disk name — or
-    /// where an orphan `.md` file exists in the destination directory. The move path
-    /// must use this helper to avoid the OS-level NSCocoaErrorDomain 516 leaking through.
+    /// Checks loaded notes and the destination directory for a filename collision.
     private func noteFilenameWouldCollide(_ filename: String, in folder: String, excluding noteID: UUID? = nil) -> Bool {
         let collidesInMemory = notes.contains { other in
             other.id != noteID
                 && other.folder == folder
-                && (other.savedFilename ?? other.filename).caseInsensitiveCompare(filename) == .orderedSame
+                && other.filename.caseInsensitiveCompare(filename) == .orderedSame
         }
         if collidesInMemory {
             return true
@@ -558,7 +553,7 @@ final class NoteStore {
         let now = Date()
         var note = Note(
             id: UUID(),
-            title: title,
+            filename: "\(FileStorage.sanitizeForFilename(title)).md",
             content: "# \(title)\n\n",
             createdAt: now,
             modifiedAt: now,
@@ -567,7 +562,7 @@ final class NoteStore {
         var metadataSaved = true
         do {
             let result = try FileStorage.writeNote(note)
-            note.savedFilename = result.filename
+            note.filename = result.filename
             note.savedAt = result.savedAt
             metadataSaved = result.metadataSaved
         } catch {
@@ -588,14 +583,6 @@ final class NoteStore {
         guard notes[index].content != content else { return }
         notes[index].content = content
         notes[index].modifiedAt = Date()
-        // Only derive title from content when an explicit # heading is present.
-        // Without this guard, a rename on a headingless note reverts within ~150ms
-        // because the editor fires contentChanged on load and extractTitle returns
-        // the raw first line, overwriting the manually-set title.
-        let firstLine = content.split(separator: "\n", maxSplits: 1).first.map(String.init) ?? ""
-        if firstLine.hasPrefix("#") {
-            notes[index].title = Self.extractTitle(from: content)
-        }
         dirtyNoteIDs.insert(noteID)
 
         // Also update selectedNote if it matches
@@ -610,24 +597,27 @@ final class NoteStore {
         guard !trimmed.isEmpty else { return }
         guard !noteTitleExists(trimmed, in: note.folder, excluding: note.id) else { return }
 
-        notes[index].title = trimmed
-        notes[index].modifiedAt = Date()
-
-        // Update the first # heading line in content to match the new title
-        var lines = notes[index].content.components(separatedBy: "\n")
-        if let headingIndex = lines.firstIndex(where: { $0.hasPrefix("#") }) {
-            let prefix = String(lines[headingIndex].prefix(while: { $0 == "#" }))
-            lines[headingIndex] = "\(prefix) \(trimmed)"
-            notes[index].content = lines.joined(separator: "\n")
+        let newFilename = "\(trimmed).md"
+        do {
+            let result = try FileStorage.renameNote(notes[index], toFilename: newFilename)
+            notes[index].filename = result.filename
+            notes[index].modifiedAt = Date()
+            notes[index].savedAt = result.savedAt
+            if let updatedContent = result.updatedContent {
+                notes[index].content = updatedContent
+                onNeedEditorReload?(updatedContent)
+            }
+            if !result.metadataSaved {
+                dirtyNoteIDs.insert(note.id)
+                failedPersistenceNoteIDs.insert(note.id)
+            }
+            if selectedNote?.id == note.id {
+                selectedNote = notes[index]
+            }
+            Log.storage.info("[NoteMetadata] mutation op=rename noteID=\(note.id.uuidString, privacy: .public) committed=true")
+        } catch {
+            Log.storage.error("[NoteMetadata] mutation op=rename noteID=\(note.id.uuidString, privacy: .public) committed=false error=\(error)")
         }
-
-        dirtyNoteIDs.insert(note.id)
-
-        if selectedNote?.id == note.id {
-            selectedNote = notes[index]
-        }
-        Log.storage.info("[NoteMetadata] mutation op=rename noteID=\(note.id.uuidString, privacy: .public) dirty=true")
-        persistDirtyNote(withID: note.id, trigger: .rename)
     }
 
     /// Toggle a single tag on a note. Updates in-memory state and marks the note dirty.
@@ -957,7 +947,7 @@ final class NoteStore {
     func moveNote(_ note: Note, to folder: String) {
         guard let index = notes.firstIndex(where: { $0.id == note.id }) else { return }
         guard notes[index].folder != folder else { return }
-        let actualFilename = notes[index].savedFilename ?? notes[index].filename
+        let actualFilename = notes[index].filename
         if noteFilenameWouldCollide(actualFilename, in: folder, excluding: note.id) {
             pendingNoteMoveConflicts.append(PendingNoteMoveConflict(noteID: note.id, targetFolder: folder))
             return
@@ -970,7 +960,7 @@ final class NoteStore {
         let conflict = pendingNoteMoveConflicts.removeFirst()
         guard let index = notes.firstIndex(where: { $0.id == conflict.noteID }) else { return }
         let folder = conflict.targetFolder
-        let originalFilename = notes[index].savedFilename ?? notes[index].filename
+        let originalFilename = notes[index].filename
 
         if keepBoth {
             // Find an unused title whose derived filename also doesn't collide on disk.
@@ -983,15 +973,8 @@ final class NoteStore {
                 newTitle = "\(baseTitle) \(counter)"
                 newFilename = "\(FileStorage.sanitizeForFilename(newTitle)).md"
             }
-            notes[index].title = newTitle
+            notes[index].filename = newFilename
             notes[index].modifiedAt = Date()
-            // Rewrite the H1 heading line to match.
-            var lines = notes[index].content.components(separatedBy: "\n")
-            if let headingIdx = lines.firstIndex(where: { $0.hasPrefix("#") }) {
-                let prefix = String(lines[headingIdx].prefix(while: { $0 == "#" }))
-                lines[headingIdx] = "\(prefix) \(newTitle)"
-                notes[index].content = lines.joined(separator: "\n")
-            }
             // Atomic move + rename so the file actually lands at the new name on disk.
             performMoveNote(at: index, to: folder, renamingTo: newFilename)
             return
@@ -1003,7 +986,7 @@ final class NoteStore {
         if let existing = notes.first(where: {
             $0.id != conflict.noteID
                 && $0.folder == folder
-                && (($0.savedFilename ?? $0.filename).caseInsensitiveCompare(originalFilename) == .orderedSame)
+                && ($0.filename.caseInsensitiveCompare(originalFilename) == .orderedSame)
         }) {
             trashNote(existing)
         } else {
@@ -1062,7 +1045,7 @@ final class NoteStore {
         do {
             let result = try FileStorage.moveNote(note, toFolder: folder, withFilename: newFilename)
             notes[index].folder = folder
-            notes[index].savedFilename = newFilename ?? note.savedFilename ?? note.filename
+            notes[index].filename = newFilename ?? note.filename
             notes[index].savedAt = result.savedAt
             if let updatedContent = result.updatedContent {
                 notes[index].content = updatedContent
@@ -1229,9 +1212,7 @@ final class NoteStore {
 
         // Move file to .trash/<UUID>_<Title>.md
         do {
-            try FileStorage.trashNote(notes[index])
-            let trashFilename = "\(notes[index].id.uuidString)_\(FileStorage.sanitizeForFilename(notes[index].title)).md"
-            notes[index].savedFilename = trashFilename
+            _ = try FileStorage.trashNote(notes[index])
         } catch {
             Log.storage.error("[NoteStore] trashNote failed — \(error)")
         }
@@ -1308,7 +1289,7 @@ final class NoteStore {
         // Move file from .trash/ back to original folder
         do {
             let result = try FileStorage.restoreNote(trashedNotes[index])
-            trashedNotes[index].savedFilename = result.filename
+            trashedNotes[index].filename = result.filename
             trashedNotes[index].savedAt = result.savedAt
             if let updatedContent = result.updatedContent {
                 trashedNotes[index].content = updatedContent
@@ -1689,7 +1670,7 @@ final class NoteStore {
         }
         do {
             let result = try FileStorage.writeNote(notes[index])
-            notes[index].savedFilename = result.filename
+            notes[index].filename = result.filename
             notes[index].savedAt = result.savedAt
             if let updated = result.updatedContent {
                 notes[index].content = updated
@@ -1700,7 +1681,7 @@ final class NoteStore {
                 }
             }
             if selectedNote?.id == noteID {
-                selectedNote?.savedFilename = result.filename
+                selectedNote?.filename = result.filename
                 selectedNote?.savedAt = result.savedAt
             }
             // Clean up orphaned images (deleted from body but file still on disk)
@@ -1751,8 +1732,7 @@ final class NoteStore {
     private func updateSidecarPaths(for notes: [Note]) {
         var changed = false
         for note in notes {
-            let actualFilename = note.savedFilename ?? note.filename
-            let expectedPath = note.folder.isEmpty ? actualFilename : "\(note.folder)/\(actualFilename)"
+            let expectedPath = note.relativePath
             if var entry = SidecarStore.shared.noteEntry(for: note.id), entry.path != expectedPath {
                 entry.path = expectedPath
                 SidecarStore.shared.upsertNote(entry, for: note.id)

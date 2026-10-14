@@ -4,7 +4,10 @@ import OSLog
 
 struct Note: Identifiable {
     let id: UUID
-    var title: String
+    /// The filename chosen by the user, including the final `.md` extension.
+    /// For trashed notes this remains the original filename; the sidecar owns the
+    /// UUID-prefixed implementation path inside `.trash/`.
+    var filename: String
     var content: String
     var createdAt: Date
     var modifiedAt: Date
@@ -21,13 +24,9 @@ struct Note: Identifiable {
     /// When the note was moved to Trash (nil = active). Persisted in YAML front matter.
     var trashedAt: Date?
 
-    /// The filename currently on disk (nil for brand-new notes not yet saved).
-    /// Used to detect renames when the title changes.
-    var savedFilename: String?
-
-    /// Filename derived from sanitized title: "Title.md"
-    var filename: String {
-        "\(FileStorage.sanitizeForFilename(title)).md"
+    /// User-facing title is always the literal filename stem.
+    var title: String {
+        (filename as NSString).deletingPathExtension
     }
 
     /// Relative path from storage root: "folder/Title.md" or just "Title.md".
@@ -47,7 +46,7 @@ struct Note: Identifiable {
 
     init(
         id: UUID = UUID(),
-        title: String = "",
+        filename: String = "Untitled.md",
         content: String = "",
         createdAt: Date = Date(),
         modifiedAt: Date = Date(),
@@ -55,10 +54,9 @@ struct Note: Identifiable {
         folder: String = "",
         tags: [TagColor] = [],
         trashedAt: Date? = nil,
-        savedFilename: String? = nil,
     ) {
         self.id = id
-        self.title = title
+        self.filename = filename
         self.content = content
         self.createdAt = createdAt
         self.modifiedAt = modifiedAt
@@ -66,13 +64,12 @@ struct Note: Identifiable {
         self.folder = folder
         self.tags = tags
         self.trashedAt = trashedAt
-        self.savedFilename = savedFilename
     }
 
-    /// Compare all UI-visible properties. Exclude savedFilename (transient storage metadata).
+    /// Compare all UI-visible properties.
     static func == (lhs: Note, rhs: Note) -> Bool {
         lhs.id == rhs.id
-            && lhs.title == rhs.title
+            && lhs.filename == rhs.filename
             && lhs.content == rhs.content
             && lhs.createdAt == rhs.createdAt
             && lhs.modifiedAt == rhs.modifiedAt
@@ -89,7 +86,7 @@ extension Note: Hashable {
 }
 
 extension Note {
-    /// Plain-text preview from the note body, stripping the title heading and markdown syntax.
+    /// Plain-text preview from the complete note body, stripping markdown syntax.
     ///
     /// The body is capped before any split/regex: a pathological or very large note can
     /// otherwise pin the main thread in `String.index` / `String.distance` for seconds
@@ -99,9 +96,8 @@ extension Note {
     /// works; the 120-char preview output is unchanged.
     var previewText: String {
         let head = content.prefix(4000)
-        // If the first line alone exceeds the cap, the title heading never fits in the
-        // window — `dropFirst()` then empties the preview. Surface that so a reported
-        // blank-subtitle can be pinpointed from Console.app (see devlog-0721, #56).
+        // Surface pathological first lines so a reported blank or truncated subtitle
+        // can be pinpointed from Console.app (see devlog-0721, #56).
         // Cheap by construction: both checks are bounded to the ≤4 000-grapheme window
         // (no full-content walk).
         if head.firstIndex(of: "\n") == nil, head.endIndex != content.endIndex {
@@ -109,7 +105,7 @@ extension Note {
             Log.storage.debug("[Note] preview capped — first line exceeds 4000 graphemes: \(path, privacy: .public)")
         }
         let lines = head.split(separator: "\n", omittingEmptySubsequences: true)
-        let raw = lines.dropFirst().prefix(3).joined(separator: " ")
+        let raw = lines.prefix(3).joined(separator: " ")
         return raw
             .replacingOccurrences(of: "#{1,6}\\s", with: "", options: .regularExpression)
             .replacingOccurrences(of: "\\*{1,2}([^*]+)\\*{1,2}", with: "$1", options: .regularExpression)
