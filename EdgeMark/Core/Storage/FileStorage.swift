@@ -214,6 +214,26 @@ enum FileStorage {
         return try fm.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)
     }
 
+    /// Checks every possible merge collision before a rename moves the note file.
+    /// `moveAssetDirectoryIfPresent` can then merge identical files without exposing
+    /// the common partial-transaction case where an unrelated asset already exists.
+    private static func preflightAssetDirectoryMove(from source: URL, to destination: URL) throws {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: source.path),
+              fm.fileExists(atPath: destination.path),
+              !pathsReferToSameItem(source, destination)
+        else { return }
+
+        for child in try fm.contentsOfDirectory(at: source, includingPropertiesForKeys: nil) {
+            let target = destination.appendingPathComponent(child.lastPathComponent)
+            if fm.fileExists(atPath: target.path),
+               !fm.contentsEqual(atPath: child.path, andPath: target.path)
+            {
+                throw CocoaError(.fileWriteFileExists)
+            }
+        }
+    }
+
     /// URL string comparison is insufficient on case-insensitive volumes: `.Foo` and
     /// `.foo` can be the same directory. Compare stable filesystem identifiers before
     /// any merge so a case-only rename can never delete files from its own source.
@@ -547,9 +567,16 @@ enum FileStorage {
         let directory = note.folder.isEmpty ? rootURL : rootURL.appendingPathComponent(note.folder, isDirectory: true)
         let oldURL = directory.appendingPathComponent(note.filename)
         let newURL = directory.appendingPathComponent(newFilename)
+        let oldStem = (note.filename as NSString).deletingPathExtension
+        let newStem = (newFilename as NSString).deletingPathExtension
+        let oldAsset = assetDirURL(stem: oldStem, noteID: note.id, folder: note.folder)
+        let newAsset = assetDirURL(stem: newStem, noteID: note.id, folder: note.folder)
         let caseOnlyRename = note.filename.caseInsensitiveCompare(newFilename) == .orderedSame
         if !caseOnlyRename, fm.fileExists(atPath: newURL.path) {
             throw CocoaError(.fileWriteFileExists)
+        }
+        if oldStem != newStem {
+            try preflightAssetDirectoryMove(from: oldAsset, to: newAsset)
         }
 
         let temporaryURL = directory.appendingPathComponent(".edgemark-rename-\(UUID().uuidString)")
@@ -564,12 +591,8 @@ enum FileStorage {
             try fm.moveItem(at: sourceURL, to: newURL)
             fileAtTemporaryPath = false
 
-            let oldStem = (note.filename as NSString).deletingPathExtension
-            let newStem = (newFilename as NSString).deletingPathExtension
             var updatedContent: String?
             if oldStem != newStem {
-                let oldAsset = assetDirURL(stem: oldStem, noteID: note.id, folder: note.folder)
-                let newAsset = assetDirURL(stem: newStem, noteID: note.id, folder: note.folder)
                 let images = try moveAssetDirectoryIfPresent(from: oldAsset, to: newAsset)
                 if !images.isEmpty {
                     var body = note.content
