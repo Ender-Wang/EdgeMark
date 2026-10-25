@@ -57,7 +57,7 @@ xattr -cr /Applications/EdgeMark.app
 - 🔘 Modo Edge-toggle — toca el borde para abrir y mantener el panel abierto mientras copias texto de un lado a otro, toca de nuevo para cerrar (sin ⌘P); Auto-hide sigue siendo el predeterminado
 - 📐 Soporte multi-monitor con borde izquierdo o derecho configurable — solo el borde exterior de la pantalla activa, así mover el ratón entre pantallas no lo abrirá por accidente
 - ↔️ Ancho ajustable — arrastra el borde interno para redimensionar, guardado entre reinicios
-- 🧭 Modos de vista — elige Predeterminado, Columnas o Tarjetas en Ajustes; Columnas ofrece una división persistente y ajustable entre explorador y editor, mientras Tarjetas organiza vistas previas renderizadas y acotadas en un diseño de mampostería Liquid Glass adaptable
+- 🧭 Modos de vista — elige Predeterminado, Columnas o Tarjetas en Ajustes; Columnas ofrece una división persistente y ajustable entre explorador y editor, mientras Tarjetas organiza vistas previas acotadas de notas y tarjetas de carpetas con resúmenes cuadrados en un diseño de mampostería Liquid Glass adaptable
 - 🪟 Estilo del panel — alterna entre fondos de panel translúcido y opaco
 - 🎨 Tono del panel — elige de una paleta curada (System, Graphite, Slate, Sand, Sage, Rose)
 - 🫧 Liquid Glass en macOS 26+ — activado de forma predeterminada, sigue la apariencia del sistema y puede desactivarse para usar el diseño Clásico; macOS 15.7 usa Clásico automáticamente
