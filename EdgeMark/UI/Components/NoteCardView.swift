@@ -84,13 +84,11 @@ struct NoteCardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background {
-            PanelRowBackground(
+            NoteCardSurface(
                 isHovered: isHovered,
-                selectionPosition: selectionPosition.isSelected ? .single : .none,
+                isSelected: selectionPosition.isSelected,
             )
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
         .contentShape(Rectangle())
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
@@ -99,5 +97,73 @@ struct NoteCardView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(note.title.isEmpty ? l10n["common.untitled"] : note.title)
+    }
+}
+
+/// A responsive card grid whose thresholds derive from the panel minimum width.
+/// Flexible tracks resize directly; only a column-count change receives animation
+/// from the caller so ordinary panel dragging remains attached to the pointer.
+struct ResponsiveNoteCardGrid<Content: View>: View {
+    let panelWidth: CGFloat
+    @ViewBuilder let content: Content
+
+    private var columns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(), spacing: PanelLayoutMetrics.cardGridSpacing),
+            count: PanelLayoutMetrics.cardColumnCount(forPanelWidth: panelWidth),
+        )
+    }
+
+    var body: some View {
+        LazyVGrid(
+            columns: columns,
+            alignment: .leading,
+            spacing: PanelLayoutMetrics.cardGridSpacing,
+        ) {
+            content
+        }
+        .padding(.horizontal, PanelLayoutMetrics.cardGridHorizontalInset)
+        .padding(.vertical, 4)
+    }
+}
+
+private struct NoteCardSurface: View {
+    @Environment(AppSettings.self) private var appSettings
+
+    let isHovered: Bool
+    let isSelected: Bool
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: SurfaceMetrics.panelCornerRadius,
+            style: .continuous,
+        )
+    }
+
+    var body: some View {
+        if #available(macOS 26.0, *), appSettings.usesLiquidGlass {
+            shape
+                .fill(.clear)
+                .glassEffect(.regular, in: shape)
+                .overlay {
+                    shape.fill(liquidGlassOverlay)
+                }
+        } else {
+            shape.fill(classicFill)
+        }
+    }
+
+    private var liquidGlassOverlay: Color {
+        if isSelected {
+            return Color.accentColor.opacity(isHovered ? 0.20 : 0.14)
+        }
+        return Color.primary.opacity(isHovered ? 0.06 : 0)
+    }
+
+    private var classicFill: Color {
+        if isSelected {
+            return Color.accentColor.opacity(isHovered ? 0.28 : 0.20)
+        }
+        return Color.primary.opacity(isHovered ? 0.07 : 0.04)
     }
 }

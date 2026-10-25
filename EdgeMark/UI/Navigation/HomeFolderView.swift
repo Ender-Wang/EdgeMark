@@ -10,6 +10,7 @@ struct HomeFolderView: View {
     @Environment(NoteStore.self) var noteStore
     @Environment(AppSettings.self) var appSettings
     @Environment(L10n.self) var l10n
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var noteRename = NoteRenameCoordinator()
     @State private var folderRename = FolderRenameCoordinator()
     @State private var isSearching = false
@@ -341,7 +342,17 @@ struct HomeFolderView: View {
                 Group {
                     if appSettings.noteViewMode == .card {
                         LazyVStack(spacing: 0) {
-                            folderAndNoteItems
+                            folderItems
+
+                            ResponsiveNoteCardGrid(panelWidth: geo.size.width + 24) {
+                                ForEach(rootNotes) { note in
+                                    noteRowWithContextMenu(note: note)
+                                }
+                            }
+                            .animation(
+                                reduceMotion ? nil : .easeInOut(duration: 0.2),
+                                value: PanelLayoutMetrics.cardColumnCount(forPanelWidth: geo.size.width + 24),
+                            )
                         }
                     } else {
                         VStack(spacing: 0) {
@@ -394,7 +405,7 @@ struct HomeFolderView: View {
     }
 
     @ViewBuilder
-    private var folderAndNoteItems: some View {
+    private var folderItems: some View {
         ForEach(sortedFolders) { folder in
             folderRowWithContextMenu(folder: folder)
         }
@@ -402,6 +413,11 @@ struct HomeFolderView: View {
         if folderRename.isCreating {
             inlineFolderEditor
         }
+    }
+
+    @ViewBuilder
+    private var folderAndNoteItems: some View {
+        folderItems
 
         ForEach(rootNotes) { note in
             noteRowWithContextMenu(note: note)
