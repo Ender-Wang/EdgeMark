@@ -212,6 +212,15 @@ struct MarkdownEditorView: View {
             }
         }
         .animation(.easeInOut(duration: 0.18), value: showFindBar.wrappedValue)
+        .onReceive(NotificationCenter.default.publisher(for: .editorRequestFocus)) { notification in
+            guard notification.object as? UUID == stableNoteID else { return }
+            DispatchQueue.main.async {
+                guard let window = NSApp.keyWindow,
+                      let textView = findEditorTextView(in: window.contentView)
+                else { return }
+                window.makeFirstResponder(textView)
+            }
+        }
         .onAppear {
             noteNavMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [self] event in
                 // Markdown formatting shortcuts — route through the engine's bus so the
@@ -322,6 +331,7 @@ struct MarkdownEditorView: View {
 extension Notification.Name {
     static let editorFindScrollToRange = Notification.Name("io.github.ender-wang.EdgeMark.editor.findScrollToRange")
     static let editorFindClearHighlights = Notification.Name("io.github.ender-wang.EdgeMark.editor.findClearHighlights")
+    static let editorRequestFocus = Notification.Name("io.github.ender-wang.EdgeMark.editor.requestFocus")
 
     // Formatting-request bus channels — posting these drives the engine's
     // didMarkdown* actions (routed from the ⌘B/⌘I/⌘E/⌘K/⇧⌘X local key monitor).

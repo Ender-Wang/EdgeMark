@@ -582,7 +582,12 @@ struct HomeFolderView: View {
                         noteStore.openNote(note, preservingSelection: true)
                     }
                 },
-                onDouble: { noteStore.openNote(note, preservingSelection: opensNotesOnSingleClick) },
+                onDouble: {
+                    noteStore.openNote(note, preservingSelection: opensNotesOnSingleClick)
+                    if opensNotesOnSingleClick {
+                        NotificationCenter.default.post(name: .editorRequestFocus, object: note.id)
+                    }
+                },
                 dragItem: .note(note.id),
                 dragPreviewLabel: note.title,
             )

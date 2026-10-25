@@ -840,6 +840,9 @@ final class NoteStore {
                 let keepsBrowserVisible = AppSettings.shared.noteViewMode == .column
                     && PanelSettings.shared.panelWidth >= PanelLayoutMetrics.columnBreakpoint
                 openNote(note, preservingSelection: keepsBrowserVisible)
+                if keepsBrowserVisible {
+                    NotificationCenter.default.post(name: .editorRequestFocus, object: note.id)
+                }
                 return true
             }
         case let .folder(path):

@@ -76,6 +76,9 @@ struct ImageDropOverlay: NSViewRepresentable {
 /// inside an NSScrollView (NativeTextViewWrapper's structure).
 func findEditorTextView(in root: NSView?) -> NSTextView? {
     guard let root else { return nil }
+    if let textView = root as? NSTextView, !textView.isFieldEditor {
+        return textView
+    }
     if let scroll = root as? NSScrollView, let tv = scroll.documentView as? NSTextView {
         return tv
     }

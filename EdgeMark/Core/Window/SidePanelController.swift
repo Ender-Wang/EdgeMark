@@ -175,12 +175,21 @@ final class SidePanelController: NSWindowController {
         // Runs before any SwiftUI .onKeyPress so it wins over default focus traversal.
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, isShown else { return event }
-            // Skip while editing text or browsing the editor / trash.
+            // Skip while editing text or browsing Trash. A wide Column layout
+            // keeps the browser active beside the editor, so its non-text focus
+            // may continue to drive list navigation while a note is open.
             if let fr = window.firstResponder as? NSTextView, fr.isFieldEditor {
                 return event
             }
-            if noteStore.selectedNote != nil || noteStore.showTrash {
+            if noteStore.showTrash {
                 return event
+            }
+            if noteStore.selectedNote != nil {
+                let keepsBrowserVisible = AppSettings.shared.noteViewMode == .column
+                    && window.frame.width >= PanelLayoutMetrics.columnBreakpoint
+                if !keepsBrowserVisible || window.firstResponder is NSTextView {
+                    return event
+                }
             }
             let shift = event.modifierFlags.contains(.shift)
             switch event.keyCode {
