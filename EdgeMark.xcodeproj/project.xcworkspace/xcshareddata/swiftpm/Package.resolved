@@ -2,21 +2,12 @@
   "originHash" : "0c31afe7ba44079a2100ebe19f9fb831948cc347dc17bba9a6607e688908ff03",
   "pins" : [
     {
-      "identity" : "highlighterswift",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/smittytone/HighlighterSwift",
-      "state" : {
-        "revision" : "fe7aae9c9b31d3b296fd3d2dd575e1a207bb29e0",
-        "version" : "3.1.0"
-      }
-    },
-    {
       "identity" : "swift-markdown-engine",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/nodes-app/swift-markdown-engine",
       "state" : {
-        "revision" : "5ed9dd8d7eea0c77e93a91462836f4a3ef52424c",
-        "version" : "0.14.0"
+        "revision" : "f762ab7ec17472e6d3f3b652b97c747e507c66ec",
+        "version" : "0.15.0"
       }
     },
     {
