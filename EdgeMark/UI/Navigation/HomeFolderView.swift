@@ -344,10 +344,13 @@ struct HomeFolderView: View {
                         LazyVStack(spacing: 0) {
                             folderItems
 
-                            ResponsiveNoteCardGrid(
+                            ResponsiveMasonryCardGrid(
                                 panelWidth: geo.size.width + 24,
                                 contentWidth: geo.size.width,
-                                notes: rootNotes,
+                                items: rootNotes,
+                                heightRatio: {
+                                    PanelLayoutMetrics.cardHeightRatio(for: $0.id.uuidString)
+                                },
                             ) { note in
                                 noteRowWithContextMenu(note: note)
                             }

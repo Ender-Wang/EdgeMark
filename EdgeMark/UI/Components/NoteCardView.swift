@@ -83,7 +83,7 @@ struct NoteCardView: View {
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background {
-            NoteCardSurface(
+            MasonryCardSurface(
                 isHovered: isHovered,
                 isSelected: selectionPosition.isSelected,
             )
@@ -103,11 +103,12 @@ struct NoteCardView: View {
 /// A responsive masonry grid whose thresholds derive from the panel minimum width.
 /// Lazy columns preserve full-body rendering performance while the shortest-column
 /// assignment avoids the empty holes created by equal-height grid rows.
-struct ResponsiveNoteCardGrid<Content: View>: View {
+struct ResponsiveMasonryCardGrid<Item: Identifiable, Content: View>: View {
     let panelWidth: CGFloat
     let contentWidth: CGFloat
-    let notes: [Note]
-    @ViewBuilder let content: (Note) -> Content
+    let items: [Item]
+    let heightRatio: (Item) -> CGFloat
+    @ViewBuilder let content: (Item) -> Content
 
     private var columnCount: Int {
         PanelLayoutMetrics.cardColumnCount(forPanelWidth: panelWidth)
@@ -120,27 +121,27 @@ struct ResponsiveNoteCardGrid<Content: View>: View {
     }
 
     private var remainderCount: Int {
-        notes.count % columnCount
+        items.count % columnCount
     }
 
-    private var masonryNotes: ArraySlice<Note> {
-        notes.dropLast(remainderCount)
+    private var masonryItems: ArraySlice<Item> {
+        items.dropLast(remainderCount)
     }
 
-    private var remainderNotes: ArraySlice<Note> {
-        notes.suffix(remainderCount)
+    private var remainderItems: ArraySlice<Item> {
+        items.suffix(remainderCount)
     }
 
-    private var columns: [[Note]] {
-        var columns = Array(repeating: [Note](), count: columnCount)
+    private var columns: [[Item]] {
+        var columns = Array(repeating: [Item](), count: columnCount)
         var accumulatedHeights = Array(repeating: CGFloat.zero, count: columnCount)
 
-        for note in masonryNotes {
+        for item in masonryItems {
             let destination = accumulatedHeights.indices.min {
                 accumulatedHeights[$0] < accumulatedHeights[$1]
             } ?? 0
-            columns[destination].append(note)
-            accumulatedHeights[destination] += previewHeight(for: note)
+            columns[destination].append(item)
+            accumulatedHeights[destination] += previewHeight(for: item)
                 + PanelLayoutMetrics.cardGridSpacing
         }
 
@@ -149,12 +150,12 @@ struct ResponsiveNoteCardGrid<Content: View>: View {
 
     var body: some View {
         LazyVStack(spacing: PanelLayoutMetrics.cardGridSpacing) {
-            if !masonryNotes.isEmpty {
+            if !masonryItems.isEmpty {
                 HStack(alignment: .top, spacing: PanelLayoutMetrics.cardGridSpacing) {
                     ForEach(columns.indices, id: \.self) { columnIndex in
                         LazyVStack(spacing: PanelLayoutMetrics.cardGridSpacing) {
-                            ForEach(columns[columnIndex]) { note in
-                                cardPreview(note)
+                            ForEach(columns[columnIndex]) { item in
+                                cardPreview(item)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .top)
@@ -162,10 +163,10 @@ struct ResponsiveNoteCardGrid<Content: View>: View {
                 }
             }
 
-            if !remainderNotes.isEmpty {
+            if !remainderItems.isEmpty {
                 HStack(alignment: .top, spacing: PanelLayoutMetrics.cardGridSpacing) {
-                    ForEach(remainderNotes) { note in
-                        cardPreview(note)
+                    ForEach(remainderItems) { item in
+                        cardPreview(item)
                             .frame(maxWidth: .infinity)
                     }
                 }
@@ -175,34 +176,23 @@ struct ResponsiveNoteCardGrid<Content: View>: View {
         .padding(.vertical, 4)
     }
 
-    private func previewHeight(for note: Note) -> CGFloat {
-        standardCardWidth * NoteCardHeightRatio.value(for: note.id)
+    private func previewHeight(for item: Item) -> CGFloat {
+        standardCardWidth * heightRatio(item)
     }
 
-    private func cardPreview(_ note: Note) -> some View {
+    private func cardPreview(_ item: Item) -> some View {
         let shape = RoundedRectangle(
             cornerRadius: SurfaceMetrics.panelCornerRadius,
             style: .continuous,
         )
 
-        return content(note)
-            .frame(height: previewHeight(for: note), alignment: .top)
+        return content(item)
+            .frame(height: previewHeight(for: item), alignment: .top)
             .clipShape(shape)
     }
 }
 
-/// A UUID-stable preview height selected from 1.2x through 2.0x card width.
-/// Never use `hashValue` here because Swift randomizes it between processes.
-private enum NoteCardHeightRatio {
-    static func value(for noteID: UUID) -> CGFloat {
-        let bucket = noteID.uuidString.utf8.reduce(0) { partial, byte in
-            (partial * 31 + Int(byte)) % 5
-        }
-        return 1.2 + CGFloat(bucket) * 0.2
-    }
-}
-
-private struct NoteCardSurface: View {
+struct MasonryCardSurface: View {
     @Environment(AppSettings.self) private var appSettings
 
     let isHovered: Bool

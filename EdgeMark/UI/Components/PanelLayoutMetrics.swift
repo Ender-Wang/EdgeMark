@@ -25,4 +25,13 @@ enum PanelLayoutMetrics {
     static func cardColumnCount(forPanelWidth panelWidth: CGFloat) -> Int {
         max(2, Int(floor(panelWidth / cardWidthStep)))
     }
+
+    /// A stable preview ratio selected from 1.2x through 2.0x card width.
+    /// Never use `hashValue` here because Swift randomizes it between processes.
+    static func cardHeightRatio(for stableID: String) -> CGFloat {
+        let bucket = stableID.utf8.reduce(0) { partial, byte in
+            (partial * 31 + Int(byte)) % 5
+        }
+        return 1.2 + CGFloat(bucket) * 0.2
+    }
 }
