@@ -104,6 +104,7 @@
   "column.detail.header": "Note",
   "column.detail.empty.title": "Select a Note",
   "column.detail.empty.subtitle": "Choose a note from the browser to view and edit it here",
+  "card.empty": "Empty note",
 
   "editor.copyNote": "Copy Note",
   "editor.deleteNote": "Delete Note",

@@ -104,6 +104,7 @@
   "column.detail.header": "नोट",
   "column.detail.empty.title": "नोट चुनें",
   "column.detail.empty.subtitle": "यहाँ देखने और संपादित करने के लिए ब्राउज़र से कोई नोट चुनें",
+  "card.empty": "खाली नोट",
 
   "editor.copyNote": "नोट कॉपी करें",
   "editor.deleteNote": "नोट हटाएं",

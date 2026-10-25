@@ -104,6 +104,7 @@
   "column.detail.header": "Nota",
   "column.detail.empty.title": "Selecciona una nota",
   "column.detail.empty.subtitle": "Elige una nota del explorador para verla y editarla aquí",
+  "card.empty": "Nota vacía",
 
   "editor.copyNote": "Copiar nota",
   "editor.deleteNote": "Eliminar nota",

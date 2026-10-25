@@ -104,6 +104,7 @@
   "column.detail.header": "Notiz",
   "column.detail.empty.title": "Notiz auswählen",
   "column.detail.empty.subtitle": "Wähle im Browser eine Notiz aus, um sie hier anzuzeigen und zu bearbeiten",
+  "card.empty": "Leere Notiz",
 
   "editor.copyNote": "Notiz kopieren",
   "editor.deleteNote": "Notiz löschen",

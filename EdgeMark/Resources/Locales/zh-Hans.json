@@ -104,6 +104,7 @@
   "column.detail.header": "笔记",
   "column.detail.empty.title": "选择一篇笔记",
   "column.detail.empty.subtitle": "从浏览器中选择一篇笔记，在此查看和编辑",
+  "card.empty": "空笔记",
 
   "editor.copyNote": "复制笔记",
   "editor.deleteNote": "删除笔记",
