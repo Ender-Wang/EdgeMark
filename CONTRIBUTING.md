@@ -51,7 +51,7 @@ EdgeMark/
 ├── App/                            # Entry point + global state
 │   ├── EdgeMarkApp.swift           #   @main, menu bar utility (LSUIElement)
 │   ├── AppDelegate.swift           #   Lifecycle, sidecar migration, shortcut setup, switchRoot + menu-bar storage submenu
-│   └── ContentView.swift           #   Navigation shell (folders → notes → editor)
+│   └── ContentView.swift           #   Default/Card navigation + adaptive Column browser/editor shell
 │
 ├── Core/                           # Core services, observable state, and editor integration
 │   ├── Editor/
@@ -62,12 +62,12 @@ EdgeMark/
 │   │   ├── EditorConfigFactory.swift      # Shared MarkdownEditorConfiguration (insets,
 │   │   │                                #   extensions, task-checkbox and thematic-break styles,
 │   │   │                                #   image/syntax/LaTeX services) for both editors
-│   │   ├── ReadOnlyMarkdownView.swift    # Non-editable preview (trash)
+│   │   ├── ReadOnlyMarkdownView.swift    # Non-editable scrolling/fits-content renderer for previews and cards
 │   │   ├── SlashCommandHandler.swift     # /h1, /todo, /code, /quote — NSTextView insertion
 │   │   ├── SlashCommandPopup.swift       # Floating autocomplete panel
 │   │   └── ImageDropHandler.swift        # Transparent NSView overlay for image drag-and-drop
 │   ├── Settings/
-│   │   ├── AppSettings.swift       #   @Observable — sort, panel/Liquid Glass appearance, editor/spell policy, peek, tags, updates, launch
+│   │   ├── AppSettings.swift       #   @Observable — view mode, sort, panel/Liquid Glass appearance, editor/spell policy, peek, tags, updates, launch
 │   │   ├── ShortcutSettings.swift  #   Global + 7 local keyboard shortcuts + conflict detection (posts .shortcutSettingsChanged)
 │   │   ├── PanelSettings.swift     #   Edge activation, dismissal, panel width/animation, swipe gestures (.panelPinStateChanged)
 │   │   └── StorageSettings.swift   #   Storage roots (#55) + active/ask-on-launch/session-override (.storageRootChanged)
@@ -118,12 +118,13 @@ EdgeMark/
 │   │   ├── MarqueeSelection.swift  #   Shared click/range/marquee selection helpers
 │   │   ├── MoveConflictAlerts.swift#   View extension: note + folder move conflict dialogs
 │   │   ├── NSContextMenuModifier.swift  # AppKit row click handling, NSMenu context menus, drag source + Finder-style preview
-│   │   ├── NoteCardView.swift      #   Note list row (title, preview, date)
+│   │   ├── NoteCardView.swift      #   Lazy full-body Markdown card with selection and inline rename chrome
 │   │   ├── NoteDragDrop.swift      #   Internal payloads, synchronous target validation, drop feedback + dispatch
 │   │   ├── NoteHeaderTitle.swift   #   Persistent contextual title, direct rename, and quick path/date details
 │   │   ├── NoteListMenus.swift     #   Note/folder menus, recursive Move to tree, tags and batch actions
 │   │   ├── NoteRenameCoordinator.swift # Note inline-rename state and validation
-│   │   ├── PageLayout.swift        #   Separate header/body surfaces with shared geometry and spacing
+│   │   ├── PageLayout.swift        #   Standalone/embedded header and body surfaces
+│   │   ├── PanelLayoutMetrics.swift #  Shared minimum width, Column breakpoint, pane clamps and spacing
 │   │   ├── PanelContentSurface.swift # Stable standard-material background for header and body sections
 │   │   ├── PanelRowBackground.swift # Joined selection and adaptive row-hover surfaces
 │   │   ├── Peek/
@@ -141,7 +142,7 @@ EdgeMark/
 │   └── Settings/
 │       ├── SettingsView.swift      #   Tab container (General, Behavior, Tags, Keyboard, About)
 │       ├── GeneralSettingsTab.swift #   Appearance (incl. gated Liquid Glass), editor font, language, multi-root storage list
-│       ├── BehaviorSettingsTab.swift#   Panel position, edge activation, auto-hide
+│       ├── BehaviorSettingsTab.swift#   View mode, panel position, edge activation, auto-hide
 │       ├── TagsSettingsTab.swift   #   Rename color tag labels
 │       ├── KeyboardSettingsTab.swift#   Global + 7 customizable local shortcut recorders
 │       ├── AboutSettingsTab.swift   #   Version info, links, copyright
@@ -169,6 +170,7 @@ EdgeMark/
 | **MainActor by default** | `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`. All types are `@MainActor` unless explicitly opted out |
 | **AppKit + SwiftUI hybrid** | `NSHostingView` embeds SwiftUI inside a borderless `NSWindow`. Panel lifecycle managed by `SidePanelController` (AppKit), UI rendered by SwiftUI |
 | **Adaptive appearance boundary** | `AppSettings.usesLiquidGlass` is the single effective switch: it returns the persisted opt-in only on macOS 26+, and always returns `false` on older systems. SwiftUI glass APIs are additionally enclosed in `#available(macOS 26.0, *)`; `AppKitGlassSurface` applies the same check before constructing `NSGlassEffectView`. Turning the option off—or running on macOS 15.7—selects the Classic branches. `PanelContentSurface` deliberately remains standard material in both modes, while `PageLayout` geometry and shared interactions are appearance-independent. The outer panel shell is appearance-aware: `SidePanelController` applies the shared 16-point Liquid Glass window radius or the established 10-point Classic radius and updates it when the setting changes. |
+| **Adaptive note layouts** | `AppSettings.noteViewMode` persists `default`, `column`, or `card`, falling back to `default` for missing/unknown values. Column mode derives its live state from `GeometryReader`: below 600 pt it preserves single-page navigation; at 600 pt and wider `ContentView` keeps a 220–320 pt browser beside the existing editor. The zero-width hidden browser and stable editor sibling preserve editor identity while resizing. `PanelLayoutMetrics` is shared with AppKit's resize clamp, and embedded `PageLayout`s let the shell own outer insets once. Card mode keeps folders and search results compact but renders ordinary notes lazily through `ReadOnlyMarkdownView` with the engine's `.fitsContent` behavior; the rendered body does not intercept card-level selection, drag, or context-menu gestures. |
 | **Native editor (swift-markdown-engine)** | `MarkdownEditorView` wraps `NativeTextViewWrapper` (NSViewRepresentable from swift-markdown-engine). Text flows via `@Binding<String>` as the complete Markdown document; no heading is reserved or hidden. Image display-layer conversion (`![](path)` ↔ `![[path]]`), slash-command mutation tracking, and save debouncing are handled in `MarkdownEditorView`. Both editors build their `MarkdownEditorConfiguration` via `EditorConfigFactory.makeEdgeMarkConfig` (shared insets, highlight/strikethrough extensions, task-checkbox symbols, the `***` thematic-break presentation, and image/syntax/LaTeX services) so previews match the editor. Editor-only spell and Smart Quotes policy is applied by `MarkdownEditorView`; configuration values that the engine does not synchronize live participate in its rebuild identity. |
 | **Filename-backed note identity** | `Note.filename` is the canonical user-visible disk identity; `title` is its exact stem and `relativePath` combines it with the folder. Content saves always target that path. Renaming is a separate filesystem transaction that moves the note and co-located assets without rewriting headings. New notes use `Untitled.md`, `Untitled 2.md`, and so on, preserving spaces and safe punctuation. |
 | **Sidecar metadata** | Notes are plain `.md` files with no injected headers. Metadata (UUID, timestamps, tags, trash state, and optional SHA-256 content fingerprints) lives in `.edgemark/meta.json` keyed by UUID. `SidecarMigration` strips legacy YAML on first launch and restores original file timestamps. Startup builds path and fingerprint indexes once: external files are adopted without Markdown mutation, and a unique exact fingerprint can preserve metadata across an external rename. `savedAt` (last EdgeMark write) is the external-change sentinel; `modifiedAt` only advances on real user changes. Completed rename and tag actions persist immediately; tag-only persistence does not rewrite Markdown, and filesystem or sidecar failures retain dirty state for lifecycle retry. |
