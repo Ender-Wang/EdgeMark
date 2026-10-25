@@ -21,6 +21,13 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(noteViewMode.rawValue, forKey: "noteViewMode") }
     }
 
+    /// Preferred browser width for wide Column mode. The live layout clamps
+    /// this value to its current half-panel maximum without rewriting the
+    /// user's wider preference during ordinary window resizing.
+    var columnBrowserWidth: Double = .init(PanelLayoutMetrics.defaultNavigationWidth) {
+        didSet { UserDefaults.standard.set(columnBrowserWidth, forKey: "columnBrowserWidth") }
+    }
+
     // MARK: - Sort
 
     enum SortBy: String, CaseIterable {
@@ -334,6 +341,9 @@ final class AppSettings {
            let value = NoteViewMode(rawValue: raw)
         {
             noteViewMode = value
+        }
+        if let savedWidth = UserDefaults.standard.object(forKey: "columnBrowserWidth") as? Double {
+            columnBrowserWidth = max(savedWidth, Double(PanelLayoutMetrics.minimumNavigationWidth))
         }
         if let raw = UserDefaults.standard.string(forKey: "sortBy"),
            let value = SortBy(rawValue: raw)
