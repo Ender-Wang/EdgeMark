@@ -192,6 +192,48 @@ struct ResponsiveMasonryCardGrid<Item: Identifiable, Content: View>: View {
     }
 }
 
+/// Uses the same responsive column widths as note masonry while allowing each
+/// card to choose its own content-driven height. The incomplete final row keeps
+/// the note grid's expansion behavior.
+struct ResponsiveIntrinsicCardGrid<Item: Identifiable, Content: View>: View {
+    let panelWidth: CGFloat
+    let items: [Item]
+    @ViewBuilder let content: (Item) -> Content
+
+    private var columnCount: Int {
+        PanelLayoutMetrics.cardColumnCount(forPanelWidth: panelWidth)
+    }
+
+    private var rows: [[Item]] {
+        stride(from: 0, to: items.count, by: columnCount).map { start in
+            Array(items[start ..< min(start + columnCount, items.count)])
+        }
+    }
+
+    var body: some View {
+        let groupedRows = rows
+
+        LazyVStack(spacing: PanelLayoutMetrics.cardGridSpacing) {
+            ForEach(groupedRows.indices, id: \.self) { rowIndex in
+                HStack(alignment: .top, spacing: PanelLayoutMetrics.cardGridSpacing) {
+                    ForEach(groupedRows[rowIndex]) { item in
+                        content(item)
+                            .frame(maxWidth: .infinity, alignment: .top)
+                            .clipShape(
+                                RoundedRectangle(
+                                    cornerRadius: SurfaceMetrics.panelCornerRadius,
+                                    style: .continuous,
+                                ),
+                            )
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, PanelLayoutMetrics.cardGridHorizontalInset)
+        .padding(.vertical, 4)
+    }
+}
+
 struct MasonryCardSurface: View {
     @Environment(AppSettings.self) private var appSettings
 

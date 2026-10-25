@@ -69,7 +69,7 @@ struct FolderCardView: View {
             }
         }
         .padding(12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .background {
             MasonryCardSurface(
                 isHovered: isHovered,

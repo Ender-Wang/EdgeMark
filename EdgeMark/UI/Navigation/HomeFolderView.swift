@@ -342,16 +342,16 @@ struct HomeFolderView: View {
                 Group {
                     if appSettings.noteViewMode == .card {
                         LazyVStack(spacing: 0) {
-                            ResponsiveMasonryCardGrid(
+                            ResponsiveIntrinsicCardGrid(
                                 panelWidth: geo.size.width + 24,
-                                contentWidth: geo.size.width,
                                 items: sortedFolders,
-                                heightRatio: {
-                                    PanelLayoutMetrics.cardHeightRatio(for: "folder:\($0.name)")
-                                },
                             ) { folder in
                                 folderCardWithContextMenu(folder: folder)
                             }
+                            .animation(
+                                reduceMotion ? nil : .easeInOut(duration: 0.2),
+                                value: PanelLayoutMetrics.cardColumnCount(forPanelWidth: geo.size.width + 24),
+                            )
 
                             if folderRename.isCreating {
                                 inlineFolderEditor
