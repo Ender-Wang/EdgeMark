@@ -3,13 +3,13 @@ import MarkdownEngineCodeBlocks
 import MarkdownEngineLatex
 import SwiftUI
 
-/// HighlighterSwift creates and evaluates a JavaScriptCore context during
+/// HighlightJSBridge creates and evaluates a JavaScriptCore context during
 /// initialization. Keep that heavyweight service outside SwiftUI view evaluation:
 /// editor updates and transient previews may rebuild configurations frequently,
 /// but they should all reuse one context and one highlight cache.
 @MainActor
 private enum EdgeMarkEditorServices {
-    static let syntaxHighlighter = HighlighterSwiftBridge()
+    static let syntaxHighlighter = HighlightJSBridge()
 }
 
 // MARK: - Shared editor configuration
