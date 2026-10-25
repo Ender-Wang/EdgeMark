@@ -54,14 +54,14 @@ struct NoteCardView: View {
             }
 
             HStack(spacing: 8) {
-                TagDotsView(tags: note.tags)
-                Spacer(minLength: 8)
                 Text(note.createdAt.homeDisplayFormat)
                     .font(.caption)
                     .monospacedDigit()
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
+                Spacer(minLength: 8)
+                TagDotsView(tags: note.tags)
             }
 
             if note.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

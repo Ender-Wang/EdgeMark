@@ -134,7 +134,20 @@ struct NoteListView: View {
                             Group {
                                 if appSettings.noteViewMode == .card {
                                     LazyVStack(spacing: 0) {
-                                        folderItems
+                                        ResponsiveMasonryCardGrid(
+                                            panelWidth: geo.size.width + 24,
+                                            contentWidth: geo.size.width,
+                                            items: childFolders,
+                                            heightRatio: {
+                                                PanelLayoutMetrics.cardHeightRatio(for: "folder:\($0.name)")
+                                            },
+                                        ) { folder in
+                                            folderCardWithContextMenu(folder: folder)
+                                        }
+
+                                        if folderRename.isCreating {
+                                            inlineFolderEditor
+                                        }
 
                                         ResponsiveMasonryCardGrid(
                                             panelWidth: geo.size.width + 24,
@@ -248,6 +261,55 @@ struct NoteListView: View {
     }
 
     // MARK: - Folder Row with Context Menu
+
+    private func folderCardWithContextMenu(folder: Folder) -> some View {
+        let id = NoteStore.SelectableID.folder(folder.name)
+        return FolderCardView(
+            folder: folder,
+            previewNotes: noteStore.recentNotes(in: folder),
+            date: appSettings.folderDate(for: folder),
+            selectionPosition: .resolve(id, in: visibleOrder, selection: noteStore.selection),
+            rename: folderCardRenameConfiguration(for: folder),
+        )
+        .rowClick(
+            isEnabled: folderRename.renamingFolderName != folder.name,
+            onSingle: { mods in
+                noteStore.handleSelectionClick(
+                    on: id,
+                    isShift: mods.contains(.shift),
+                    isCommand: mods.contains(.command),
+                    visibleOrder: visibleOrder,
+                )
+            },
+            onDouble: { noteStore.navigateToSubfolder(folder) },
+            dragItem: .folder(folder.name),
+            dragPreviewLabel: folder.displayName,
+        )
+        .edgeMarkDropTarget(.folder(folder.name))
+        .reportRowFrame(id)
+        .hoverableRow(
+            id: id,
+            content: .folder(folder, noteStore.subfolders(of: folder), noteStore.recentNotes(in: folder)),
+        )
+        .nsContextMenu {
+            if !noteStore.isSelected(id) {
+                noteStore.replaceSelection(with: id)
+            }
+            if noteStore.selection.count > 1 {
+                return NoteListMenus.selectionMenu(noteStore: noteStore, l10n: l10n)
+            }
+            return NoteListMenus.folderMenu(
+                folder: folder,
+                noteStore: noteStore,
+                l10n: l10n,
+                onRename: { startRenamingFolder(folder.name) },
+                onDelete: {
+                    deletingFolderName = folder.name
+                    showDeleteFolderConfirm = true
+                },
+            )
+        }
+    }
 
     @ViewBuilder
     private func folderRowWithContextMenu(folder: Folder) -> some View {
@@ -402,6 +464,24 @@ struct NoteListView: View {
             onCommit: { noteRename.commit(note: note, noteStore: noteStore) },
             onCancel: { noteRename.cancel(noteStore: noteStore) },
             onFocusLost: { noteRename.commitOrCancel(note: note, noteStore: noteStore) },
+        )
+    }
+
+    private func folderCardRenameConfiguration(for folder: Folder) -> FolderCardView.RenameConfiguration? {
+        guard folderRename.renamingFolderName == folder.name else { return nil }
+        let hasConflict = folderRename.isRenameConflicting(siblings: childFolders)
+        return FolderCardView.RenameConfiguration(
+            placeholder: l10n["common.folderNamePlaceholder"],
+            text: $folderRename.renameText,
+            isFocused: $isFolderRenameFocused,
+            validationMessage: hasConflict ? l10n["common.nameTaken"] : nil,
+            onCommit: {
+                folderRename.commitRename(folder.name, noteStore: noteStore, siblings: childFolders)
+            },
+            onCancel: { folderRename.cancelRename() },
+            onFocusLost: {
+                folderRename.commitOrCancelRename(folder.name, noteStore: noteStore, siblings: childFolders)
+            },
         )
     }
 
