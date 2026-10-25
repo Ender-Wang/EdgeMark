@@ -57,7 +57,7 @@ xattr -cr /Applications/EdgeMark.app
 - 🔘 Edge-toggle mode — touch the edge to open and keep the panel open while you copy text back and forth, touch again to close (no ⌘P needed); Auto-hide stays the default
 - 📐 Multi-monitor support with configurable left or right edge — only the outer screen edge triggers, so moving between displays won't pop it by accident
 - ↔️ Adjustable width — drag the inner edge to resize, saved across restarts
-- 🧭 View modes — choose Default, Column, or Card in Settings; Column keeps the browser beside the editor at 600 pt and wider, while Card shows each note's complete rendered content
+- 🧭 View modes — choose Default, Column, or Card in Settings; wide Column mode has a persistent draggable browser/editor split, while Card lays complete rendered notes out in a responsive Liquid Glass grid
 - 🪟 Panel style — toggle between Translucent and Opaque panel backgrounds
 - 🎨 Panel tint — pick from a curated palette (System, Graphite, Slate, Sand, Sage, Rose)
 - 🫧 Liquid Glass on macOS 26+ — enabled by default, follows the system appearance, and can be switched off for the Classic design; macOS 15.7 uses Classic automatically
