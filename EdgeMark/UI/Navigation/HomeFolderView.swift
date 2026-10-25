@@ -531,6 +531,7 @@ struct HomeFolderView: View {
                 rename: cardRenameConfiguration(for: note),
             )
             .rowClick(
+                isEnabled: noteRename.renamingNoteID != note.id,
                 onSingle: { mods in
                     noteStore.handleSelectionClick(
                         on: id,

@@ -79,7 +79,6 @@ struct NoteCardView: View {
                 )
                 .fixedSize(horizontal: false, vertical: true)
                 .allowsHitTesting(false)
-                .accessibilityHidden(true)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
