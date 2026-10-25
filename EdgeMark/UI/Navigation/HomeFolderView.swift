@@ -4,6 +4,7 @@ import SwiftUI
 
 struct HomeFolderView: View {
     var pagePresentation: PageLayoutPresentation = .standalone
+    var pageJoinRole: PageLayoutJoinRole = .none
     var opensNotesOnSingleClick = false
 
     @Environment(NoteStore.self) var noteStore
@@ -124,7 +125,7 @@ struct HomeFolderView: View {
     private let iconWidth: CGFloat = 22
 
     var body: some View {
-        PageLayout(presentation: pagePresentation) {
+        PageLayout(presentation: pagePresentation, joinRole: pageJoinRole) {
             header
         } content: {
             VStack(spacing: 0) {

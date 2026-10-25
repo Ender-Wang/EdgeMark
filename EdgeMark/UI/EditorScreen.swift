@@ -3,7 +3,9 @@ import SwiftUI
 
 struct EditorScreen: View {
     var pagePresentation: PageLayoutPresentation = .standalone
+    var pageJoinRole: PageLayoutJoinRole = .none
     var showsBackButton = true
+    var showsPinButton = true
 
     @Environment(NoteStore.self) var noteStore
     @Environment(AppSettings.self) var appSettings
@@ -21,6 +23,7 @@ struct EditorScreen: View {
     var body: some View {
         PageLayout(
             presentation: pagePresentation,
+            joinRole: pageJoinRole,
             onSwipeBack: showsBackButton ? { goBack() } : nil,
             onContentSwipeRight: PanelSettings.shared.editorSwipeToNavigateEnabled
                 ? { noteStore.navigateToPreviousNote(sortedBy: appSettings) } : nil,
@@ -143,7 +146,9 @@ struct EditorScreen: View {
                     )
 
                     HStack(spacing: SurfaceMetrics.controlGroupSpacing) {
-                        PinButton()
+                        if showsPinButton {
+                            PinButton()
+                        }
 
                         HeaderActionMenu(help: l10n["common.moreActions"]) { dismiss in
                             EditorActionMenuContent(

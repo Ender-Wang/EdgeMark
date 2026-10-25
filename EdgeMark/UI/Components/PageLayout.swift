@@ -26,6 +26,10 @@ enum PageLayoutJoinRole {
             return RectangleCornerRadii(bottomTrailing: radius, topTrailing: radius)
         }
     }
+
+    var drawsTrailingDivider: Bool {
+        self == .leading
+    }
 }
 
 /// Shared page layout with separate header and body surfaces.
@@ -74,6 +78,11 @@ struct PageLayout<Header: View, Content: View>: View {
                         SwipeDetectorView(onSwipeBack: onSwipeBack)
                     }
                 }
+                .overlay(alignment: .trailing) {
+                    if joinRole.drawsTrailingDivider {
+                        joinedDivider
+                    }
+                }
 
             content
                 .background { PanelContentSurface() }
@@ -86,9 +95,21 @@ struct PageLayout<Header: View, Content: View>: View {
                         )
                     }
                 }
+                .overlay(alignment: .trailing) {
+                    if joinRole.drawsTrailingDivider {
+                        joinedDivider
+                    }
+                }
         }
         .padding(.horizontal, presentation == .standalone ? 12 : 0)
         .padding(.top, presentation == .standalone ? 8 : 0)
         .padding(.bottom, presentation == .standalone ? 12 : 0)
+    }
+
+    private var joinedDivider: some View {
+        Rectangle()
+            .fill(Color.primary.opacity(0.10))
+            .frame(width: 1)
+            .allowsHitTesting(false)
     }
 }

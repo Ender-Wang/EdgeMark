@@ -3,6 +3,7 @@ import SwiftUI
 
 struct NoteListView: View {
     var pagePresentation: PageLayoutPresentation = .standalone
+    var pageJoinRole: PageLayoutJoinRole = .none
     var opensNotesOnSingleClick = false
     var isPersistentBrowser = false
 
@@ -68,7 +69,11 @@ struct NoteListView: View {
     }
 
     var body: some View {
-        PageLayout(presentation: pagePresentation, onSwipeBack: { navigateBack() }) {
+        PageLayout(
+            presentation: pagePresentation,
+            joinRole: pageJoinRole,
+            onSwipeBack: { navigateBack() },
+        ) {
             HStack(spacing: 8) {
                 HeaderIconButton(
                     systemName: "chevron.left",

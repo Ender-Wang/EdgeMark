@@ -6,6 +6,7 @@ struct ContentView: View {
     @Environment(PeekCoordinator.self) var peekCoordinator
     @Environment(L10n.self) var l10n
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var liveColumnBrowserWidth: CGFloat?
 
     private var showHome: Bool {
         !noteStore.showTrash && noteStore.selectedFolder == nil && noteStore.selectedNote == nil
@@ -127,32 +128,58 @@ struct ContentView: View {
             let usableWidth = max(geometry.size.width - 24, 0)
             let isWide = geometry.size.width >= PanelLayoutMetrics.columnBreakpoint
             let showsBrowser = isWide || noteStore.selectedNote == nil
+            let hasSelectedNote = noteStore.selectedNote != nil
             let browserWidth = if isWide {
-                PanelLayoutMetrics.navigationWidth(for: usableWidth)
+                PanelLayoutMetrics.navigationWidth(
+                    preferredWidth: liveColumnBrowserWidth ?? CGFloat(appSettings.columnBrowserWidth),
+                    availableWidth: usableWidth,
+                )
             } else {
                 showsBrowser ? usableWidth : 0
             }
+            let paneSpacing = isWide && !hasSelectedNote ? PanelLayoutMetrics.paneSpacing : 0
 
-            HStack(spacing: isWide ? PanelLayoutMetrics.paneSpacing : 0) {
-                columnBrowser(isWide: isWide)
-                    .frame(width: browserWidth)
-                    .frame(maxHeight: .infinity)
-                    .opacity(showsBrowser ? 1 : 0)
-                    .allowsHitTesting(showsBrowser)
-                    .accessibilityHidden(!showsBrowser)
-                    .clipped()
+            ZStack(alignment: .leading) {
+                HStack(spacing: paneSpacing) {
+                    columnBrowser(isWide: isWide, isJoined: isWide && hasSelectedNote)
+                        .frame(width: browserWidth)
+                        .frame(maxHeight: .infinity)
+                        .opacity(showsBrowser ? 1 : 0)
+                        .allowsHitTesting(showsBrowser)
+                        .accessibilityHidden(!showsBrowser)
+                        .clipped()
 
-                if let note = noteStore.selectedNote {
-                    EditorScreen(
-                        pagePresentation: .embedded,
-                        showsBackButton: !isWide,
-                    )
-                    .id(note.id)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if isWide {
-                    emptyColumnDetail
+                    if let note = noteStore.selectedNote {
+                        EditorScreen(
+                            pagePresentation: .embedded,
+                            pageJoinRole: isWide ? .trailing : .none,
+                            showsBackButton: !isWide,
+                            showsPinButton: !isWide,
+                        )
+                        .id(note.id)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .transition(.opacity)
+                    } else if isWide {
+                        emptyColumnDetail
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .transition(.opacity)
+                    }
+                }
+
+                if isWide {
+                    ColumnResizeHandle(
+                        currentWidth: browserWidth,
+                        minimumWidth: PanelLayoutMetrics.minimumNavigationWidth,
+                        maximumWidth: usableWidth / 2,
+                        onChanged: { liveColumnBrowserWidth = $0 },
+                        onEnded: { width in
+                            appSettings.columnBrowserWidth = Double(width)
+                            liveColumnBrowserWidth = nil
+                        },
+                    )
+                    .frame(width: PanelLayoutMetrics.columnResizeHitWidth)
+                    .frame(maxHeight: .infinity)
+                    .offset(x: browserWidth + paneSpacing / 2 - PanelLayoutMetrics.columnResizeHitWidth / 2)
+                    .zIndex(1)
                 }
             }
             .padding(.horizontal, 12)
@@ -163,15 +190,17 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private func columnBrowser(isWide: Bool) -> some View {
+    private func columnBrowser(isWide: Bool, isJoined: Bool) -> some View {
         if noteStore.selectedFolder == nil {
             HomeFolderView(
                 pagePresentation: .embedded,
+                pageJoinRole: isJoined ? .leading : .none,
                 opensNotesOnSingleClick: isWide,
             )
         } else {
             NoteListView(
                 pagePresentation: .embedded,
+                pageJoinRole: isJoined ? .leading : .none,
                 opensNotesOnSingleClick: isWide,
                 isPersistentBrowser: isWide,
             )
@@ -180,18 +209,19 @@ struct ContentView: View {
     }
 
     private var emptyColumnDetail: some View {
-        PageLayout(presentation: .embedded) {
-            Text(l10n["column.detail.header"])
-                .font(.title3.weight(.semibold))
-                .frame(maxWidth: .infinity, alignment: .leading)
-        } content: {
-            EmptyStateView(
-                icon: "doc.text.magnifyingglass",
-                title: l10n["column.detail.empty.title"],
-                subtitle: l10n["column.detail.empty.subtitle"],
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
+        EmptyStateView(
+            icon: "doc.text.magnifyingglass",
+            title: l10n["column.detail.empty.title"],
+            subtitle: l10n["column.detail.empty.subtitle"],
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background { PanelContentSurface() }
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: SurfaceMetrics.panelCornerRadius,
+                style: .continuous,
+            ),
+        )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(l10n["column.detail.empty.title"])
     }
