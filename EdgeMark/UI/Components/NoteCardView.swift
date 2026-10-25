@@ -21,48 +21,33 @@ struct NoteCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if let rename {
-                TextField(rename.placeholder, text: rename.text)
-                    .textFieldStyle(.plain)
-                    .font(.headline)
-                    .focused(rename.isFocused)
-                    .onSubmit(rename.onCommit)
-                    .onExitCommand(perform: rename.onCancel)
-                    .onChange(of: rename.isFocused.wrappedValue) { _, focused in
-                        if !focused {
-                            rename.onFocusLost()
-                        }
+            HStack(spacing: 10) {
+                Image(systemName: "text.document")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 22)
+
+                HStack(spacing: 6) {
+                    TagDotsView(tags: note.tags)
+
+                    if let rename {
+                        renameField(rename)
+                    } else {
+                        Text(note.title.isEmpty ? l10n["common.untitled"] : note.title)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                            .lineLimit(2)
                     }
-                    .overlay(alignment: .trailing) {
-                        if let message = rename.validationMessage {
-                            Text(message)
-                                .font(.caption2)
-                                .foregroundStyle(.red)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(
-                                    .background.opacity(0.9),
-                                    in: RoundedRectangle(cornerRadius: 4),
-                                )
-                        }
-                    }
-            } else {
-                Text(note.title.isEmpty ? l10n["common.untitled"] : note.title)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            HStack(spacing: 8) {
-                Text(note.createdAt.homeDisplayFormat)
-                    .font(.caption)
-                    .monospacedDigit()
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                Spacer(minLength: 8)
-                TagDotsView(tags: note.tags)
-            }
+            Text(note.createdAt.homeDisplayFormat)
+                .font(.caption)
+                .monospacedDigit()
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
 
             if note.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text(l10n["card.empty"])
@@ -97,6 +82,33 @@ struct NoteCardView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(note.title.isEmpty ? l10n["common.untitled"] : note.title)
+    }
+
+    private func renameField(_ rename: RenameConfiguration) -> some View {
+        TextField(rename.placeholder, text: rename.text)
+            .textFieldStyle(.plain)
+            .font(.headline)
+            .focused(rename.isFocused)
+            .onSubmit(rename.onCommit)
+            .onExitCommand(perform: rename.onCancel)
+            .onChange(of: rename.isFocused.wrappedValue) { _, focused in
+                if !focused {
+                    rename.onFocusLost()
+                }
+            }
+            .overlay(alignment: .trailing) {
+                if let message = rename.validationMessage {
+                    Text(message)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            .background.opacity(0.9),
+                            in: RoundedRectangle(cornerRadius: 4),
+                        )
+                }
+            }
     }
 }
 
