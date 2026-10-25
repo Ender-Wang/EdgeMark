@@ -258,7 +258,7 @@
   "settings.viewMode.card": "卡片",
   "settings.viewMode.defaultHint": "使用经典的单页面浏览器和编辑器。",
   "settings.viewMode.columnHint": "当面板足够宽时，将浏览器保留在编辑器旁边。",
-  "settings.viewMode.cardHint": "浏览时显示每篇笔记的完整内容。",
+  "settings.viewMode.cardHint": "以瀑布流布局显示渲染后的笔记预览。",
 
   "settings.gesture.swipeNavigation": "手势导航",
   "settings.gesture.enableSwipe": "启用右滑返回",

@@ -136,10 +136,11 @@ struct NoteListView: View {
                                     LazyVStack(spacing: 0) {
                                         folderItems
 
-                                        ResponsiveNoteCardGrid(panelWidth: geo.size.width + 24) {
-                                            ForEach(sortedNotes) { note in
-                                                noteRowWithContextMenu(note: note)
-                                            }
+                                        ResponsiveNoteCardGrid(
+                                            panelWidth: geo.size.width + 24,
+                                            notes: sortedNotes,
+                                        ) { note in
+                                            noteRowWithContextMenu(note: note)
                                         }
                                         .animation(
                                             reduceMotion ? nil : .easeInOut(duration: 0.2),

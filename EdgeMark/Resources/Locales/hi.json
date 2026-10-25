@@ -258,7 +258,7 @@
   "settings.viewMode.card": "कार्ड",
   "settings.viewMode.defaultHint": "क्लासिक एक-पृष्ठ ब्राउज़र और संपादक का उपयोग करें।",
   "settings.viewMode.columnHint": "पैनल पर्याप्त चौड़ा होने पर ब्राउज़र को संपादक के पास रखें।",
-  "settings.viewMode.cardHint": "ब्राउज़ करते समय हर नोट की पूरी सामग्री दिखाएँ।",
+  "settings.viewMode.cardHint": "अलग-अलग ऊँचाई वाले ग्रिड में रेंडर किए गए नोट पूर्वावलोकन दिखाएँ।",
 
   "settings.gesture.swipeNavigation": "स्वाइप नेविगेशन",
   "settings.gesture.enableSwipe": "वापस जाने के लिए स्वाइप चालू करें",

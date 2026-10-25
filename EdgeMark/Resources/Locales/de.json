@@ -258,7 +258,7 @@
   "settings.viewMode.card": "Karten",
   "settings.viewMode.defaultHint": "Verwende den klassischen einseitigen Browser und Editor.",
   "settings.viewMode.columnHint": "Zeige den Browser neben dem Editor, wenn das Panel breit genug ist.",
-  "settings.viewMode.cardHint": "Zeige beim Durchsuchen den vollständigen Inhalt jeder Notiz.",
+  "settings.viewMode.cardHint": "Zeige gerenderte Notizvorschauen in einem versetzten Raster.",
 
   "settings.gesture.swipeNavigation": "Swipe-Navigation",
   "settings.gesture.enableSwipe": "Swipe zum Zurücknavigieren aktivieren",

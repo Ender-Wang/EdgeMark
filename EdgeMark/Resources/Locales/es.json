@@ -258,7 +258,7 @@
   "settings.viewMode.card": "Tarjetas",
   "settings.viewMode.defaultHint": "Usa el explorador y editor clásicos de una sola página.",
   "settings.viewMode.columnHint": "Mantén el explorador junto al editor cuando el panel sea lo bastante ancho.",
-  "settings.viewMode.cardHint": "Muestra el contenido completo de cada nota mientras exploras.",
+  "settings.viewMode.cardHint": "Muestra vistas previas renderizadas en una cuadrícula escalonada.",
 
   "settings.gesture.swipeNavigation": "Navegación con gestos de deslizamiento",
   "settings.gesture.enableSwipe": "Activar deslizamiento para retroceder",
