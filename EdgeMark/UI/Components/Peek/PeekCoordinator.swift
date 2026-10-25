@@ -226,8 +226,7 @@ final class PeekCoordinator {
     /// Used by the Space-to-preview keyboard shortcut.
     func triggerPeek(content: PeekContent, panelFrame: NSRect) {
         // Respect the Space-to-preview kill switch (independent from hover).
-        guard AppSettings.shared.spaceToPreviewEnabled else { return }
-        guard !suppressPeek else { return }
+        guard AppSettings.shared.spaceToPreviewEnabled, !suppressPeek else { return }
 
         // Toggle off: already showing this exact content.
         if controller.isShowing, scheduledID == content.id {
@@ -262,8 +261,7 @@ final class PeekCoordinator {
     /// (arrow keys). Only acts if the current preview was keyboard-triggered;
     /// hover-driven previews update via `mouseEntered` on the new row.
     func updateForSelectionChange(content: PeekContent) {
-        guard isKeyboardTriggered, controller.isShowing else { return }
-        guard scheduledID != content.id else { return }
+        guard isKeyboardTriggered, controller.isShowing, scheduledID != content.id else { return }
         Log.peek.debug("[PeekCoordinator] updateForSelectionChange — id=\(String(describing: content.id))")
         cancelDismiss()
         scheduledID = content.id

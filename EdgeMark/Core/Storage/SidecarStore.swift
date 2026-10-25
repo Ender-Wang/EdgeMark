@@ -173,11 +173,9 @@ final class SidecarStore {
                 if let entry = data.folders.removeValue(forKey: key) {
                     data.folders[newPath] = entry
                 }
-            } else if key.hasPrefix(oldPrefix) {
-                if let entry = data.folders.removeValue(forKey: key) {
-                    let newKey = newPrefix + String(key.dropFirst(oldPrefix.count))
-                    data.folders[newKey] = entry
-                }
+            } else if key.hasPrefix(oldPrefix), let entry = data.folders.removeValue(forKey: key) {
+                let newKey = newPrefix + String(key.dropFirst(oldPrefix.count))
+                data.folders[newKey] = entry
             }
         }
     }

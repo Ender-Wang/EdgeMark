@@ -600,8 +600,7 @@ final class NoteStore {
     }
 
     func updateContent(for noteID: UUID, content: String) {
-        guard let index = notes.firstIndex(where: { $0.id == noteID }) else { return }
-        guard notes[index].content != content else { return }
+        guard let index = notes.firstIndex(where: { $0.id == noteID }), notes[index].content != content else { return }
         notes[index].content = content
         notes[index].modifiedAt = Date()
         metadataOnlyNoteIDs.remove(noteID)
@@ -617,8 +616,7 @@ final class NoteStore {
     func renameNote(_ note: Note, to newTitle: String) -> Bool {
         guard let index = notes.firstIndex(where: { $0.id == note.id }) else { return false }
         let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let newFilename = FileStorage.filename(forTitle: trimmed) else { return false }
-        guard !noteTitleExists(trimmed, in: note.folder, excluding: note.id) else { return false }
+        guard let newFilename = FileStorage.filename(forTitle: trimmed), !noteTitleExists(trimmed, in: note.folder, excluding: note.id) else { return false }
 
         var renamedNote = notes[index]
         renamedNote.modifiedAt = Date()
@@ -973,8 +971,7 @@ final class NoteStore {
     }
 
     func moveNote(_ note: Note, to folder: String) {
-        guard let index = notes.firstIndex(where: { $0.id == note.id }) else { return }
-        guard notes[index].folder != folder else { return }
+        guard let index = notes.firstIndex(where: { $0.id == note.id }), notes[index].folder != folder else { return }
         let actualFilename = notes[index].filename
         if noteFilenameWouldCollide(actualFilename, in: folder, excluding: note.id) {
             pendingNoteMoveConflicts.append(PendingNoteMoveConflict(noteID: note.id, targetFolder: folder))
@@ -1485,8 +1482,7 @@ final class NoteStore {
         guard !name.isEmpty else { return }
         let displayName = (name as NSString).lastPathComponent
         let newFullPath = newParent.isEmpty ? displayName : "\(newParent)/\(displayName)"
-        guard newFullPath != name else { return }
-        guard !newParent.hasPrefix(name + "/"), newParent != name else { return }
+        guard newFullPath != name, !newParent.hasPrefix(name + "/"), newParent != name else { return }
 
         if folderWouldCollide(displayName: displayName, in: newParent, excluding: name) {
             pendingFolderMoveConflicts.append(PendingFolderMoveConflict(folderName: name, targetParent: newParent))
@@ -1618,8 +1614,7 @@ final class NoteStore {
 
     private func remapFolderSelection(from oldPath: String, to newPath: String) {
         func remap(_ id: SelectableID) -> SelectableID {
-            guard case let .folder(path) = id else { return id }
-            guard let remapped = remappedFolderPath(path, from: oldPath, to: newPath) else { return id }
+            guard case let .folder(path) = id, let remapped = remappedFolderPath(path, from: oldPath, to: newPath) else { return id }
             return .folder(remapped)
         }
         selection = Set(selection.map(remap))

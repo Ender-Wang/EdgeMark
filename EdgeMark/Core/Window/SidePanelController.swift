@@ -384,11 +384,10 @@ final class SidePanelController: NSWindowController {
     // MARK: - App Activation
 
     @objc private func handleAppActivation(_ notification: Notification) {
-        guard isShown else { return }
-        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
-            as? NSRunningApplication
-        else { return }
-        guard app.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
+        guard isShown,
+              let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
+              as? NSRunningApplication,
+              app.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
 
         let name = app.localizedName ?? "unknown"
         Log.window.debug(
@@ -766,10 +765,7 @@ final class SidePanelController: NSWindowController {
 
     /// Handle Space-to-preview (Quick Look). Returns true if the event was consumed.
     private func handleSpacePeek() -> Bool {
-        guard AppSettings.shared.spaceToPreviewEnabled, !peekCoordinator.suppressPeek else { return false }
-        guard noteStore.pendingEditorFind == false else { return false }
-        guard noteStore.selection.count == 1 else { return false }
-        guard let win = window else { return false }
+        guard AppSettings.shared.spaceToPreviewEnabled, !peekCoordinator.suppressPeek, noteStore.pendingEditorFind == false, noteStore.selection.count == 1, let win = window else { return false }
         let panelFrame = win.convertToScreen(win.contentView?.bounds ?? win.frame)
 
         let item = noteStore.selection.first!
@@ -789,8 +785,7 @@ final class SidePanelController: NSWindowController {
     /// If the peek preview was keyboard-triggered and showing, update its
     /// content to match the new selection after arrow-key navigation.
     private func refreshPeekForSelection() {
-        guard peekCoordinator.isKeyboardTriggered else { return }
-        guard noteStore.selection.count == 1 else { return }
+        guard peekCoordinator.isKeyboardTriggered, noteStore.selection.count == 1 else { return }
         let item = noteStore.selection.first!
         let content: PeekContent
         switch item {
