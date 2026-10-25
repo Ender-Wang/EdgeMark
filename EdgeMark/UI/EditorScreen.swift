@@ -2,6 +2,9 @@ import Cocoa
 import SwiftUI
 
 struct EditorScreen: View {
+    var pagePresentation: PageLayoutPresentation = .standalone
+    var showsBackButton = true
+
     @Environment(NoteStore.self) var noteStore
     @Environment(AppSettings.self) var appSettings
     @Environment(L10n.self) var l10n
@@ -17,7 +20,8 @@ struct EditorScreen: View {
 
     var body: some View {
         PageLayout(
-            onSwipeBack: { goBack() },
+            presentation: pagePresentation,
+            onSwipeBack: showsBackButton ? { goBack() } : nil,
             onContentSwipeRight: PanelSettings.shared.editorSwipeToNavigateEnabled
                 ? { noteStore.navigateToPreviousNote(sortedBy: appSettings) } : nil,
             onContentSwipeLeft: PanelSettings.shared.editorSwipeToNavigateEnabled
@@ -87,11 +91,13 @@ struct EditorScreen: View {
         if let note = noteStore.selectedNote {
             VStack(spacing: 4) {
                 HStack(spacing: 8) {
-                    HeaderIconButton(
-                        systemName: "chevron.left",
-                        help: backLabel,
-                    ) {
-                        goBack()
+                    if showsBackButton {
+                        HeaderIconButton(
+                            systemName: "chevron.left",
+                            help: backLabel,
+                        ) {
+                            goBack()
+                        }
                     }
 
                     NoteHeaderTitle(

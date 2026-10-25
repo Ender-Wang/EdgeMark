@@ -611,7 +611,7 @@ final class SidePanelController: NSWindowController {
         let side = PanelSettings.shared.edgeSide
         let targetScreen = window.screen ?? NSScreen.main ?? NSScreen.screens.first!
         let maxWidth = targetScreen.visibleFrame.width - 100
-        let clampedWidth = min(max(newWidth, ResizeHandleView.minWidth), maxWidth)
+        let clampedWidth = min(max(newWidth, PanelLayoutMetrics.minimumWidth), maxWidth)
 
         var frame = window.frame
         if side == .right {
@@ -805,7 +805,6 @@ final class SidePanelController: NSWindowController {
 /// Invisible 8pt-wide strip centered on the panel's content-surface edge. Dragging it resizes the panel.
 private final class ResizeHandleView: NSView {
     static let handleWidth: CGFloat = 8
-    static let minWidth: CGFloat = 400
 
     var side: EdgeSide = .right
     var onDrag: ((CGFloat) -> Void)?
@@ -827,10 +826,10 @@ private final class ResizeHandleView: NSView {
         let newWidth: CGFloat = switch side {
         case .right:
             // Left edge draggable: moving left (negative deltaX) widens the panel
-            max(Self.minWidth, dragStartWidth - deltaX)
+            max(PanelLayoutMetrics.minimumWidth, dragStartWidth - deltaX)
         case .left:
             // Right edge draggable: moving right (positive deltaX) widens the panel
-            max(Self.minWidth, dragStartWidth + deltaX)
+            max(PanelLayoutMetrics.minimumWidth, dragStartWidth + deltaX)
         }
         onDrag?(newWidth)
     }

@@ -3,6 +3,8 @@ import OSLog
 import SwiftUI
 
 struct HomeFolderView: View {
+    var pagePresentation: PageLayoutPresentation = .standalone
+
     @Environment(NoteStore.self) var noteStore
     @Environment(AppSettings.self) var appSettings
     @Environment(L10n.self) var l10n
@@ -121,7 +123,7 @@ struct HomeFolderView: View {
     private let iconWidth: CGFloat = 22
 
     var body: some View {
-        PageLayout {
+        PageLayout(presentation: pagePresentation) {
             header
         } content: {
             VStack(spacing: 0) {

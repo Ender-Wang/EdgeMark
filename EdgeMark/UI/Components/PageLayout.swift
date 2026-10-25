@@ -1,8 +1,14 @@
 import SwiftUI
 
+enum PageLayoutPresentation {
+    case standalone
+    case embedded
+}
+
 /// Shared page layout with separate header and body surfaces.
 /// Pass `onSwipeBack` to enable two-finger trackpad right-swipe to go back on the header.
 struct PageLayout<Header: View, Content: View>: View {
+    var presentation: PageLayoutPresentation
     var onSwipeBack: (() -> Void)?
     var onContentSwipeRight: (() -> Void)?
     var onContentSwipeLeft: (() -> Void)?
@@ -10,12 +16,14 @@ struct PageLayout<Header: View, Content: View>: View {
     @ViewBuilder let content: Content
 
     init(
+        presentation: PageLayoutPresentation = .standalone,
         onSwipeBack: (() -> Void)? = nil,
         onContentSwipeRight: (() -> Void)? = nil,
         onContentSwipeLeft: (() -> Void)? = nil,
         @ViewBuilder header: () -> Header,
         @ViewBuilder content: () -> Content,
     ) {
+        self.presentation = presentation
         self.onSwipeBack = onSwipeBack
         self.onContentSwipeRight = onContentSwipeRight
         self.onContentSwipeLeft = onContentSwipeLeft
@@ -58,8 +66,8 @@ struct PageLayout<Header: View, Content: View>: View {
                     }
                 }
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 8)
-        .padding(.bottom, 12)
+        .padding(.horizontal, presentation == .standalone ? 12 : 0)
+        .padding(.top, presentation == .standalone ? 8 : 0)
+        .padding(.bottom, presentation == .standalone ? 12 : 0)
     }
 }

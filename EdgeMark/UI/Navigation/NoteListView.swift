@@ -2,6 +2,8 @@ import Cocoa
 import SwiftUI
 
 struct NoteListView: View {
+    var pagePresentation: PageLayoutPresentation = .standalone
+
     @Environment(NoteStore.self) var noteStore
     @Environment(AppSettings.self) var appSettings
     @Environment(L10n.self) var l10n
@@ -64,7 +66,7 @@ struct NoteListView: View {
     }
 
     var body: some View {
-        PageLayout(onSwipeBack: { navigateBack() }) {
+        PageLayout(presentation: pagePresentation, onSwipeBack: { navigateBack() }) {
             HStack(spacing: 8) {
                 HeaderIconButton(
                     systemName: "chevron.left",
