@@ -180,9 +180,14 @@ struct ResponsiveNoteCardGrid<Content: View>: View {
     }
 
     private func cardPreview(_ note: Note) -> some View {
-        content(note)
+        let shape = RoundedRectangle(
+            cornerRadius: SurfaceMetrics.panelCornerRadius,
+            style: .continuous,
+        )
+
+        return content(note)
             .frame(height: previewHeight(for: note), alignment: .top)
-            .clipped()
+            .clipShape(shape)
     }
 }
 
