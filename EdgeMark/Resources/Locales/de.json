@@ -101,6 +101,9 @@
 
   "noteList.empty.title": "Keine Notizen",
   "noteList.empty.subtitle": "Tippe auf das Stift-Symbol, um eine Notiz zu erstellen",
+  "column.detail.header": "Notiz",
+  "column.detail.empty.title": "Notiz auswählen",
+  "column.detail.empty.subtitle": "Wähle im Browser eine Notiz aus, um sie hier anzuzeigen und zu bearbeiten",
 
   "editor.copyNote": "Notiz kopieren",
   "editor.deleteNote": "Notiz löschen",
@@ -247,6 +250,14 @@
   "settings.animation.slide": "Slide",
   "settings.animation.fade": "Fade",
   "settings.animation.note": "Slide ist der klassische Effekt. Bei Multi-Monitor-Setups kann das Panel während der Animation kurz auf dem benachbarten Display erscheinen. Wähle Fade, um das zu vermeiden.",
+  "settings.viewMode.section": "Ansichtsmodus",
+  "settings.viewMode.picker": "Ansichtsmodus",
+  "settings.viewMode.default": "Standard",
+  "settings.viewMode.column": "Spalten",
+  "settings.viewMode.card": "Karten",
+  "settings.viewMode.defaultHint": "Verwende den klassischen einseitigen Browser und Editor.",
+  "settings.viewMode.columnHint": "Zeige den Browser neben dem Editor, wenn das Panel breit genug ist.",
+  "settings.viewMode.cardHint": "Zeige beim Durchsuchen den vollständigen Inhalt jeder Notiz.",
 
   "settings.gesture.swipeNavigation": "Swipe-Navigation",
   "settings.gesture.enableSwipe": "Swipe zum Zurücknavigieren aktivieren",

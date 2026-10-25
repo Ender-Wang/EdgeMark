@@ -4,6 +4,7 @@ import SwiftUI
 
 struct HomeFolderView: View {
     var pagePresentation: PageLayoutPresentation = .standalone
+    var opensNotesOnSingleClick = false
 
     @Environment(NoteStore.self) var noteStore
     @Environment(AppSettings.self) var appSettings
@@ -528,8 +529,11 @@ struct HomeFolderView: View {
                         isCommand: mods.contains(.command),
                         visibleOrder: visibleOrder,
                     )
+                    if opensNotesOnSingleClick, mods.intersection([.shift, .command]).isEmpty {
+                        noteStore.openNote(note, preservingSelection: true)
+                    }
                 },
-                onDouble: { noteStore.openNote(note) },
+                onDouble: { noteStore.openNote(note, preservingSelection: opensNotesOnSingleClick) },
                 dragItem: .note(note.id),
                 dragPreviewLabel: note.title,
             )

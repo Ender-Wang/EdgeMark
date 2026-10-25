@@ -7,6 +7,20 @@ import ServiceManagement
 final class AppSettings {
     static let shared = AppSettings()
 
+    // MARK: - Note presentation
+
+    enum NoteViewMode: String, CaseIterable, Codable {
+        case `default`
+        case column
+        case card
+    }
+
+    /// Browser/editor presentation. Missing or unknown values preserve the
+    /// established single-page experience.
+    var noteViewMode: NoteViewMode = .default {
+        didSet { UserDefaults.standard.set(noteViewMode.rawValue, forKey: "noteViewMode") }
+    }
+
     // MARK: - Sort
 
     enum SortBy: String, CaseIterable {
@@ -316,6 +330,11 @@ final class AppSettings {
     }
 
     init() {
+        if let raw = UserDefaults.standard.string(forKey: "noteViewMode"),
+           let value = NoteViewMode(rawValue: raw)
+        {
+            noteViewMode = value
+        }
         if let raw = UserDefaults.standard.string(forKey: "sortBy"),
            let value = SortBy(rawValue: raw)
         {
@@ -396,6 +415,24 @@ final class AppSettings {
         case .name: folder.latestModifiedAt
         case .dateModified: folder.latestModifiedAt
         case .dateCreated: folder.earliestCreatedAt
+        }
+    }
+}
+
+extension AppSettings.NoteViewMode {
+    func displayName(_ l10n: L10n) -> String {
+        switch self {
+        case .default: l10n["settings.viewMode.default"]
+        case .column: l10n["settings.viewMode.column"]
+        case .card: l10n["settings.viewMode.card"]
+        }
+    }
+
+    func description(_ l10n: L10n) -> String {
+        switch self {
+        case .default: l10n["settings.viewMode.defaultHint"]
+        case .column: l10n["settings.viewMode.columnHint"]
+        case .card: l10n["settings.viewMode.cardHint"]
         }
     }
 }

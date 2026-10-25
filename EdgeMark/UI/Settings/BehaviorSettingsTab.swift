@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct BehaviorSettingsTab: View {
+    @Environment(AppSettings.self) var appSettings
     @Environment(L10n.self) var l10n
 
     @State private var edgeSide: EdgeSide
@@ -35,6 +36,8 @@ struct BehaviorSettingsTab: View {
     }
 
     var body: some View {
+        @Bindable var appSettings = appSettings
+
         Form {
             Section {
                 VStack(alignment: .leading, spacing: 4) {
@@ -68,6 +71,24 @@ struct BehaviorSettingsTab: View {
                 }
             } header: {
                 Label(l10n["settings.general.panelPosition"], systemImage: "sidebar.right")
+            }
+
+            Section {
+                VStack(alignment: .leading, spacing: 4) {
+                    Picker(l10n["settings.viewMode.picker"], selection: $appSettings.noteViewMode) {
+                        ForEach([AppSettings.NoteViewMode.default, .column], id: \.self) { mode in
+                            Text(mode.displayName(l10n)).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+
+                    Text(appSettings.noteViewMode.description(l10n))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Label(l10n["settings.viewMode.section"], systemImage: "rectangle.split.2x1")
             }
 
             Section {
@@ -201,5 +222,6 @@ struct BehaviorSettingsTab: View {
         .animation(.easeInOut(duration: 0.2), value: autoHideOnMouseExit)
         .animation(.easeInOut(duration: 0.2), value: swipeToNavigateEnabled)
         .animation(.easeInOut(duration: 0.2), value: editorSwipeToNavigateEnabled)
+        .animation(.easeInOut(duration: 0.2), value: appSettings.noteViewMode)
     }
 }

@@ -101,6 +101,9 @@
 
   "noteList.empty.title": "没有笔记",
   "noteList.empty.subtitle": "点击铅笔图标创建笔记",
+  "column.detail.header": "笔记",
+  "column.detail.empty.title": "选择一篇笔记",
+  "column.detail.empty.subtitle": "从浏览器中选择一篇笔记，在此查看和编辑",
 
   "editor.copyNote": "复制笔记",
   "editor.deleteNote": "删除笔记",
@@ -247,6 +250,14 @@
   "settings.animation.slide": "滑动",
   "settings.animation.fade": "渐变",
   "settings.animation.note": "滑动为经典效果。在多显示器下，动画期间面板可能短暂出现在相邻屏幕上。选择渐变可避免此问题。",
+  "settings.viewMode.section": "视图模式",
+  "settings.viewMode.picker": "视图模式",
+  "settings.viewMode.default": "默认",
+  "settings.viewMode.column": "分栏",
+  "settings.viewMode.card": "卡片",
+  "settings.viewMode.defaultHint": "使用经典的单页面浏览器和编辑器。",
+  "settings.viewMode.columnHint": "当面板足够宽时，将浏览器保留在编辑器旁边。",
+  "settings.viewMode.cardHint": "浏览时显示每篇笔记的完整内容。",
 
   "settings.gesture.swipeNavigation": "手势导航",
   "settings.gesture.enableSwipe": "启用右滑返回",

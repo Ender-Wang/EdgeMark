@@ -101,6 +101,9 @@
 
   "noteList.empty.title": "No Notes",
   "noteList.empty.subtitle": "Tap the pencil icon to create a note",
+  "column.detail.header": "Note",
+  "column.detail.empty.title": "Select a Note",
+  "column.detail.empty.subtitle": "Choose a note from the browser to view and edit it here",
 
   "editor.copyNote": "Copy Note",
   "editor.deleteNote": "Delete Note",
@@ -247,6 +250,14 @@
   "settings.animation.slide": "Slide",
   "settings.animation.fade": "Fade",
   "settings.animation.note": "Slide is the classic effect. On multi-monitor setups, the panel may briefly appear on the adjacent display during animation. Choose Fade to avoid this.",
+  "settings.viewMode.section": "View Mode",
+  "settings.viewMode.picker": "View mode",
+  "settings.viewMode.default": "Default",
+  "settings.viewMode.column": "Column",
+  "settings.viewMode.card": "Card",
+  "settings.viewMode.defaultHint": "Use the classic single-page browser and editor.",
+  "settings.viewMode.columnHint": "Keep the browser beside the editor when the panel is wide enough.",
+  "settings.viewMode.cardHint": "Show each note's complete content while browsing.",
 
   "settings.gesture.swipeNavigation": "Swipe Navigation",
   "settings.gesture.enableSwipe": "Enable swipe to navigate back",

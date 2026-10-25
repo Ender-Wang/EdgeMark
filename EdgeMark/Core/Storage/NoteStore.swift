@@ -191,6 +191,9 @@ final class NoteStore {
     func navigateToHome() {
         Log.navigation.debug("[NoteStore] navigateToHome")
         navigationDirection = .backward
+        if selectedNote != nil {
+            saveDirtyNotes()
+        }
         clearSelection()
         withAnimation(.easeInOut(duration: 0.2)) {
             selectedNote = nil
@@ -202,8 +205,12 @@ final class NoteStore {
         let name = folder.name
         Log.navigation.debug("[NoteStore] navigateToFolder — \(name, privacy: .public)")
         navigationDirection = .forward
+        if selectedNote != nil {
+            saveDirtyNotes()
+        }
         clearSelection()
         withAnimation(.easeInOut(duration: 0.2)) {
+            selectedNote = nil
             selectedFolder = folder
         }
     }
@@ -212,8 +219,12 @@ final class NoteStore {
         let name = folder.name
         Log.navigation.debug("[NoteStore] navigateToSubfolder — \(name, privacy: .public)")
         navigationDirection = .forward
+        if selectedNote != nil {
+            saveDirtyNotes()
+        }
         clearSelection()
         withAnimation(.easeInOut(duration: 0.2)) {
+            selectedNote = nil
             selectedFolder = folder
         }
     }
@@ -240,11 +251,34 @@ final class NoteStore {
         }
     }
 
-    func openNote(_ note: Note) {
+    /// Navigate the browser hierarchy while a Column-mode detail may be open.
+    /// Unlike editor Back, this always moves to the parent browser context.
+    func navigateBackInBrowser() {
+        let from = selectedFolder?.name ?? "home"
+        Log.navigation.debug("[NoteStore] navigateBackInBrowser from \(from, privacy: .public)")
+        navigationDirection = .backward
+        clearSelection()
+        if selectedNote != nil {
+            saveDirtyNotes()
+        }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedNote = nil
+            if let parent = selectedFolder?.parentPath, !parent.isEmpty {
+                selectedFolder = folders.first { $0.name == parent }
+                    ?? Folder(name: parent, noteCount: 0)
+            } else {
+                selectedFolder = nil
+            }
+        }
+    }
+
+    func openNote(_ note: Note, preservingSelection: Bool = false) {
         let title = note.title
         Log.navigation.debug("[NoteStore] openNote — \(title, privacy: .public)")
         navigationDirection = .forward
-        clearSelection()
+        if !preservingSelection {
+            clearSelection()
+        }
         withAnimation(.easeInOut(duration: 0.2)) {
             selectedNote = note
         }
@@ -734,7 +768,9 @@ final class NoteStore {
     /// Flat row order matching what the active list view is rendering.
     /// Empty when keyboard navigation shouldn't apply (editor, trash).
     var keyboardNavOrder: [SelectableID] {
-        if selectedNote != nil || showTrash {
+        let keepsBrowserVisible = AppSettings.shared.noteViewMode == .column
+            && PanelSettings.shared.panelWidth >= PanelLayoutMetrics.columnBreakpoint
+        if (selectedNote != nil && !keepsBrowserVisible) || showTrash {
             return []
         }
         let s = AppSettings.shared
@@ -801,7 +837,9 @@ final class NoteStore {
         switch item {
         case let .note(id):
             if let note = notes.first(where: { $0.id == id }) {
-                openNote(note)
+                let keepsBrowserVisible = AppSettings.shared.noteViewMode == .column
+                    && PanelSettings.shared.panelWidth >= PanelLayoutMetrics.columnBreakpoint
+                openNote(note, preservingSelection: keepsBrowserVisible)
                 return true
             }
         case let .folder(path):

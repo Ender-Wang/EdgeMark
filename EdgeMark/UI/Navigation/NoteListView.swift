@@ -3,6 +3,8 @@ import SwiftUI
 
 struct NoteListView: View {
     var pagePresentation: PageLayoutPresentation = .standalone
+    var opensNotesOnSingleClick = false
+    var isPersistentBrowser = false
 
     @Environment(NoteStore.self) var noteStore
     @Environment(AppSettings.self) var appSettings
@@ -278,8 +280,11 @@ struct NoteListView: View {
                         isCommand: mods.contains(.command),
                         visibleOrder: visibleOrder,
                     )
+                    if opensNotesOnSingleClick, mods.intersection([.shift, .command]).isEmpty {
+                        noteStore.openNote(note, preservingSelection: true)
+                    }
                 },
-                onDouble: { noteStore.openNote(note) },
+                onDouble: { noteStore.openNote(note, preservingSelection: opensNotesOnSingleClick) },
                 dragItem: .note(note.id),
                 dragPreviewLabel: note.title,
             )
@@ -409,7 +414,11 @@ struct NoteListView: View {
     // MARK: - Navigation
 
     private func navigateBack() {
-        noteStore.navigateBack()
+        if isPersistentBrowser {
+            noteStore.navigateBackInBrowser()
+        } else {
+            noteStore.navigateBack()
+        }
     }
 
     // MARK: - Note Actions

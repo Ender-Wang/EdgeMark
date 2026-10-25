@@ -101,6 +101,9 @@
 
   "noteList.empty.title": "कोई नोट नहीं",
   "noteList.empty.subtitle": "नोट बनाने के लिए पेंसिल आइकन पर टैप करें",
+  "column.detail.header": "नोट",
+  "column.detail.empty.title": "नोट चुनें",
+  "column.detail.empty.subtitle": "यहाँ देखने और संपादित करने के लिए ब्राउज़र से कोई नोट चुनें",
 
   "editor.copyNote": "नोट कॉपी करें",
   "editor.deleteNote": "नोट हटाएं",
@@ -247,6 +250,14 @@
   "settings.animation.slide": "स्लाइड",
   "settings.animation.fade": "फेड",
   "settings.animation.note": "स्लाइड क्लासिक इफेक्ट है. मल्टी-मॉनिटर सेटअप में, एनिमेशन के दौरान पैनल थोड़ी देर के लिए पास वाली डिस्प्ले पर दिख सकता है. इससे बचने के लिए फेड चुनें.",
+  "settings.viewMode.section": "दृश्य मोड",
+  "settings.viewMode.picker": "दृश्य मोड",
+  "settings.viewMode.default": "डिफ़ॉल्ट",
+  "settings.viewMode.column": "कॉलम",
+  "settings.viewMode.card": "कार्ड",
+  "settings.viewMode.defaultHint": "क्लासिक एक-पृष्ठ ब्राउज़र और संपादक का उपयोग करें।",
+  "settings.viewMode.columnHint": "पैनल पर्याप्त चौड़ा होने पर ब्राउज़र को संपादक के पास रखें।",
+  "settings.viewMode.cardHint": "ब्राउज़ करते समय हर नोट की पूरी सामग्री दिखाएँ।",
 
   "settings.gesture.swipeNavigation": "स्वाइप नेविगेशन",
   "settings.gesture.enableSwipe": "वापस जाने के लिए स्वाइप चालू करें",
