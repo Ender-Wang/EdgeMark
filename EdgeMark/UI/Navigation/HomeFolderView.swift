@@ -346,6 +346,7 @@ struct HomeFolderView: View {
 
                             ResponsiveNoteCardGrid(
                                 panelWidth: geo.size.width + 24,
+                                contentWidth: geo.size.width,
                                 notes: rootNotes,
                             ) { note in
                                 noteRowWithContextMenu(note: note)

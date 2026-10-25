@@ -105,6 +105,7 @@ struct NoteCardView: View {
 /// assignment avoids the empty holes created by equal-height grid rows.
 struct ResponsiveNoteCardGrid<Content: View>: View {
     let panelWidth: CGFloat
+    let contentWidth: CGFloat
     let notes: [Note]
     @ViewBuilder let content: (Note) -> Content
 
@@ -112,39 +113,76 @@ struct ResponsiveNoteCardGrid<Content: View>: View {
         PanelLayoutMetrics.cardColumnCount(forPanelWidth: panelWidth)
     }
 
+    private var standardCardWidth: CGFloat {
+        let totalSpacing = CGFloat(columnCount - 1) * PanelLayoutMetrics.cardGridSpacing
+        let gridWidth = contentWidth - 2 * PanelLayoutMetrics.cardGridHorizontalInset
+        return max((gridWidth - totalSpacing) / CGFloat(columnCount), 1)
+    }
+
+    private var remainderCount: Int {
+        notes.count % columnCount
+    }
+
+    private var masonryNotes: ArraySlice<Note> {
+        notes.dropLast(remainderCount)
+    }
+
+    private var remainderNotes: ArraySlice<Note> {
+        notes.suffix(remainderCount)
+    }
+
     private var columns: [[Note]] {
         var columns = Array(repeating: [Note](), count: columnCount)
         var accumulatedHeights = Array(repeating: CGFloat.zero, count: columnCount)
 
-        for note in notes {
+        for note in masonryNotes {
             let destination = accumulatedHeights.indices.min {
                 accumulatedHeights[$0] < accumulatedHeights[$1]
             } ?? 0
             columns[destination].append(note)
-            accumulatedHeights[destination] += NoteCardHeightRatio.value(for: note.id)
+            accumulatedHeights[destination] += previewHeight(for: note)
+                + PanelLayoutMetrics.cardGridSpacing
         }
 
         return columns
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: PanelLayoutMetrics.cardGridSpacing) {
-            ForEach(columns.indices, id: \.self) { columnIndex in
-                LazyVStack(spacing: PanelLayoutMetrics.cardGridSpacing) {
-                    ForEach(columns[columnIndex]) { note in
-                        content(note)
-                            .aspectRatio(
-                                1 / NoteCardHeightRatio.value(for: note.id),
-                                contentMode: .fit,
-                            )
-                            .clipped()
+        LazyVStack(spacing: PanelLayoutMetrics.cardGridSpacing) {
+            if !masonryNotes.isEmpty {
+                HStack(alignment: .top, spacing: PanelLayoutMetrics.cardGridSpacing) {
+                    ForEach(columns.indices, id: \.self) { columnIndex in
+                        LazyVStack(spacing: PanelLayoutMetrics.cardGridSpacing) {
+                            ForEach(columns[columnIndex]) { note in
+                                cardPreview(note)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .top)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .top)
+            }
+
+            if !remainderNotes.isEmpty {
+                HStack(alignment: .top, spacing: PanelLayoutMetrics.cardGridSpacing) {
+                    ForEach(remainderNotes) { note in
+                        cardPreview(note)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
             }
         }
         .padding(.horizontal, PanelLayoutMetrics.cardGridHorizontalInset)
         .padding(.vertical, 4)
+    }
+
+    private func previewHeight(for note: Note) -> CGFloat {
+        standardCardWidth * NoteCardHeightRatio.value(for: note.id)
+    }
+
+    private func cardPreview(_ note: Note) -> some View {
+        content(note)
+            .frame(height: previewHeight(for: note), alignment: .top)
+            .clipped()
     }
 }
 
