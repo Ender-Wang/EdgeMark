@@ -337,18 +337,14 @@ struct HomeFolderView: View {
     private var folderList: some View {
         GeometryReader { geo in
             ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(sortedFolders) { folder in
-                        folderRowWithContextMenu(folder: folder)
-                    }
-
-                    if folderRename.isCreating {
-                        inlineFolderEditor
-                    }
-
-                    if !rootNotes.isEmpty {
-                        ForEach(rootNotes) { note in
-                            noteRowWithContextMenu(note: note)
+                Group {
+                    if appSettings.noteViewMode == .card {
+                        LazyVStack(spacing: 0) {
+                            folderAndNoteItems
+                        }
+                    } else {
+                        VStack(spacing: 0) {
+                            folderAndNoteItems
                         }
                     }
                 }
@@ -393,6 +389,21 @@ struct HomeFolderView: View {
             } else {
                 Text(l10n.t("alert.deleteFolder.empty", folderName))
             }
+        }
+    }
+
+    @ViewBuilder
+    private var folderAndNoteItems: some View {
+        ForEach(sortedFolders) { folder in
+            folderRowWithContextMenu(folder: folder)
+        }
+
+        if folderRename.isCreating {
+            inlineFolderEditor
+        }
+
+        ForEach(rootNotes) { note in
+            noteRowWithContextMenu(note: note)
         }
     }
 
@@ -512,7 +523,44 @@ struct HomeFolderView: View {
 
     @ViewBuilder
     private func noteRowWithContextMenu(note: Note) -> some View {
-        if noteRename.renamingNoteID == note.id {
+        if appSettings.noteViewMode == .card {
+            let id = NoteStore.SelectableID.note(note.id)
+            NoteCardView(
+                note: note,
+                selectionPosition: .resolve(id, in: visibleOrder, selection: noteStore.selection),
+                rename: cardRenameConfiguration(for: note),
+            )
+            .rowClick(
+                onSingle: { mods in
+                    noteStore.handleSelectionClick(
+                        on: id,
+                        isShift: mods.contains(.shift),
+                        isCommand: mods.contains(.command),
+                        visibleOrder: visibleOrder,
+                    )
+                },
+                onDouble: { noteStore.openNote(note) },
+                dragItem: .note(note.id),
+                dragPreviewLabel: note.title,
+            )
+            .edgeMarkDropTarget(.note(note.id, folder: note.folder))
+            .reportRowFrame(id)
+            .hoverableRow(id: id, content: .note(note))
+            .nsContextMenu {
+                if !noteStore.isSelected(id) {
+                    noteStore.replaceSelection(with: id)
+                }
+                if noteStore.selection.count > 1 {
+                    return NoteListMenus.selectionMenu(noteStore: noteStore, l10n: l10n)
+                }
+                return NoteListMenus.noteMenu(
+                    note: note,
+                    noteStore: noteStore,
+                    l10n: l10n,
+                    onRename: { startRenamingNote(note) },
+                )
+            }
+        } else if noteRename.renamingNoteID == note.id {
             inlineNoteRenameEditor(note: note)
         } else {
             let id = NoteStore.SelectableID.note(note.id)
@@ -555,6 +603,19 @@ struct HomeFolderView: View {
                 )
             }
         }
+    }
+
+    private func cardRenameConfiguration(for note: Note) -> NoteCardView.RenameConfiguration? {
+        guard noteRename.renamingNoteID == note.id else { return nil }
+        return NoteCardView.RenameConfiguration(
+            placeholder: l10n["common.noteTitlePlaceholder"],
+            text: $noteRename.text,
+            isFocused: $isNoteRenameFocused,
+            validationMessage: noteRename.validationMessage(in: noteStore),
+            onCommit: { noteRename.commit(note: note, noteStore: noteStore) },
+            onCancel: { noteRename.cancel(noteStore: noteStore) },
+            onFocusLost: { noteRename.commitOrCancel(note: note, noteStore: noteStore) },
+        )
     }
 
     // MARK: - Inline Note Rename Editor

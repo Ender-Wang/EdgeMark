@@ -1,10 +1,21 @@
 import SwiftUI
 
 struct NoteCardView: View {
+    struct RenameConfiguration {
+        let placeholder: String
+        let text: Binding<String>
+        let isFocused: FocusState<Bool>.Binding
+        let validationMessage: String?
+        let onCommit: () -> Void
+        let onCancel: () -> Void
+        let onFocusLost: () -> Void
+    }
+
     @Environment(L10n.self) private var l10n
 
     let note: Note
     var selectionPosition: RowSelectionPosition = .none
+    var rename: RenameConfiguration?
 
     @State private var isHovered = false
 
@@ -13,10 +24,37 @@ struct NoteCardView: View {
             HStack(spacing: 8) {
                 TagDotsView(tags: note.tags)
 
-                Text(note.title.isEmpty ? l10n["common.untitled"] : note.title)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
+                if let rename {
+                    TextField(rename.placeholder, text: rename.text)
+                        .textFieldStyle(.plain)
+                        .font(.headline)
+                        .focused(rename.isFocused)
+                        .onSubmit(rename.onCommit)
+                        .onExitCommand(perform: rename.onCancel)
+                        .onChange(of: rename.isFocused.wrappedValue) { _, focused in
+                            if !focused {
+                                rename.onFocusLost()
+                            }
+                        }
+                        .overlay(alignment: .trailing) {
+                            if let message = rename.validationMessage {
+                                Text(message)
+                                    .font(.caption2)
+                                    .foregroundStyle(.red)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(
+                                        .background.opacity(0.9),
+                                        in: RoundedRectangle(cornerRadius: 4),
+                                    )
+                            }
+                        }
+                } else {
+                    Text(note.title.isEmpty ? l10n["common.untitled"] : note.title)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                }
 
                 Spacer(minLength: 8)
 

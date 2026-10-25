@@ -76,7 +76,7 @@ struct BehaviorSettingsTab: View {
             Section {
                 VStack(alignment: .leading, spacing: 4) {
                     Picker(l10n["settings.viewMode.picker"], selection: $appSettings.noteViewMode) {
-                        ForEach([AppSettings.NoteViewMode.default, .column], id: \.self) { mode in
+                        ForEach(AppSettings.NoteViewMode.allCases, id: \.self) { mode in
                             Text(mode.displayName(l10n)).tag(mode)
                         }
                     }
