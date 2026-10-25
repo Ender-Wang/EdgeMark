@@ -57,7 +57,7 @@ xattr -cr /Applications/EdgeMark.app
 - 🔘 Edge-toggle-Modus — Kante berühren, um das Panel zu öffnen und beim Hin- und Her-Kopieren von Text offen zu halten, erneut berühren zum Schließen (kein ⌘P nötig); Auto-hide bleibt Standard
 - 📐 Multi-Monitor-Support mit konfigurierbarer linker oder rechter Kante — nur die äußere Bildschirmkante löst aus, sodass die Maus zwischen Displays nicht versehentlich öffnet
 - ↔️ Anpassbare Breite — innere Kante ziehen zum Ändern der Größe, wird über Neustarts hinweg gespeichert
-- 🧭 Ansichtsmodi — wähle Standard, Spalten oder Karten in den Einstellungen; Spalten zeigt den Browser ab 600 Punkten neben dem Editor, Karten zeigt den vollständig gerenderten Inhalt jeder Notiz
+- 🧭 Ansichtsmodi — wähle Standard, Spalten oder Karten in den Einstellungen; die breite Spaltenansicht hat eine dauerhaft gespeicherte, ziehbare Browser/Editor-Teilung, während Karten begrenzte gerenderte Vorschauen in einem responsiven Liquid-Glass-Masonry-Raster anordnet
 - 🪟 Panel-Stil — Wechsel zwischen Transluzentem und Deckendem Panel-Hintergrund
 - 🎨 Panel-Tönung — wähle aus einer kuratierten Palette (System, Graphit, Schiefer, Sand, Salbei, Rose)
 - 🫧 Liquid Glass unter macOS 26+ — standardmäßig aktiviert, folgt der Systemdarstellung und kann für das klassische Design ausgeschaltet werden; macOS 15.7 verwendet automatisch die klassische Darstellung
