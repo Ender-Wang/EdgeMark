@@ -223,6 +223,7 @@ struct MarkdownEditorView: View {
         }
         .onAppear {
             noteNavMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [self] event in
+                guard !ShortcutManager.shared.isRecordingShortcut else { return event }
                 // Markdown formatting shortcuts — route through the engine's bus so the
                 // didMarkdown* actions run (with word-boundary auto-wrap when no selection).
                 // Guard on the editor's text view being focused, not a field editor (find

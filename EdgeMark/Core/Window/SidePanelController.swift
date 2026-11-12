@@ -157,6 +157,7 @@ final class SidePanelController: NSWindowController {
 
         // Escape key dismissal
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard !ShortcutManager.shared.isRecordingShortcut else { return event }
             if event.keyCode == 53, self?.isShown == true {
                 if let fr = self?.window?.firstResponder as? NSTextView, fr.isFieldEditor {
                     return event
@@ -174,7 +175,7 @@ final class SidePanelController: NSWindowController {
         // List keyboard navigation: ↑ / ↓ / ⇧↑ / ⇧↓ / Return.
         // Runs before any SwiftUI .onKeyPress so it wins over default focus traversal.
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, isShown else { return event }
+            guard !ShortcutManager.shared.isRecordingShortcut, let self, isShown else { return event }
             // Skip while editing text or browsing Trash. A wide Column layout
             // keeps the browser active beside the editor, so its non-text focus
             // may continue to drive list navigation while a note is open.
@@ -212,7 +213,7 @@ final class SidePanelController: NSWindowController {
 
         // Configurable local shortcuts
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, isShown else { return event }
+            guard !ShortcutManager.shared.isRecordingShortcut, let self, isShown else { return event }
             let s = ShortcutSettings.shared
             if s.searchShortcut?.matches(event) == true {
                 // Trash overlay: pass through (navigateToHome while Trash is active leaves

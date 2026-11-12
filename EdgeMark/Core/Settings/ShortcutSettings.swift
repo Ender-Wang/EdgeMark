@@ -8,26 +8,47 @@ struct KeyboardShortcut: Codable, Equatable {
     let keyCode: UInt16
     let modifiers: UInt32
 
+    static func carbonModifiers(for event: NSEvent) -> UInt32 {
+        let flags = event.modifierFlags
+        var result: UInt32 = 0
+        if flags.contains(.command) {
+            result |= UInt32(cmdKey)
+        }
+        if flags.contains(.shift) {
+            result |= UInt32(shiftKey)
+        }
+        if flags.contains(.option) {
+            result |= UInt32(optionKey)
+        }
+        if flags.contains(.control) {
+            result |= UInt32(controlKey)
+        }
+
+        // AppKit sets .function implicitly for these keys, even without Fn held.
+        switch Int(event.keyCode) {
+        case kVK_LeftArrow, kVK_RightArrow, kVK_UpArrow, kVK_DownArrow,
+             kVK_Home, kVK_End, kVK_PageUp, kVK_PageDown, kVK_Help, kVK_ForwardDelete,
+             kVK_F1, kVK_F2, kVK_F3, kVK_F4, kVK_F5, kVK_F6, kVK_F7, kVK_F8,
+             kVK_F9, kVK_F10, kVK_F11, kVK_F12, kVK_F13, kVK_F14, kVK_F15,
+             kVK_F16, kVK_F17, kVK_F18, kVK_F19, kVK_F20:
+            break
+        default:
+            if flags.contains(.function) {
+                result |= UInt32(kEventKeyModifierFnMask)
+            }
+        }
+        return result
+    }
+
     func matches(_ event: NSEvent) -> Bool {
-        guard event.keyCode == keyCode else { return false }
-        var required: NSEvent.ModifierFlags = []
-        if modifiers & UInt32(cmdKey) != 0 {
-            required.insert(.command)
-        }
-        if modifiers & UInt32(shiftKey) != 0 {
-            required.insert(.shift)
-        }
-        if modifiers & UInt32(optionKey) != 0 {
-            required.insert(.option)
-        }
-        if modifiers & UInt32(controlKey) != 0 {
-            required.insert(.control)
-        }
-        return event.modifierFlags.intersection([.command, .shift, .option, .control]) == required
+        event.keyCode == keyCode && Self.carbonModifiers(for: event) == modifiers
     }
 
     var description: String {
         var parts: [String] = []
+        if modifiers & UInt32(kEventKeyModifierFnMask) != 0 {
+            parts.append("Fn")
+        }
         if modifiers & UInt32(controlKey) != 0 {
             parts.append("⌃")
         }

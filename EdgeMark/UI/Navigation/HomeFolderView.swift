@@ -469,10 +469,8 @@ struct HomeFolderView: View {
             guard !folderRename.isCreateConflicting(siblings: topLevelFolders) else { return }
             if trimmed.isEmpty {
                 cancelFolderCreation()
-            } else {
-                if noteStore.completePendingNoteGrouping(named: trimmed) {
-                    folderRename.cancelCreate()
-                }
+            } else if noteStore.completePendingNoteGrouping(named: trimmed) {
+                folderRename.cancelCreate()
             }
         } else {
             folderRename.commitCreate(parent: "", noteStore: noteStore, siblings: topLevelFolders)
@@ -493,10 +491,8 @@ struct HomeFolderView: View {
         let trimmed = folderRename.creationText.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty || folderRename.isCreateConflicting(siblings: topLevelFolders) {
             cancelFolderCreation()
-        } else {
-            if noteStore.completePendingNoteGrouping(named: trimmed) {
-                folderRename.cancelCreate()
-            }
+        } else if noteStore.completePendingNoteGrouping(named: trimmed) {
+            folderRename.cancelCreate()
         }
     }
 
