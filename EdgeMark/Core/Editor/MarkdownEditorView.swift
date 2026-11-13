@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 import MarkdownEngine
 import MarkdownEngineCodeBlocks
 import MarkdownEngineLatex
@@ -230,20 +231,20 @@ struct MarkdownEditorView: View {
                 // bar / search / rename), so typing into those doesn't bold/italicize.
                 if let tv = NSApp.keyWindow?.firstResponder as? NSTextView, !tv.isFieldEditor {
                     let key = event.charactersIgnoringModifiers?.lowercased()
-                    let mods = event.modifierFlags.intersection([.command, .shift, .option, .control])
-                    if key == "b", mods == [.command] {
+                    let mods = KeyboardShortcut.carbonModifiers(for: event)
+                    if key == "b", mods == UInt32(cmdKey) {
                         NotificationCenter.default.post(name: .editorApplyBold, object: nil); return nil
                     }
-                    if key == "i", mods == [.command] {
+                    if key == "i", mods == UInt32(cmdKey) {
                         NotificationCenter.default.post(name: .editorApplyItalic, object: nil); return nil
                     }
-                    if key == "e", mods == [.command] {
+                    if key == "e", mods == UInt32(cmdKey) {
                         NotificationCenter.default.post(name: .editorApplyInlineCode, object: nil); return nil
                     }
-                    if key == "k", mods == [.command] {
+                    if key == "k", mods == UInt32(cmdKey) {
                         NotificationCenter.default.post(name: .editorApplyLink, object: nil); return nil
                     }
-                    if key == "x", mods == [.command, .shift] {
+                    if key == "x", mods == UInt32(cmdKey | shiftKey) {
                         NotificationCenter.default.post(name: .editorApplyStrikethrough, object: nil); return nil
                     }
                 }
