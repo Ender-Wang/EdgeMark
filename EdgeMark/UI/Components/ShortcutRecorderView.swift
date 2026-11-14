@@ -20,7 +20,6 @@ struct KeyRecorderRepresentable: NSViewRepresentable {
         let button = KeyRecorderButton()
         button.onKeyRecorded = { keyCode, modifiers in
             shortcut = KeyboardShortcut(keyCode: keyCode, modifiers: modifiers)
-            isRecording = false
         }
         button.onClear = {
             shortcut = nil
@@ -35,6 +34,10 @@ struct KeyRecorderRepresentable: NSViewRepresentable {
         nsView.currentShortcut = shortcut
         nsView.isRecording = isRecording
     }
+
+    static func dismantleNSView(_ nsView: KeyRecorderButton, coordinator _: ()) {
+        nsView.stopRecording()
+    }
 }
 
 final class KeyRecorderButton: NSView {
@@ -48,9 +51,15 @@ final class KeyRecorderButton: NSView {
 
     var isRecording = false {
         didSet {
+            guard isRecording != oldValue else { return }
             needsDisplay = true
             if isRecording {
-                window?.makeFirstResponder(self)
+                ShortcutManager.shared.beginRecording(self)
+                if window?.makeFirstResponder(self) != true {
+                    stopRecording()
+                }
+            } else {
+                ShortcutManager.shared.endRecording(self)
             }
         }
     }
@@ -76,6 +85,43 @@ final class KeyRecorderButton: NSView {
 
     override var acceptsFirstResponder: Bool {
         true
+    }
+
+    func stopRecording() {
+        guard isRecording else { return }
+        isRecording = false
+        onRecordingChanged?(false)
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned {
+            stopRecording()
+        }
+        return resigned
+    }
+
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        if let window {
+            NotificationCenter.default.removeObserver(self, name: NSWindow.willCloseNotification, object: window)
+            NotificationCenter.default.removeObserver(self, name: NSWindow.didResignKeyNotification, object: window)
+        }
+        if window !== newWindow {
+            stopRecording()
+        }
+        if let newWindow {
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(recordingWindowEnded), name: NSWindow.willCloseNotification, object: newWindow,
+            )
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(recordingWindowEnded), name: NSWindow.didResignKeyNotification, object: newWindow,
+            )
+        }
+        super.viewWillMove(toWindow: newWindow)
+    }
+
+    @objc private func recordingWindowEnded() {
+        stopRecording()
     }
 
     override func updateTrackingAreas() {
@@ -181,7 +227,9 @@ final class KeyRecorderButton: NSView {
             return
         }
         isRecording = true
-        onRecordingChanged?(true)
+        if isRecording {
+            onRecordingChanged?(true)
+        }
     }
 
     override func mouseMoved(with event: NSEvent) {
@@ -203,32 +251,20 @@ final class KeyRecorderButton: NSView {
     override func keyDown(with event: NSEvent) {
         guard isRecording else { return }
 
+        let carbonModifiers = KeyboardShortcut.carbonModifiers(for: event)
+
         // Bare Escape cancels recording
         if event.keyCode == UInt16(kVK_Escape),
-           event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty
+           carbonModifiers == 0
         {
-            isRecording = false
-            onRecordingChanged?(false)
+            stopRecording()
             return
-        }
-
-        var carbonModifiers: UInt32 = 0
-        if event.modifierFlags.contains(.command) {
-            carbonModifiers |= UInt32(cmdKey)
-        }
-        if event.modifierFlags.contains(.control) {
-            carbonModifiers |= UInt32(controlKey)
-        }
-        if event.modifierFlags.contains(.option) {
-            carbonModifiers |= UInt32(optionKey)
-        }
-        if event.modifierFlags.contains(.shift) {
-            carbonModifiers |= UInt32(shiftKey)
         }
 
         // Require at least one modifier key
         if carbonModifiers != 0 {
             onKeyRecorded?(event.keyCode, carbonModifiers)
+            stopRecording()
         }
     }
 }

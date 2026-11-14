@@ -9,6 +9,11 @@ final class ShortcutManager {
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandler: EventHandlerRef?
     private var toggleAction: (() -> Void)?
+    private var recordingOwners: Set<ObjectIdentifier> = []
+
+    var isRecordingShortcut: Bool {
+        !recordingOwners.isEmpty
+    }
 
     private init() {}
 
@@ -32,9 +37,21 @@ final class ShortcutManager {
         registerShortcuts()
     }
 
+    func beginRecording(_ owner: AnyObject) {
+        if recordingOwners.insert(ObjectIdentifier(owner)).inserted, recordingOwners.count == 1 {
+            unregisterShortcuts()
+        }
+    }
+
+    func endRecording(_ owner: AnyObject) {
+        guard recordingOwners.remove(ObjectIdentifier(owner)) != nil, recordingOwners.isEmpty else { return }
+        registerShortcuts()
+    }
+
     // MARK: - Register / Unregister
 
     private func registerShortcuts() {
+        guard !isRecordingShortcut, toggleAction != nil else { return }
         guard let shortcut = ShortcutSettings.shared.togglePanelShortcut else {
             Log.shortcuts.info("[ShortcutManager] no shortcut configured, skipping registration")
             return

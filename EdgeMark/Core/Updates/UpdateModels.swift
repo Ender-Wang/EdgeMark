@@ -51,9 +51,9 @@ nonisolated struct GitHubRelease: Codable {
 
     private static var isArm64: Bool {
         #if arch(arm64)
-            return true
+            true
         #else
-            return false
+            false
         #endif
     }
 
