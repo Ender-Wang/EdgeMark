@@ -155,10 +155,13 @@ final class SidePanelController: NSWindowController {
             hidePanel(restoreFocus: false)
         }
 
-        // Escape key dismissal
+        // Bare Escape key dismissal
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard !ShortcutManager.shared.isRecordingShortcut else { return event }
-            if event.keyCode == 53, self?.isShown == true {
+            if event.keyCode == 53,
+               KeyboardShortcut.carbonModifiers(for: event) == 0,
+               self?.isShown == true
+            {
                 if let fr = self?.window?.firstResponder as? NSTextView, fr.isFieldEditor {
                     return event
                 }
